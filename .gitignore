@@ -1,5 +1,5 @@
 # Rust compilation artifacts
-/target/
+target/
 Cargo.lock
 
 # macOS
