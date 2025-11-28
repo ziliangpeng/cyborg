@@ -71,6 +71,12 @@ impl<T> LinkedList<T> {
     }
 }
 
+impl<T> Default for LinkedList<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
         let mut cur_link = self.head.take();
@@ -135,7 +141,9 @@ mod test {
         assert_eq!(list.peek(), Some(&3));
         assert_eq!(list.peek_mut(), Some(&mut 3));
 
-        list.peek_mut().map(|value| *value = 42);
+        if let Some(value) = list.peek_mut() {
+            *value = 42;
+        }
 
         assert_eq!(list.peek(), Some(&42));
         assert_eq!(list.pop_front(), Some(42));

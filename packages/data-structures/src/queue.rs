@@ -4,9 +4,17 @@ pub struct Queue<T> {
     list: LinkedList<T>,
 }
 
+impl<T> Default for Queue<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Queue<T> {
     pub fn new() -> Self {
-        Queue { list: LinkedList::new() }
+        Queue {
+            list: LinkedList::new(),
+        }
     }
 
     pub fn enqueue(&mut self, elem: T) {
@@ -58,7 +66,7 @@ mod test {
         assert_eq!(queue.dequeue(), Some(5));
         assert_eq!(queue.dequeue(), None);
     }
-    
+
     #[test]
     fn queue_peek() {
         let mut queue = Queue::new();
@@ -67,12 +75,14 @@ mod test {
 
         queue.enqueue(1);
         queue.enqueue(2);
-        
+
         assert_eq!(queue.peek(), Some(&1));
-        
-        queue.peek_mut().map(|val| *val = 42);
+
+        if let Some(val) = queue.peek_mut() {
+            *val = 42;
+        }
         assert_eq!(queue.peek(), Some(&42));
-        
+
         assert_eq!(queue.dequeue(), Some(42));
     }
 }
