@@ -33,7 +33,7 @@ impl<T> LinkedList<T> {
 
         self.head = Some(new_head);
     }
-    
+
     pub fn push_back(&mut self, elem: T) {
         let mut new_tail = Box::new(Node { elem, next: None });
 
