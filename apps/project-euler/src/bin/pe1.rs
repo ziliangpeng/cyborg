@@ -7,5 +7,5 @@ fn main() {
             sum += i;
         }
     }
-    println!("The sum of all multiples of 3 or 5 below 1000 is: {}", sum);
+    println!("The answer to Problem 1 is: {}", sum);
 }
