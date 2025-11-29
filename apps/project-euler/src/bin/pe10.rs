@@ -5,4 +5,3 @@ fn main() {
     let sum: u64 = primes.iter().map(|&p| p as u64).sum();
     println!("The answer to Problem 10 is: {}", sum);
 }
-
