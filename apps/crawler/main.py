@@ -37,12 +37,6 @@ def extract_links(html: str) -> list[str]:
 
 
 def worker(worker_id: int, pool: UrlPool, iteration_counter: list, max_iterations: int):
-    if worker_id != 0:
-        delay = random.uniform(2, 5)
-        # TODO: This is to warm up cold start with empty pool, optimize later
-        time.sleep(delay)
-        print(f"[Worker {worker_id}] Started after {delay:.2f}s delay")
-
     retry_count = 0
     max_retries = 3
 
