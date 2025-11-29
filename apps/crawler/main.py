@@ -6,8 +6,10 @@ from bs4 import BeautifulSoup
 from url import filter_http_links
 from pool import UrlPool, NoUrlAvailableError
 import argparse
+from profiler import profile, enable_profiling, print_stats
 
 
+@profile
 def fetch_url(url: str) -> str | None:
     if url.endswith('.pdf'):
         return None
@@ -27,6 +29,7 @@ def fetch_url(url: str) -> str | None:
         return None
 
 
+@profile
 def extract_links(html: str) -> list[str]:
     soup = BeautifulSoup(html, 'html.parser')
     links = [a.get('href') for a in soup.find_all('a') if a.get('href')]
@@ -80,7 +83,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simple web crawler")
     parser.add_argument("--num", "-n", type=int, default=100, help="Number of iterations (default: 100)")
     parser.add_argument("--threads", "-t", type=int, default=1, help="Number of worker threads (default: 1)")
+    parser.add_argument("--profile", action="store_true", help="Enable function profiling")
     args = parser.parse_args()
+
+    if args.profile:
+        enable_profiling()
+        print("Profiling enabled")
 
     pool = UrlPool()
     seed_url = "https://news.ycombinator.com"
@@ -98,3 +106,6 @@ if __name__ == "__main__":
         t.join()
 
     print(f"\nCrawling complete. Total iterations: {iteration_counter[0]}")
+
+    if args.profile:
+        print_stats()
