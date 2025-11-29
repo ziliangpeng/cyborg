@@ -4,13 +4,17 @@ from url import filter_http_links
 from pool import UrlPool, NoUrlAvailableError
 
 
-def fetch_url(url: str) -> str:
+def fetch_url(url: str) -> str | None:
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    return response.text
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.RequestException as e:
+        print(f"  -> ❌ Error fetching: {e}")
+        return None
 
 
 def extract_links(html: str) -> list[str]:
@@ -30,13 +34,16 @@ if __name__ == "__main__":
             print(f"[{i}] Crawling: {url_obj.url}")
 
             content = fetch_url(url_obj.url)
-            links = extract_links(content)
-            links = filter_http_links(links, url_obj.url)
+            if content is None:
+                pool.error(url_obj.id)
+            else:
+                links = extract_links(content)
+                links = filter_http_links(links, url_obj.url)
+                pool.add_urls(links)
+                print(f"  -> Found {len(links)} links")
 
-            pool.add_urls(links)
-            pool.done(url_obj.id)
+                pool.done(url_obj.id)
 
-            print(f"  -> Found {len(links)} links")
         except NoUrlAvailableError:
             print(f"[{i}] No URLs available (rate limited)")
             break

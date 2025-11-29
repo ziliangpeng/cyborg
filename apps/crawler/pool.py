@@ -1,4 +1,5 @@
 import time
+import random
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -41,6 +42,9 @@ class UrlPool:
                 ids.append(url_id)
         return ids
 
+    def error(self, url_id: int):
+        pass
+
     def done(self, url_id: int):
         if url_id not in self._pending:
             return
@@ -56,6 +60,7 @@ class UrlPool:
     def get(self) -> Url:
         current_time = time.time()
 
+        available = []
         for url_id, url in self._pending.items():
             host = urlparse(url).netloc
 
@@ -64,7 +69,14 @@ class UrlPool:
                 if time_since_last < self._rate_limit:
                     continue
 
-            self._host_last_crawl[host] = current_time
-            return Url(url=url, id=url_id)
+            available.append((url_id, url))
+            if len(available) >= 64:
+                break
 
-        raise NoUrlAvailableError("All URLs are rate-limited")
+        if not available:
+            raise NoUrlAvailableError("All URLs are rate-limited")
+
+        url_id, url = random.choice(available)
+        host = urlparse(url).netloc
+        self._host_last_crawl[host] = current_time
+        return Url(url=url, id=url_id)
