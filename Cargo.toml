@@ -4,3 +4,8 @@ members = [
     "packages/*",
     "apps/*",
 ]
+# TODO: Find a better solution that doesn't require manually excluding Python apps
+# Possible approaches: pattern-based exclusion, separate directory structure, or smart tooling
+exclude = [
+    "apps/crawler",
+]
