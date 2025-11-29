@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from url import filter_http_links
 from pool import UrlPool, NoUrlAvailableError
+import argparse
 
 
 def fetch_url(url: str) -> str | None:
@@ -24,11 +25,15 @@ def extract_links(html: str) -> list[str]:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Simple web crawler")
+    parser.add_argument("--num", "-n", type=int, default=100, help="Number of iterations (default: 100)")
+    args = parser.parse_args()
+
     pool = UrlPool()
     seed_url = "https://news.ycombinator.com"
     pool.add_url(seed_url)
 
-    for i in range(100):
+    for i in range(args.num):
         try:
             url_obj = pool.get()
             print(f"[{i}] Crawling: {url_obj.url}")
