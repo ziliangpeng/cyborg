@@ -1,5 +1,31 @@
 from enum import Enum
 from urllib.parse import urljoin, urlparse
+import requests
+from profiler import profile
+
+
+class Fetcher:
+    def __init__(self):
+        self._headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        self._timeout = 5
+
+    @profile
+    def fetch(self, url: str) -> str | None:
+        if url.endswith('.pdf'):
+            return None
+        # Parquet can be huge.
+        # TODO: we need to find a way to limit download size
+        if url.endswith('.parquet'):
+            return None
+        try:
+            response = requests.get(url, headers=self._headers, timeout=self._timeout)
+            response.raise_for_status()
+            return response.text
+        except requests.exceptions.RequestException as e:
+            print(f"  -> ❌ Error fetching: {e}")
+            return None
 
 
 def filter_http_links(links: list[str], base_url: str) -> list[str]:

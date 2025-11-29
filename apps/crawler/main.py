@@ -1,32 +1,11 @@
-import requests
 import threading
 import time
 import random
 from bs4 import BeautifulSoup
-from url import filter_http_links
+from url import filter_http_links, Fetcher
 from pool import UrlPool, NoUrlAvailableError
 import argparse
 from profiler import profile, enable_profiling, print_stats
-
-
-@profile
-def fetch_url(url: str) -> str | None:
-    if url.endswith('.pdf'):
-        return None
-    # Parquet can be huge.
-    # TODO: we need to find a way to limit download size
-    if url.endswith('.parquet'):
-        return None
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-    try:
-        response = requests.get(url, headers=headers, timeout=5)
-        response.raise_for_status()
-        return response.text
-    except requests.exceptions.RequestException as e:
-        print(f"  -> ❌ Error fetching: {e}")
-        return None
 
 
 @profile
@@ -36,7 +15,7 @@ def extract_links(html: str) -> list[str]:
     return links
 
 
-def worker(worker_id: int, pool: UrlPool, iteration_counter: list, max_iterations: int):
+def worker(worker_id: int, pool: UrlPool, fetcher: Fetcher, iteration_counter: list, max_iterations: int):
     retry_count = 0
     max_retries = 3
 
@@ -54,7 +33,7 @@ def worker(worker_id: int, pool: UrlPool, iteration_counter: list, max_iteration
 
             print(f"[{current_iter}][Worker {worker_id}] Crawling: {url_obj.url}")
 
-            content = fetch_url(url_obj.url)
+            content = fetcher.fetch(url_obj.url)
             if content is None:
                 pool.error(url_obj.id)
             else:
@@ -85,6 +64,7 @@ if __name__ == "__main__":
         print("Profiling enabled")
 
     pool = UrlPool()
+    fetcher = Fetcher()
     seed_url = "https://news.ycombinator.com"
     pool.add_url(seed_url)
 
@@ -92,7 +72,7 @@ if __name__ == "__main__":
 
     threads = []
     for i in range(args.threads):
-        t = threading.Thread(target=worker, args=(i, pool, iteration_counter, args.num))
+        t = threading.Thread(target=worker, args=(i, pool, fetcher, iteration_counter, args.num))
         t.start()
         threads.append(t)
 
