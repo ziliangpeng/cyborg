@@ -1,4 +1,7 @@
 import requests
+import threading
+import time
+import random
 from bs4 import BeautifulSoup
 from url import filter_http_links
 from pool import UrlPool, NoUrlAvailableError
@@ -6,11 +9,17 @@ import argparse
 
 
 def fetch_url(url: str) -> str | None:
+    if url.endswith('.pdf'):
+        return None
+    # Parquet can be huge.
+    # TODO: we need to find a way to limit download size
+    if url.endswith('.parquet'):
+        return None
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=5)
         response.raise_for_status()
         return response.text
     except requests.exceptions.RequestException as e:
@@ -24,19 +33,29 @@ def extract_links(html: str) -> list[str]:
     return links
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Simple web crawler")
-    parser.add_argument("--num", "-n", type=int, default=100, help="Number of iterations (default: 100)")
-    args = parser.parse_args()
+def worker(worker_id: int, pool: UrlPool, iteration_counter: list, max_iterations: int):
+    if worker_id != 0:
+        delay = random.uniform(2, 5)
+        # TODO: This is to warm up cold start with empty pool, optimize later
+        time.sleep(delay)
+        print(f"[Worker {worker_id}] Started after {delay:.2f}s delay")
 
-    pool = UrlPool()
-    seed_url = "https://news.ycombinator.com"
-    pool.add_url(seed_url)
+    retry_count = 0
+    max_retries = 3
 
-    for i in range(args.num):
+    while True:
+        with iteration_counter[1]:
+            if iteration_counter[0] >= max_iterations:
+                print(f"[Worker {worker_id}] Max iterations reached, exiting")
+                break
+            iteration_counter[0] += 1
+            current_iter = iteration_counter[0]
+
         try:
             url_obj = pool.get()
-            print(f"[{i}] Crawling: {url_obj.url}")
+            retry_count = 0
+
+            print(f"[{current_iter}][Worker {worker_id}] Crawling: {url_obj.url}")
 
             content = fetch_url(url_obj.url)
             if content is None:
@@ -45,10 +64,37 @@ if __name__ == "__main__":
                 links = extract_links(content)
                 links = filter_http_links(links, url_obj.url)
                 pool.add_urls(links)
-                print(f"  -> Found {len(links)} links")
-
+                # print(f"[{current_iter}][Worker {worker_id}] -> Found {len(links)} links")
                 pool.done(url_obj.id)
 
         except NoUrlAvailableError:
-            print(f"[{i}] No URLs available (rate limited)")
-            break
+            retry_count += 1
+            if retry_count >= max_retries:
+                print(f"[Worker {worker_id}] No URLs available after {max_retries} retries, exiting")
+                break
+            print(f"[Worker {worker_id}] No URLs available, retry {retry_count}/{max_retries}")
+            time.sleep(1)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Simple web crawler")
+    parser.add_argument("--num", "-n", type=int, default=100, help="Number of iterations (default: 100)")
+    parser.add_argument("--threads", "-t", type=int, default=1, help="Number of worker threads (default: 1)")
+    args = parser.parse_args()
+
+    pool = UrlPool()
+    seed_url = "https://news.ycombinator.com"
+    pool.add_url(seed_url)
+
+    iteration_counter = [0, threading.Lock()]
+
+    threads = []
+    for i in range(args.threads):
+        t = threading.Thread(target=worker, args=(i, pool, iteration_counter, args.num))
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
+
+    print(f"\nCrawling complete. Total iterations: {iteration_counter[0]}")
