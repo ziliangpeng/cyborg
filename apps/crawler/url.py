@@ -4,21 +4,24 @@ import requests
 from profiler import profile
 
 
+CHROME_2020 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+CHROME_2025 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
+
+IGNORED_SUFFIXES = ['.pdf', '.parquet']
+
+
 class Fetcher:
     def __init__(self):
         self._headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': CHROME_2025
         }
         self._timeout = 5
 
     @profile
     def fetch(self, url: str) -> str | None:
-        if url.endswith('.pdf'):
-            return None
-        # Parquet can be huge.
-        # TODO: we need to find a way to limit download size
-        if url.endswith('.parquet'):
-            return None
+        for suffix in IGNORED_SUFFIXES:
+            if url.endswith(suffix):
+                return None
         try:
             response = requests.get(url, headers=self._headers, timeout=self._timeout)
             response.raise_for_status()
