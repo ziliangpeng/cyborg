@@ -91,7 +91,6 @@ pub fn primes_below_parallel_inner(n: u32) -> Vec<u32> {
         .collect()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,14 +146,12 @@ mod tests {
             let parallel_inner_result = primes_below_parallel_inner(n);
 
             assert_eq!(
-                sequential_result,
-                parallel_outer_result,
+                sequential_result, parallel_outer_result,
                 "Mismatch for n={} between sequential and parallel_outer",
                 n
             );
             assert_eq!(
-                sequential_result,
-                parallel_inner_result,
+                sequential_result, parallel_inner_result,
                 "Mismatch for n={} between sequential and parallel_inner",
                 n
             );

@@ -1,7 +1,5 @@
-use criterion::{criterion_group, criterion_main, Criterion};
-use math::{
-    primes_below, primes_below_parallel_inner, primes_below_parallel_outer,
-};
+use criterion::{Criterion, criterion_group, criterion_main};
+use math::{primes_below, primes_below_parallel_inner, primes_below_parallel_outer};
 
 fn run_all_benchmarks(c: &mut Criterion) {
     let mut group_10k = c.benchmark_group("primes_below_n_10000");
