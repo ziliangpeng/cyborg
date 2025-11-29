@@ -43,7 +43,9 @@ class UrlPool:
         return ids
 
     def error(self, url_id: int):
-        pass
+        # TODO: Better error handling - track errors, retry with backoff, categorize error types
+        if url_id in self._pending:
+            del self._pending[url_id]
 
     def done(self, url_id: int):
         if url_id not in self._pending:
@@ -60,6 +62,11 @@ class UrlPool:
     def get(self) -> Url:
         current_time = time.time()
 
+        # TODO: a few things we can do
+        #   - reuse the available [] so we do not need to recompute every time
+        #   - somehow randomize the _pending.items() so we don't need to return some error url that's in the front of queue
+        #   - error() handling need to be better
+        # this is easily the bottleneck of the crawler
         available = []
         for url_id, url in self._pending.items():
             host = urlparse(url).netloc
