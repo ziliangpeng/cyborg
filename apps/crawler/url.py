@@ -22,7 +22,7 @@ CHROME_2023 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/537.36 (
 CHROME_2024 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 CHROME_2025 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'
 
-IGNORED_SUFFIXES = ['.pdf', '.parquet']
+IGNORED_SUFFIXES = ['.pdf', '.parquet', '.xml']
 
 
 class Fetcher:
