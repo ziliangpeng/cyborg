@@ -1,10 +1,10 @@
 import time
+import inspect
 from functools import wraps
 from collections import defaultdict
 import threading
 
 # TODO: Move this profiler module to a separate library for reuse across projects
-# TODO: Fix profiler to work with async functions - currently doesn't measure async function execution time correctly
 
 PROFILING_ENABLED = False
 _stats = defaultdict(lambda: {'count': 0, 'total_time': 0, 'times': []})
@@ -15,22 +15,40 @@ def enable_profiling():
     PROFILING_ENABLED = True
 
 def profile(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if not PROFILING_ENABLED:
-            return func(*args, **kwargs)
+    if inspect.iscoroutinefunction(func):
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            if not PROFILING_ENABLED:
+                return await func(*args, **kwargs)
 
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        elapsed = time.perf_counter() - start
+            start = time.perf_counter()
+            result = await func(*args, **kwargs)
+            elapsed = time.perf_counter() - start
 
-        with _stats_lock:
-            _stats[func.__name__]['count'] += 1
-            _stats[func.__name__]['total_time'] += elapsed
-            _stats[func.__name__]['times'].append(elapsed)
+            with _stats_lock:
+                _stats[func.__name__]['count'] += 1
+                _stats[func.__name__]['total_time'] += elapsed
+                _stats[func.__name__]['times'].append(elapsed)
 
-        return result
-    return wrapper
+            return result
+        return async_wrapper
+    else:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if not PROFILING_ENABLED:
+                return func(*args, **kwargs)
+
+            start = time.perf_counter()
+            result = func(*args, **kwargs)
+            elapsed = time.perf_counter() - start
+
+            with _stats_lock:
+                _stats[func.__name__]['count'] += 1
+                _stats[func.__name__]['total_time'] += elapsed
+                _stats[func.__name__]['times'].append(elapsed)
+
+            return result
+        return wrapper
 
 def _percentile(data, percentile):
     if not data:
