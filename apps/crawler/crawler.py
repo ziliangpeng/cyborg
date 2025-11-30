@@ -17,16 +17,17 @@ def extract_links(html: str) -> list[str]:
 class Crawler:
     MAX_RETRIES = 3
 
-    def __init__(self, seed_url: str, concurrency: int = 1):
+    def __init__(self, seed_url: str, concurrency: int = 1, verbose: bool = False):
         self.seed_url = seed_url
         self.concurrency = concurrency
+        self.verbose = verbose
         self.pool = UrlPool()
 
 
 class SyncCrawler(Crawler):
-    def __init__(self, seed_url: str, concurrency: int = 1):
-        super().__init__(seed_url, concurrency)
-        self.fetcher = Fetcher()
+    def __init__(self, seed_url: str, concurrency: int = 1, verbose: bool = False):
+        super().__init__(seed_url, concurrency, verbose)
+        self.fetcher = Fetcher(verbose=verbose)
         self.iteration_counter = [0, threading.Lock()]
 
     def crawl(self, num_urls: int) -> int:
@@ -50,7 +51,8 @@ class SyncCrawler(Crawler):
         while True:
             with self.iteration_counter[1]:
                 if self.iteration_counter[0] >= max_iterations:
-                    print(f"[Worker {worker_id}] Max iterations reached, exiting")
+                    if self.verbose:
+                        print(f"[Worker {worker_id}] Max iterations reached, exiting")
                     break
                 self.iteration_counter[0] += 1
                 current_iter = self.iteration_counter[0]
@@ -59,7 +61,8 @@ class SyncCrawler(Crawler):
                 url_obj = self.pool.get()
                 retry_count = 0
 
-                print(f"[{current_iter}][Worker {worker_id}] Crawling: {url_obj.url}")
+                if self.verbose:
+                    print(f"[{current_iter}][Worker {worker_id}] Crawling: {url_obj.url}")
 
                 content = self.fetcher.fetch(url_obj.url)
                 if content is None:
@@ -73,22 +76,24 @@ class SyncCrawler(Crawler):
             except NoUrlAvailableError:
                 retry_count += 1
                 if retry_count >= max_retries:
-                    print(f"[Worker {worker_id}] No URLs available after {max_retries} retries, exiting")
+                    if self.verbose:
+                        print(f"[Worker {worker_id}] No URLs available after {max_retries} retries, exiting")
                     break
-                print(f"[Worker {worker_id}] No URLs available, retry {retry_count}/{max_retries}")
+                if self.verbose:
+                    print(f"[Worker {worker_id}] No URLs available, retry {retry_count}/{max_retries}")
                 time.sleep(1)
 
 
 class AsyncCrawler(Crawler):
-    def __init__(self, seed_url: str, concurrency: int = 1):
-        super().__init__(seed_url, concurrency)
+    def __init__(self, seed_url: str, concurrency: int = 1, verbose: bool = False):
+        super().__init__(seed_url, concurrency, verbose)
         self.fetcher = None
         self.iteration_counter = [0, asyncio.Lock()]
 
     async def crawl(self, num_urls: int) -> int:
         self.pool.add_url(self.seed_url)
 
-        async with AioHttpFetcher() as fetcher:
+        async with AioHttpFetcher(verbose=self.verbose) as fetcher:
             self.fetcher = fetcher
             tasks = []
             for i in range(self.concurrency):
@@ -107,7 +112,8 @@ class AsyncCrawler(Crawler):
         while True:
             async with self.iteration_counter[1]:
                 if self.iteration_counter[0] >= max_iterations:
-                    print(f"[Worker {worker_id}] Max iterations reached, exiting")
+                    if self.verbose:
+                        print(f"[Worker {worker_id}] Max iterations reached, exiting")
                     break
                 self.iteration_counter[0] += 1
                 current_iter = self.iteration_counter[0]
@@ -116,7 +122,8 @@ class AsyncCrawler(Crawler):
                 url_obj = self.pool.get()
                 retry_count = 0
 
-                print(f"[{current_iter}][Worker {worker_id}] Crawling: {url_obj.url}")
+                if self.verbose:
+                    print(f"[{current_iter}][Worker {worker_id}] Crawling: {url_obj.url}")
 
                 content = await self.fetcher.fetch(url_obj.url)
                 if content is None:
@@ -131,7 +138,9 @@ class AsyncCrawler(Crawler):
             except NoUrlAvailableError:
                 retry_count += 1
                 if retry_count >= max_retries:
-                    print(f"[Worker {worker_id}] No URLs available after {max_retries} retries, exiting")
+                    if self.verbose:
+                        print(f"[Worker {worker_id}] No URLs available after {max_retries} retries, exiting")
                     break
-                print(f"[Worker {worker_id}] No URLs available, retry {retry_count}/{max_retries}")
+                if self.verbose:
+                    print(f"[Worker {worker_id}] No URLs available, retry {retry_count}/{max_retries}")
                 await asyncio.sleep(1)

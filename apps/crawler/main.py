@@ -6,7 +6,7 @@ from profiler import enable_profiling, print_stats
 
 def run_sync_crawler(args):
     seed_url = "https://news.ycombinator.com"
-    crawler = SyncCrawler(seed_url, concurrency=args.concurrency)
+    crawler = SyncCrawler(seed_url, concurrency=args.concurrency, verbose=args.verbose)
 
     total = crawler.crawl(args.num)
 
@@ -15,7 +15,7 @@ def run_sync_crawler(args):
 
 async def run_async_crawler(args):
     seed_url = "https://news.ycombinator.com"
-    crawler = AsyncCrawler(seed_url, concurrency=args.concurrency)
+    crawler = AsyncCrawler(seed_url, concurrency=args.concurrency, verbose=args.verbose)
 
     total = await crawler.crawl(args.num)
 
@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--concurrency", "-c", type=int, default=1, help="Number of concurrent workers (default: 1)")
     parser.add_argument("--async", dest="use_async", action="store_true", help="Use async crawler with aiohttp (default: threading with requests)")
     parser.add_argument("--profile", action="store_true", help="Enable function profiling")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging (show each URL being crawled)")
     args = parser.parse_args()
 
     if args.profile:

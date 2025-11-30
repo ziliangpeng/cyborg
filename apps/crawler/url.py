@@ -5,6 +5,12 @@ import aiohttp
 import httpx
 from profiler import profile
 
+# TODO: Convert to use Python logging module with different log levels
+# - ERROR level: fetch errors (currently behind verbose flag, should be WARNING/ERROR)
+# - DEBUG level: individual URL crawling logs (currently behind verbose flag)
+# - INFO level: overall progress/completion messages
+# This would allow better control over logging granularity
+
 
 # User-Agent strings for Chrome from 2020-2025
 # Only macOS version (e.g., 10_15_7) and Chrome version (e.g., 87.0.0.0) change by year
@@ -20,11 +26,12 @@ IGNORED_SUFFIXES = ['.pdf', '.parquet']
 
 
 class Fetcher:
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         self._headers = {
             'User-Agent': CHROME_2025
         }
         self._timeout = 5
+        self._verbose = verbose
 
     @profile
     def fetch(self, url: str) -> str | None:
@@ -36,17 +43,19 @@ class Fetcher:
             response.raise_for_status()
             return response.text
         except requests.exceptions.RequestException as e:
-            print(f"  -> ❌ Error fetching: {e}")
+            if self._verbose:
+                print(f"  -> ❌ Error fetching: {e}")
             return None
 
 
 class AioHttpFetcher:
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         self._headers = {
             'User-Agent': CHROME_2025
         }
         self._timeout = aiohttp.ClientTimeout(total=5)
         self._session = None
+        self._verbose = verbose
 
     async def __aenter__(self):
         # Configure connector for high concurrency (hundreds of workers, thousands of sites)
@@ -75,17 +84,19 @@ class AioHttpFetcher:
                 response.raise_for_status()
                 return await response.text()
         except Exception as e:
-            print(f"  -> ❌ Error fetching: {e}")
+            if self._verbose:
+                print(f"  -> ❌ Error fetching: {e}")
             return None
 
 
 class HttpxFetcher:
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         self._headers = {
             'User-Agent': CHROME_2025
         }
         self._timeout = 5.0
         self._client = None
+        self._verbose = verbose
 
     async def __aenter__(self):
         self._client = httpx.AsyncClient(
@@ -108,7 +119,8 @@ class HttpxFetcher:
             response.raise_for_status()
             return response.text
         except Exception as e:
-            print(f"  -> ❌ Error fetching: {e}")
+            if self._verbose:
+                print(f"  -> ❌ Error fetching: {e}")
             return None
 
 
