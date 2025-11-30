@@ -88,7 +88,6 @@ class UrlPool:
             #   - reuse the available [] so we do not need to recompute every time
             #   - somehow randomize the _pending.items() so we don't need to return some error url that's in the front of queue
             #   - error() handling need to be better
-            # this is easily the bottleneck of the crawler
             available = []
             for url_id, url in self._pending.items():
                 if url_id in self._inflight:

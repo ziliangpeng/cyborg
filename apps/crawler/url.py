@@ -49,7 +49,17 @@ class AioHttpFetcher:
         self._session = None
 
     async def __aenter__(self):
-        self._session = aiohttp.ClientSession(headers=self._headers, timeout=self._timeout)
+        # Configure connector for high concurrency (hundreds of workers, thousands of sites)
+        connector = aiohttp.TCPConnector(
+            limit=5000,              # Total connections across all hosts
+            limit_per_host=20,       # Max connections per individual host
+            ttl_dns_cache=300        # Cache DNS for 5 minutes
+        )
+        self._session = aiohttp.ClientSession(
+            connector=connector,
+            headers=self._headers,
+            timeout=self._timeout
+        )
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
