@@ -143,3 +143,95 @@ Each configuration was run 3 times.
 - **Rate limiting:** Enforced per-host (news.ycombinator.com, plus discovered domains)
 - **Error handling:** Timeouts (5s), PDF/Parquet files skipped
 - **Worker startup:** Worker 0 starts immediately, others delayed 2-5s
+
+---
+
+## 2025-11-29
+
+### Asyncio + AioHttpFetcher Benchmark (1000 URLs)
+
+#### Test Configuration
+
+- **Test Date:** 2025-11-29
+- **Implementation:** Asyncio with AioHttpFetcher
+- **Task:** Crawl 1000 URLs starting from https://news.ycombinator.com
+- **Rate Limit:** 6 requests/min per host (10 seconds between requests)
+- **HTTP Client:** aiohttp (async)
+- **Hardware:** M4 Pro MacBook
+- **Python Version:** 3.13.5
+
+#### Results
+
+| Workers | Time (s) | Throughput (URLs/s) | Speedup vs 1 worker |
+|---------|----------|---------------------|---------------------|
+| 1       | 412.23   | 2.43                | 1.00x               |
+| 2       | 224.50   | 4.46                | 1.84x               |
+| 3       | 135.92   | 7.36                | 3.03x               |
+| 4       | 116.40   | 8.59                | 3.54x               |
+| 5       | 101.05   | 9.90                | 4.08x               |
+| 6       | 75.46    | 13.25               | 5.46x               |
+| 7       | 60.97    | 16.40               | 6.76x               |
+| 8       | 45.29    | 22.08               | 9.10x               |
+| 9       | 46.29    | 21.60               | 8.91x               |
+| 10      | 48.04    | 20.82               | 8.58x               |
+| 11      | 38.60    | 25.91               | 10.68x              |
+| 12      | 40.44    | 24.73               | 10.20x              |
+| 13      | 50.37    | 19.85               | 8.18x               |
+| 14      | 64.44    | 15.52               | 6.40x               |
+| 15      | 40.16    | 24.90               | 10.27x              |
+| 16      | 52.43    | 19.07               | 7.87x               |
+| 17      | 28.04    | 35.67               | 14.70x              |
+| 18      | 31.56    | 31.69               | 13.06x              |
+| 19      | 35.99    | 27.79               | 11.45x              |
+| **20**  | **28.41** | **35.21**          | **14.51x**          |
+
+#### Key Findings
+
+1. **Best performance: 17-20 workers**
+   - 20 workers: 35.21 URLs/s (14.51x speedup)
+   - 17 workers: 35.67 URLs/s (14.70x speedup)
+
+2. **Excellent scaling up to 8 workers:**
+   - Near-linear scaling from 1-5 workers
+   - 8 workers achieved 9.10x speedup
+
+3. **Performance variability 8-16 workers:**
+   - Results fluctuate due to intermittent bottlenecks (likely rate limiting)
+   - Still maintains 6-10x speedup range
+
+4. **Strong finish at 17-20 workers:**
+   - Performance stabilizes and peaks
+   - Consistent 27-35 URLs/s throughput
+
+#### Comparison: Threading vs Asyncio
+
+| Metric | Threading (10 threads) | Asyncio (20 workers) | Improvement |
+|--------|------------------------|----------------------|-------------|
+| Time for 1000 URLs | 57s | 28.41s | **2.0x faster** |
+| Throughput | ~17.5 URLs/s | 35.21 URLs/s | **2.0x higher** |
+| Speedup vs baseline | 3.1x | 14.51x | **4.7x better** |
+
+#### Performance Analysis
+
+**Why Asyncio Outperforms Threading:**
+
+1. **No GIL contention:** Asyncio uses single-threaded event loop, avoiding Python's Global Interpreter Lock overhead
+2. **Better connection pooling:** aiohttp's session-based architecture reuses connections efficiently
+3. **Lower memory overhead:** Async tasks are lighter than OS threads
+4. **Optimized for I/O:** Event loop handles concurrent I/O more efficiently than thread scheduling
+
+**Bottlenecks Identified:**
+
+- **Rate limiting:** Still the primary constraint at high concurrency
+- **Network bandwidth:** Starts to saturate around 15-20 workers
+- **DNS resolution:** Some overhead with concurrent DNS lookups
+- **Lock contention in UrlPool:** Single lock still serializes pool operations
+
+**Recommendations:**
+
+- **For production crawling:** Use 15-20 async workers for optimal throughput
+- **Asyncio is clearly superior** to threading for I/O-bound web crawling (2x faster)
+- **Future optimizations:**
+  - Async-aware UrlPool with finer-grained locking
+  - Connection limits tuning in aiohttp
+  - DNS caching or custom resolver

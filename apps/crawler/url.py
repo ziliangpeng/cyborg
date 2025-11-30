@@ -1,6 +1,8 @@
 from enum import Enum
 from urllib.parse import urljoin, urlparse
 import requests
+import aiohttp
+import httpx
 from profiler import profile
 
 
@@ -34,6 +36,68 @@ class Fetcher:
             response.raise_for_status()
             return response.text
         except requests.exceptions.RequestException as e:
+            print(f"  -> ❌ Error fetching: {e}")
+            return None
+
+
+class AioHttpFetcher:
+    def __init__(self):
+        self._headers = {
+            'User-Agent': CHROME_2025
+        }
+        self._timeout = aiohttp.ClientTimeout(total=5)
+        self._session = None
+
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession(headers=self._headers, timeout=self._timeout)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._session.close()
+
+    @profile
+    async def fetch(self, url: str) -> str | None:
+        for suffix in IGNORED_SUFFIXES:
+            if url.endswith(suffix):
+                return None
+        try:
+            async with self._session.get(url) as response:
+                response.raise_for_status()
+                return await response.text()
+        except Exception as e:
+            print(f"  -> ❌ Error fetching: {e}")
+            return None
+
+
+class HttpxFetcher:
+    def __init__(self):
+        self._headers = {
+            'User-Agent': CHROME_2025
+        }
+        self._timeout = 5.0
+        self._client = None
+
+    async def __aenter__(self):
+        self._client = httpx.AsyncClient(
+            headers=self._headers,
+            timeout=self._timeout,
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
+        )
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._client.aclose()
+
+    @profile
+    async def fetch(self, url: str) -> str | None:
+        for suffix in IGNORED_SUFFIXES:
+            if url.endswith(suffix):
+                return None
+        try:
+            response = await self._client.get(url)
+            response.raise_for_status()
+            return response.text
+        except Exception as e:
             print(f"  -> ❌ Error fetching: {e}")
             return None
 

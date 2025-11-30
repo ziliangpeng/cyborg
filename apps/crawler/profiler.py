@@ -4,6 +4,7 @@ from collections import defaultdict
 import threading
 
 # TODO: Move this profiler module to a separate library for reuse across projects
+# TODO: Fix profiler to work with async functions - currently doesn't measure async function execution time correctly
 
 PROFILING_ENABLED = False
 _stats = defaultdict(lambda: {'count': 0, 'total_time': 0, 'times': []})
