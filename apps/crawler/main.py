@@ -1,12 +1,12 @@
 import asyncio
 import argparse
-from crawler import Crawler, AsyncCrawler
+from crawler import SyncCrawler, AsyncCrawler
 from profiler import enable_profiling, print_stats
 
 
 def run_sync_crawler(args):
     seed_url = "https://news.ycombinator.com"
-    crawler = Crawler(seed_url, workers=args.concurrency)
+    crawler = SyncCrawler(seed_url, concurrency=args.concurrency)
 
     total = crawler.crawl(args.num)
 
@@ -38,7 +38,7 @@ def main():
         print(f"Using AsyncCrawler (asyncio + aiohttp) with {args.concurrency} workers")
         asyncio.run(run_async_crawler(args))
     else:
-        print(f"Using Crawler (threading + requests) with {args.concurrency} workers")
+        print(f"Using SyncCrawler (threading + requests) with {args.concurrency} workers")
         run_sync_crawler(args)
 
     if args.profile:

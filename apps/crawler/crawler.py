@@ -15,10 +15,17 @@ def extract_links(html: str) -> list[str]:
 
 
 class Crawler:
-    def __init__(self, seed_url: str, workers: int = 1):
+    MAX_RETRIES = 3
+
+    def __init__(self, seed_url: str, concurrency: int = 1):
         self.seed_url = seed_url
-        self.workers = workers
+        self.concurrency = concurrency
         self.pool = UrlPool()
+
+
+class SyncCrawler(Crawler):
+    def __init__(self, seed_url: str, concurrency: int = 1):
+        super().__init__(seed_url, concurrency)
         self.fetcher = Fetcher()
         self.iteration_counter = [0, threading.Lock()]
 
@@ -26,7 +33,7 @@ class Crawler:
         self.pool.add_url(self.seed_url)
 
         threads = []
-        for i in range(self.workers):
+        for i in range(self.concurrency):
             t = threading.Thread(target=self._worker, args=(i, num_urls))
             t.start()
             threads.append(t)
@@ -38,7 +45,7 @@ class Crawler:
 
     def _worker(self, worker_id: int, max_iterations: int):
         retry_count = 0
-        max_retries = 3
+        max_retries = self.MAX_RETRIES
 
         while True:
             with self.iteration_counter[1]:
@@ -72,11 +79,9 @@ class Crawler:
                 time.sleep(1)
 
 
-class AsyncCrawler:
+class AsyncCrawler(Crawler):
     def __init__(self, seed_url: str, concurrency: int = 1):
-        self.seed_url = seed_url
-        self.concurrency = concurrency
-        self.pool = UrlPool()
+        super().__init__(seed_url, concurrency)
         self.fetcher = None
         self.iteration_counter = [0, asyncio.Lock()]
 
@@ -96,7 +101,8 @@ class AsyncCrawler:
 
     async def _worker(self, worker_id: int, max_iterations: int):
         retry_count = 0
-        max_retries = 3
+        max_retries = self.MAX_RETRIES
+        loop = asyncio.get_event_loop()
 
         while True:
             async with self.iteration_counter[1]:
@@ -116,7 +122,8 @@ class AsyncCrawler:
                 if content is None:
                     self.pool.error(url_obj.id)
                 else:
-                    links = extract_links(content)
+                    # Run CPU-bound BeautifulSoup parsing in thread pool to avoid blocking event loop
+                    links = await loop.run_in_executor(None, extract_links, content)
                     links = filter_http_links(links, url_obj.url)
                     self.pool.add_urls(links)
                     self.pool.done(url_obj.id)
