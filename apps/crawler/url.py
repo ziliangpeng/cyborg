@@ -52,7 +52,7 @@ class AioHttpFetcher:
         # Configure connector for high concurrency (hundreds of workers, thousands of sites)
         connector = aiohttp.TCPConnector(
             limit=5000,              # Total connections across all hosts
-            limit_per_host=20,       # Max connections per individual host
+            limit_per_host=2,        # Max connections per individual host (polite crawling)
             ttl_dns_cache=300        # Cache DNS for 5 minutes
         )
         self._session = aiohttp.ClientSession(
