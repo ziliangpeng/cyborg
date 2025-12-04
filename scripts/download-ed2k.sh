@@ -71,6 +71,67 @@ cmd_add() {
     docker exec "$CONTAINER_NAME" amulecmd -h localhost -p 4712 -P "$PASSWORD" -c "Show DL"
 }
 
+# Command: add-file
+cmd_add_file() {
+    if [ -z "$1" ]; then
+        echo "Usage: $0 add-file <path-to-file>"
+        exit 1
+    fi
+
+    FILE_PATH="$1"
+
+    if [ ! -f "$FILE_PATH" ]; then
+        echo "Error: File not found: $FILE_PATH"
+        exit 1
+    fi
+
+    echo "=== Adding ed2k Downloads from File ==="
+    echo "File: $FILE_PATH"
+    echo ""
+
+    ensure_container_running
+
+    PASSWORD=$(get_password)
+    if [ -z "$PASSWORD" ]; then
+        echo "Error: Could not extract password from container logs"
+        exit 1
+    fi
+
+    # Count total links
+    TOTAL=$(grep -c "^ed2k://" "$FILE_PATH" || echo 0)
+    echo "Found $TOTAL ed2k links to add"
+    echo ""
+
+    ADDED=0
+    SKIPPED=0
+
+    while IFS= read -r line; do
+        # Skip empty lines and comments
+        line=$(echo "$line" | xargs)  # Trim whitespace
+        if [ -z "$line" ] || [[ "$line" =~ ^# ]]; then
+            continue
+        fi
+
+        # Check if it's an ed2k link
+        if [[ "$line" =~ ^ed2k:// ]]; then
+            echo "Adding: $line"
+            docker exec "$CONTAINER_NAME" amulecmd -h localhost -p 4712 -P "$PASSWORD" -c "Add $line" > /dev/null 2>&1
+            ((ADDED++))
+        else
+            echo "Skipping (not ed2k): $line"
+            ((SKIPPED++))
+        fi
+    done < "$FILE_PATH"
+
+    echo ""
+    echo "=== Summary ==="
+    echo "Added: $ADDED"
+    echo "Skipped: $SKIPPED"
+    echo ""
+    echo "Current downloads:"
+    docker exec "$CONTAINER_NAME" amulecmd -h localhost -p 4712 -P "$PASSWORD" -c "Show DL"
+}
+
 # Command: status
 cmd_status() {
     echo "=== Download Status ==="
@@ -158,6 +219,7 @@ Usage: $0 <command> [args]
 
 Commands:
   add <ed2k-link>     Add a new ed2k link to download queue
+  add-file <path>     Add all ed2k links from a file
   status              Show current downloads and progress
   log [lines]         Show container logs (default: 50 lines)
   stats               Show download statistics
@@ -167,6 +229,7 @@ Commands:
 
 Examples:
   $0 add "ed2k://|file|example.rar|1000000|HASH|/"
+  $0 add-file ~/links.txt
   $0 status
   $0 log 100
   $0 stats
@@ -184,6 +247,9 @@ COMMAND="${1:-help}"
 case "$COMMAND" in
     add)
         cmd_add "$2"
+        ;;
+    add-file)
+        cmd_add_file "$2"
         ;;
     status)
         cmd_status
