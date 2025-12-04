@@ -18,6 +18,48 @@ get_password() {
     docker logs "$CONTAINER_NAME" 2>&1 | grep "No GUI password specified" | head -1 | sed 's/.*using generated one: //' | xargs
 }
 
+# Download and merge multiple server lists
+download_server_lists() {
+    local temp_file="/tmp/server_merged.met"
+    local found_any=0
+
+    # Server lists to try (prioritize Chinese sources)
+    local -a SERVER_LISTS=(
+        "http://emulefans.com/server.met"
+        "http://upd.emule-security.org/server.met"
+        "http://shortypower.org/server.met"
+        "http://www.emule-security.org/serverlist/"
+        "http://peerates.net/servers.met"
+    )
+
+    echo "Downloading server lists..."
+    > "$temp_file"  # Clear temp file
+
+    for url in "${SERVER_LISTS[@]}"; do
+        echo -n "  Trying $url ... "
+        if curl -s -o "/tmp/server_temp.met" --max-time 5 "$url" 2>/dev/null; then
+            if [ -s "/tmp/server_temp.met" ]; then
+                echo "✓"
+                cat "/tmp/server_temp.met" >> "$temp_file"
+                found_any=1
+            else
+                echo "✗ (empty)"
+            fi
+        else
+            echo "✗ (timeout/error)"
+        fi
+    done
+
+    if [ $found_any -eq 1 ]; then
+        mv "$temp_file" "$CONFIG_DIR/server.met"
+        echo "Server list updated successfully"
+    else
+        echo "Warning: Could not download any server lists"
+    fi
+
+    rm -f "/tmp/server_temp.met"
+}
+
 # Ensure container is running
 ensure_container_running() {
     if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -28,7 +70,7 @@ ensure_container_running() {
             sleep 5
         else
             echo "Creating new container..."
-            curl -s -o "$CONFIG_DIR/server.met" "http://shortypower.org/server.met" 2>/dev/null || echo "Warning: Could not download fresh server list"
+            download_server_lists
 
             docker run -d \
                 --name "$CONTAINER_NAME" \
