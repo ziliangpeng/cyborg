@@ -16,7 +16,7 @@ mkdir -p "$CONFIG_DIR" "$DOWNLOADS_DIR" "$TEMP_DIR"
 
 # Get password from container logs
 get_password() {
-    docker logs "$CONTAINER_NAME" 2>&1 | grep "No GUI password specified" | head -1 | sed 's/.*using generated one: //' | xargs
+    docker logs "$CONTAINER_NAME" 2>&1 | grep "No GUI password specified" | tail -1 | sed 's/.*using generated one: //' | xargs
 }
 
 # Download and merge multiple server lists
