@@ -8,10 +8,11 @@ REPO_DIR="$(dirname "$SCRIPT_DIR")"
 DATA_DIR="$REPO_DIR/data"
 CONFIG_DIR="$DATA_DIR/amule-config"
 DOWNLOADS_DIR="$DATA_DIR/downloads"
+TEMP_DIR="$DATA_DIR/amule-temp"
 CONTAINER_NAME="cyborg-amule"
 
 # Create necessary directories
-mkdir -p "$CONFIG_DIR" "$DOWNLOADS_DIR"
+mkdir -p "$CONFIG_DIR" "$DOWNLOADS_DIR" "$TEMP_DIR"
 
 # Get password from container logs
 get_password() {
@@ -78,6 +79,7 @@ ensure_container_running() {
                 --name "$CONTAINER_NAME" \
                 --network host \
                 -v "$CONFIG_DIR:/home/amule/.aMule" \
+                -v "$TEMP_DIR:/temp" \
                 -v "$DOWNLOADS_DIR:/incoming" \
                 tchabaud/amule
 
@@ -281,6 +283,7 @@ Examples:
   $0 stop
 
 Downloads location: $DOWNLOADS_DIR
+Temp/Partial files location: $TEMP_DIR
 Config location: $CONFIG_DIR
 EOF
 }
