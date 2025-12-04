@@ -25,8 +25,10 @@ download_server_lists() {
 
     # Server lists to try (prioritize Chinese sources)
     local -a SERVER_LISTS=(
-        "http://emulefans.com/server.met"
+        "http://www.emulefans.com/server.met"
         "http://upd.emule-security.org/server.met"
+        "http://ed2k.iscool.net/server.met"
+        "http://www.server-met.net/server.met"
         "http://shortypower.org/server.met"
         "http://www.emule-security.org/serverlist/"
         "http://peerates.net/servers.met"
