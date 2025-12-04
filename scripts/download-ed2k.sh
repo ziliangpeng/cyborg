@@ -26,6 +26,12 @@ echo "Data directory: $DATA_DIR"
 echo "Downloads will be saved to: $DOWNLOADS_DIR"
 echo ""
 
+# Download fresh server list before container starts
+echo "Downloading fresh server list..."
+curl -s -o "$CONFIG_DIR/server.met" "http://shortypower.org/server.met" 2>/dev/null || echo "Warning: Could not download fresh server list"
+
+echo ""
+
 # Check if container already exists
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     echo "Container '$CONTAINER_NAME' already exists."
@@ -42,8 +48,7 @@ else
     echo "Creating and starting new aMule container..."
     docker run -d \
         --name "$CONTAINER_NAME" \
-        -p 4711:4711 \
-        -p 4712:4712 \
+        --network host \
         -v "$CONFIG_DIR:/home/amule/.aMule" \
         -v "$DOWNLOADS_DIR:/incoming" \
         tchabaud/amule
@@ -60,6 +65,9 @@ if [ -z "$PASSWORD" ]; then
     echo "Error: Could not extract password from container logs"
     exit 1
 fi
+
+echo "Waiting for aMule to process new server list..."
+sleep 5
 
 echo "Adding ed2k link to download queue..."
 docker exec "$CONTAINER_NAME" amulecmd -h localhost -p 4712 -P "$PASSWORD" -c "Add $ED2K_LINK"
