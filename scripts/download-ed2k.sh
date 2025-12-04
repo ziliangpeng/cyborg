@@ -14,9 +14,9 @@ CONTAINER_NAME="cyborg-amule"
 # Create necessary directories
 mkdir -p "$CONFIG_DIR" "$DOWNLOADS_DIR" "$TEMP_DIR"
 
-# Get password from container logs
+# Get password - using fixed password for reliability
 get_password() {
-    docker logs "$CONTAINER_NAME" 2>&1 | grep "No GUI password specified" | tail -1 | sed 's/.*using generated one: //' | xargs
+    echo "amule123"
 }
 
 # Download and merge multiple server lists
@@ -78,6 +78,8 @@ ensure_container_running() {
             docker run -d \
                 --name "$CONTAINER_NAME" \
                 --network host \
+                -e GUI_PWD="amule123" \
+                -e WEBUI_PWD="amule123" \
                 -v "$CONFIG_DIR:/home/amule/.aMule" \
                 -v "$TEMP_DIR:/temp" \
                 -v "$DOWNLOADS_DIR:/incoming" \
