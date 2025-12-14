@@ -97,6 +97,28 @@ class UniswapPriceQuery:
 
         return pools
 
+    def get_liquidity_from_pool(self, pool_address):
+        """
+        Query liquidity from a Uniswap V3 pool
+        Returns raw liquidity value (not in USD)
+        """
+        POOL_ABI = json.dumps([
+            {
+                "inputs": [],
+                "name": "liquidity",
+                "outputs": [{"internalType": "uint128", "name": "", "type": "uint128"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ])
+
+        pool_contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(pool_address),
+            abi=POOL_ABI
+        )
+
+        return pool_contract.functions.liquidity().call()
+
     def get_price_from_pool(self, pool_address):
         """
         Query BTC price from a Uniswap V3 WBTC/USDC pool
@@ -247,7 +269,8 @@ if __name__ == "__main__":
             fee_pct = fee_tier / 10000
             try:
                 btc_price = uniswap.get_price_from_pool(pool_address)
-                print(f"{'Uni ' + str(fee_pct) + '%:':<13} ${btc_price:,.2f}")
+                liquidity = uniswap.get_liquidity_from_pool(pool_address)
+                print(f"{'Uni ' + str(fee_pct) + '%:':<13} ${btc_price:,.2f} | Liquidity: {liquidity:,}")
             except Exception as e:
                 print(f"{'Uni ' + str(fee_pct) + '%:':<13} Error: {e}")
 
