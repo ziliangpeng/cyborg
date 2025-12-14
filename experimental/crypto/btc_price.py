@@ -92,8 +92,8 @@ class UniswapPriceQuery:
 
     def discover_pools(self):
         """
-        Discover all WBTC/USDC Uniswap V3 pools by querying the Factory contract
-        Returns list of (fee_tier, pool_address) tuples for pools that exist
+        Discover all WBTC/USDC and WBTC/USDT Uniswap V3 pools by querying the Factory contract
+        Returns list of (fee_tier, pool_address, pair_name) tuples for pools that exist
         """
         # Uniswap V3 Factory
         FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
@@ -116,6 +116,7 @@ class UniswapPriceQuery:
         fee_tiers = [100, 500, 3000, 10000]
         pools = []
 
+        # Check WBTC/USDC pools
         for fee in fee_tiers:
             pool_address = factory.functions.getPool(
                 Web3.to_checksum_address(WBTC),
@@ -124,7 +125,18 @@ class UniswapPriceQuery:
             ).call()
 
             if pool_address != "0x0000000000000000000000000000000000000000":
-                pools.append((fee, pool_address))
+                pools.append((fee, pool_address, "USDC"))
+
+        # Check WBTC/USDT pools
+        for fee in fee_tiers:
+            pool_address = factory.functions.getPool(
+                Web3.to_checksum_address(WBTC),
+                Web3.to_checksum_address(USDT),
+                fee
+            ).call()
+
+            if pool_address != "0x0000000000000000000000000000000000000000":
+                pools.append((fee, pool_address, "USDT"))
 
         return pools
 
@@ -172,32 +184,32 @@ class UniswapPriceQuery:
         token0 = pool_contract.functions.token0().call()
         token1 = pool_contract.functions.token1().call()
 
-        WBTC_lower = WBTC.lower()
         USDC_lower = USDC.lower()
+        USDT_lower = USDT.lower()
 
-        # Get USDC balance (the stablecoin)
-        if token0.lower() == USDC_lower:
-            usdc_address = token0
+        # Get stablecoin balance (USDC or USDT, both have 6 decimals)
+        if token0.lower() == USDC_lower or token0.lower() == USDT_lower:
+            stablecoin_address = token0
         else:
-            usdc_address = token1
+            stablecoin_address = token1
 
-        usdc_contract = self.w3.eth.contract(
-            address=Web3.to_checksum_address(usdc_address),
+        stablecoin_contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(stablecoin_address),
             abi=ERC20_ABI
         )
 
-        # Get USDC balance in the pool
-        usdc_balance = usdc_contract.functions.balanceOf(Web3.to_checksum_address(pool_address)).call()
+        # Get stablecoin balance in the pool
+        stablecoin_balance = stablecoin_contract.functions.balanceOf(Web3.to_checksum_address(pool_address)).call()
 
-        # USDC has 6 decimals, TVL = 2 × USDC balance (since it's roughly 50/50)
-        tvl_usd = 2 * usdc_balance / (10 ** 6)
+        # USDC and USDT have 6 decimals, TVL = 2 × stablecoin balance (since it's roughly 50/50)
+        tvl_usd = 2 * stablecoin_balance / (10 ** 6)
 
         return tvl_usd
 
     @retry_with_backoff()
     def get_price_from_pool(self, pool_address):
         """
-        Query BTC price from a Uniswap V3 WBTC/USDC pool
+        Query BTC price from a Uniswap V3 WBTC/stablecoin pool
         Returns price in USD
         """
         # Uniswap V3 Pool ABI - just the functions we need
@@ -253,14 +265,14 @@ class UniswapPriceQuery:
         # price = (sqrtPriceX96 / 2^96) ^ 2
         price = (sqrt_price_x96 / (2 ** 96)) ** 2
 
-        # Adjust for decimals (WBTC: 8 decimals, USDC: 6 decimals)
+        # Adjust for decimals (WBTC: 8 decimals, USDC/USDT: 6 decimals)
         if token0.lower() == WBTC_lower:
-            # token0 is WBTC, token1 is USDC
-            # price gives us USDC per WBTC, need to adjust decimals
+            # token0 is WBTC, token1 is stablecoin
+            # price gives us stablecoin per WBTC, need to adjust decimals
             btc_price = price * (10 ** 8) / (10 ** 6)
         else:
-            # token1 is WBTC, token0 is USDC
-            # price gives us WBTC per USDC, need to invert
+            # token1 is WBTC, token0 is stablecoin
+            # price gives us WBTC per stablecoin, need to invert
             btc_price = (1 / price) * (10 ** 8) / (10 ** 6)
 
         return btc_price
@@ -601,12 +613,12 @@ if __name__ == "__main__":
     sushiswap_v2 = SushiSwapV2PriceQuery(w3)
     chainlink = ChainlinkPriceQuery(w3)
 
-    # Discover all WBTC/USDC pools once
-    print("Discovering Uniswap V3 WBTC/USDC pools...")
+    # Discover all WBTC/USDC and WBTC/USDT pools once
+    print("Discovering Uniswap V3 WBTC/USDC and WBTC/USDT pools...")
     uniswap_pools = uniswap.discover_pools()
     print(f"Found {len(uniswap_pools)} Uniswap V3 pools")
 
-    print("Discovering SushiSwap V3 WBTC/USDC pools...")
+    print("Discovering SushiSwap V3 WBTC/USDC and WBTC/USDT pools...")
     sushiswap_v3_pools = sushiswap_v3.discover_pools()
     print(f"Found {len(sushiswap_v3_pools)} SushiSwap V3 pools\n")
 
@@ -618,15 +630,17 @@ if __name__ == "__main__":
         # Query prices from all discovered Uniswap V3 pools
         # Note: Uniswap AMMs have a single spot price (no bid-ask spread like CEXes).
         # The "spread" manifests as slippage + fees when you actually trade.
-        # USDC is pegged 1:1 to USD, so we only display the price once.
-        for fee_tier, pool_address in uniswap_pools:
+        # USDC and USDT are pegged 1:1 to USD, so we display the price once per pool.
+        for fee_tier, pool_address, pair_name in uniswap_pools:
             fee_pct = fee_tier / 10000
             try:
                 btc_price = uniswap.get_price_from_pool(pool_address)
                 tvl = uniswap.get_tvl_from_pool(pool_address)
-                print(f"{'Uni ' + str(fee_pct) + '%:':<15} ${btc_price:,.2f} | TVL: ${tvl:,.2f}")
+                label = f"Uni {pair_name} {fee_pct}%:"
+                print(f"{label:<17} ${btc_price:,.2f} | TVL: ${tvl:,.2f}")
             except Exception as e:
-                print(f"{'Uni ' + str(fee_pct) + '%:':<15} Error: {e}")
+                label = f"Uni {pair_name} {fee_pct}%:"
+                print(f"{label:<17} Error: {e}")
 
         # Query prices from all discovered SushiSwap V3 pools
         if sushiswap_v3_pools:
@@ -636,10 +650,10 @@ if __name__ == "__main__":
                     btc_price = sushiswap_v3.get_price_from_pool(pool_address)
                     tvl = sushiswap_v3.get_tvl_from_pool(pool_address)
                     label = f"Sushi {pair_name} {fee_pct}%:"
-                    print(f"{label:<15} ${btc_price:,.2f} | TVL: ${tvl:,.2f}")
+                    print(f"{label:<17} ${btc_price:,.2f} | TVL: ${tvl:,.2f}")
                 except Exception as e:
                     label = f"Sushi {pair_name} {fee_pct}%:"
-                    print(f"{label:<15} Error: {e}")
+                    print(f"{label:<17} Error: {e}")
 
         # Query SushiSwap V2 (WBTC/USDT pair)
         sushi_v2_price, sushi_v2_tvl = sushiswap_v2.get_btc_price_and_tvl()
