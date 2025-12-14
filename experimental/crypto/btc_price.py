@@ -240,17 +240,21 @@ if __name__ == "__main__":
             time.sleep(args.gap)
 
         # Query prices from all discovered Uniswap pools
+        # Note: Uniswap AMMs have a single spot price (no bid-ask spread like CEXes).
+        # The "spread" manifests as slippage + fees when you actually trade.
+        # USDC is pegged 1:1 to USD, so we only display the price once.
         for fee_tier, pool_address in uniswap_pools:
             fee_pct = fee_tier / 10000
             try:
-                price = uniswap.get_price_from_pool(pool_address)
-                print(f"{'Uni ' + str(fee_pct) + '%:':<13} ${price:,.2f}")
+                btc_price = uniswap.get_price_from_pool(pool_address)
+                print(f"{'Uni ' + str(fee_pct) + '%:':<13} ${btc_price:,.2f}")
             except Exception as e:
                 print(f"{'Uni ' + str(fee_pct) + '%:':<13} Error: {e}")
 
         # Query Chainlink
-        chainlink_price = chainlink.get_btc_price()
-        print(f"{'Chainlink:':<13} ${chainlink_price:,.2f}")
+        # Chainlink reports mid-market reference price aggregated from multiple exchanges
+        btc_price = chainlink.get_btc_price()
+        print(f"{'Chainlink:':<13} ${btc_price:,.2f}")
 
         i += 1
 
