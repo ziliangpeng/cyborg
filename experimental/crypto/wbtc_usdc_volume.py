@@ -158,21 +158,36 @@ def get_block_with_retry(w3: Web3, block_number: int):
     return w3.eth.get_block(block_number, full_transactions=False)
 
 
-def persist_blocks(
+def fetch_block_json(
+    w3: Web3,
+    block_number: int,
+) -> dict:
+    block = get_block_with_retry(w3, block_number)
+    # Web3.to_json handles HexBytes/AttributeDict correctly.
+    return json.loads(Web3.to_json(block))
+
+
+def write_block_json(out_path: Path, block_json: dict) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(block_json, indent=2, sort_keys=True) + "\n")
+
+
+def cache_blocks(
     w3: Web3,
     from_block: int,
     to_block: int,
     out_dir: Path,
 ) -> None:
+    """
+    Ensure blocks in [from_block, to_block] are cached on disk as JSON files.
+    Skips any block already present to avoid unnecessary RPC calls.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     for block_number in range(from_block, to_block + 1):
         out_path = out_dir / f"{block_number}.json"
         if out_path.exists():
             continue
-        block = get_block_with_retry(w3, block_number)
-        # Web3.to_json handles HexBytes/AttributeDict correctly.
-        data = json.loads(Web3.to_json(block))
-        out_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+        write_block_json(out_path, fetch_block_json(w3, block_number))
 
 
 def align_block_range(from_block: int, to_block: int, chunk_size: int) -> tuple[int, int]:
@@ -357,7 +372,7 @@ def fetch_swap_events_for_pool(
             from_block=start,
             to_block=end,
         )
-        persist_blocks(w3=w3, from_block=start, to_block=end, out_dir=out_dir)
+        cache_blocks(w3=w3, from_block=start, to_block=end, out_dir=out_dir)
         # Decode logs using the contract event ABI
         for raw in raw_logs:
             logs.append(swap_event.process_log(raw))
@@ -408,7 +423,7 @@ def fetch_swap_events_for_pools(
             from_block=start,
             to_block=end,
         )
-        persist_blocks(w3=w3, from_block=start, to_block=end, out_dir=out_dir)
+        cache_blocks(w3=w3, from_block=start, to_block=end, out_dir=out_dir)
         for raw in raw_logs:
             decoded = swap_event.process_log(raw)
             pool_addr = Web3.to_checksum_address(decoded["address"])
