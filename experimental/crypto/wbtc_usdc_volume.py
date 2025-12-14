@@ -172,6 +172,31 @@ def write_block_json(out_path: Path, block_json: dict) -> None:
     out_path.write_text(json.dumps(block_json, indent=2, sort_keys=True) + "\n")
 
 
+def write_jsonl(out_path: Path, items: list[dict]) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
+        for item in items:
+            f.write(json.dumps(item, sort_keys=True) + "\n")
+
+
+def cache_swap_logs(
+    raw_logs: list,
+    from_block: int,
+    to_block: int,
+    out_dir: Path,
+) -> None:
+    """
+    Cache raw eth_getLogs results (Swap logs) to disk for later inspection/reuse.
+    Stores one JSONL file per queried block chunk.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"swap_logs_{from_block}_{to_block}.jsonl"
+    if out_path.exists():
+        return
+    logs_json = [json.loads(Web3.to_json(log)) for log in raw_logs]
+    write_jsonl(out_path, logs_json)
+
+
 def cache_blocks(
     w3: Web3,
     from_block: int,
@@ -344,6 +369,7 @@ def fetch_swap_events_for_pool(
     from_block: int,
     to_block: int,
     chunk_size: int = 5000,
+    verbose: bool = False,
 ):
     """
     Fetch all Swap events for a given pool and block range, chunking requests
@@ -357,21 +383,29 @@ def fetch_swap_events_for_pool(
 
     logs = []
     out_dir = Path(__file__).resolve().parent / "eth_uniswap_wbtc_usdc_blocks"
+    swap_logs_dir = Path(__file__).resolve().parent / "eth_uniswap_wbtc_usdc_swap_events"
     from_block, to_block = align_block_range(from_block, to_block, chunk_size)
     start = from_block
     while start <= to_block:
         end = min(start + chunk_size - 1, to_block)
-        print(
-            f"eth_getLogs request | pools=1 | "
-            f"from={start} ({Web3.to_hex(start)}) | to={end} ({Web3.to_hex(end)}) | "
-            f"chunk_size={chunk_size} | address={pool_address}"
-        )
+        if verbose:
+            print(
+                f"eth_getLogs request | pools=1 | "
+                f"from={start} ({Web3.to_hex(start)}) | to={end} ({Web3.to_hex(end)}) | "
+                f"chunk_size={chunk_size} | address={pool_address}"
+            )
         raw_logs = get_logs_safely(
             w3=w3,
             address=pool_address,
             from_block=start,
             to_block=end,
         )
+        if verbose:
+            blocks_with_logs = sorted({int(raw["blockNumber"]) for raw in raw_logs})
+            print(
+                f"eth_getLogs result  | logs={len(raw_logs)} | blocks_with_logs={blocks_with_logs}"
+            )
+        cache_swap_logs(raw_logs, from_block=start, to_block=end, out_dir=swap_logs_dir)
         cache_blocks(w3=w3, from_block=start, to_block=end, out_dir=out_dir)
         # Decode logs using the contract event ABI
         for raw in raw_logs:
@@ -391,6 +425,7 @@ def fetch_swap_events_for_pools(
     from_block: int,
     to_block: int,
     chunk_size: int = 5000,
+    verbose: bool = False,
 ) -> tuple[dict[str, list], dict[str, tuple[str, str]]]:
     """
     Fetch Swap events for multiple pools over a block range, chunking requests.
@@ -407,22 +442,30 @@ def fetch_swap_events_for_pools(
 
     logs_by_pool: dict[str, list] = {Web3.to_checksum_address(p): [] for p in pools}
     out_dir = Path(__file__).resolve().parent / "eth_uniswap_wbtc_usdc_blocks"
+    swap_logs_dir = Path(__file__).resolve().parent / "eth_uniswap_wbtc_usdc_swap_events"
 
     from_block, to_block = align_block_range(from_block, to_block, chunk_size)
     start = from_block
     while start <= to_block:
         end = min(start + chunk_size - 1, to_block)
-        print(
-            f"eth_getLogs request | pools={len(pools)} | "
-            f"from={start} ({Web3.to_hex(start)}) | to={end} ({Web3.to_hex(end)}) | "
-            f"chunk_size={chunk_size}"
-        )
+        if verbose:
+            print(
+                f"eth_getLogs request | pools={len(pools)} | "
+                f"from={start} ({Web3.to_hex(start)}) | to={end} ({Web3.to_hex(end)}) | "
+                f"chunk_size={chunk_size}"
+            )
         raw_logs = get_logs_safely(
             w3=w3,
             address=[Web3.to_checksum_address(p) for p in pools],
             from_block=start,
             to_block=end,
         )
+        if verbose:
+            blocks_with_logs = sorted({int(raw["blockNumber"]) for raw in raw_logs})
+            print(
+                f"eth_getLogs result  | logs={len(raw_logs)} | blocks_with_logs={blocks_with_logs}"
+            )
+        cache_swap_logs(raw_logs, from_block=start, to_block=end, out_dir=swap_logs_dir)
         cache_blocks(w3=w3, from_block=start, to_block=end, out_dir=out_dir)
         for raw in raw_logs:
             decoded = swap_event.process_log(raw)
@@ -452,6 +495,7 @@ def compute_hourly_buckets(
     hours: int = 24,
     blocks: int | None = None,
     chunk_size: int = 5000,
+    verbose: bool = False,
 ) -> tuple[
     list[float],
     list[float],
@@ -514,6 +558,7 @@ def compute_hourly_buckets(
         from_block=from_block,
         to_block=latest_block,
         chunk_size=chunk_size,
+        verbose=verbose,
     )
 
     for pool_address, _fee in pools:
@@ -600,6 +645,16 @@ def main():
             "Alchemy free tier enforces a 10-block max range per eth_getLogs request."
         ),
     )
+    parser.add_argument(
+        "--per-pool",
+        action="store_true",
+        help="Print per-pool (fee tier) hourly breakdown (default: false)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Verbose logging for RPC requests/results (default: false)",
+    )
     args = parser.parse_args()
 
     if args.blocks is None:
@@ -639,6 +694,7 @@ def main():
         hours=hours,
         blocks=args.blocks,
         chunk_size=min(args.chunk_size, 10) if args.blocks is not None else args.chunk_size,
+        verbose=args.verbose,
     )
 
     print(f"Window start (UTC): {format_utc(start_ts)}")
@@ -656,23 +712,28 @@ def main():
             f"{btc_vol:,.6f} BTC | {usdc_vol:,.2f} USDC"
         )
 
-    print("\nPer-pool hourly WBTC/USDC volume (Uniswap V3):")
-    for addr, fee in pools:
-        fee_pct = fee / 1_000_000
-        print(f"\nPool {addr} (fee {fee_pct:.2%}):")
-        pool_btc = per_pool_btc.get(addr, [])
-        pool_usdc = per_pool_usdc.get(addr, [])
+    total_btc = sum(btc_buckets)
+    total_usdc = sum(usdc_buckets)
+    print(f"TOTAL | {total_btc:,.6f} BTC | {total_usdc:,.2f} USDC")
 
-        for i in range(hours):
-            bucket_start = start_ts + i * 3600
-            bucket_end = bucket_start + 3600
-            btc_vol = pool_btc[i] if i < len(pool_btc) else 0.0
-            usdc_vol = pool_usdc[i] if i < len(pool_usdc) else 0.0
+    if args.per_pool:
+        print("\nPer-pool hourly WBTC/USDC volume (Uniswap V3):")
+        for addr, fee in pools:
+            fee_pct = fee / 1_000_000
+            print(f"\nPool {addr} (fee {fee_pct:.2%}):")
+            pool_btc = per_pool_btc.get(addr, [])
+            pool_usdc = per_pool_usdc.get(addr, [])
 
-            print(
-                f"{format_utc(bucket_start)} - {format_utc(bucket_end)} UTC | "
-                f"{btc_vol:,.6f} BTC | {usdc_vol:,.2f} USDC"
-            )
+            for i in range(hours):
+                bucket_start = start_ts + i * 3600
+                bucket_end = bucket_start + 3600
+                btc_vol = pool_btc[i] if i < len(pool_btc) else 0.0
+                usdc_vol = pool_usdc[i] if i < len(pool_usdc) else 0.0
+
+                print(
+                    f"{format_utc(bucket_start)} - {format_utc(bucket_end)} UTC | "
+                    f"{btc_vol:,.6f} BTC | {usdc_vol:,.2f} USDC"
+                )
 
 
 if __name__ == "__main__":
