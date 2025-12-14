@@ -20,16 +20,45 @@ RPC_URL = "https://eth.llamarpc.com"
 # Token addresses
 WBTC = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
 USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+
+
+def retry_with_backoff(max_retries=8, initial_delay=2):
+    """
+    Decorator to retry functions with exponential backoff
+    Handles RPC rate limits (429) and temporary connection errors
+    Default: 8 retries with 2s initial delay (2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s)
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    # Check if it's a rate limit or retriable error
+                    is_retriable = (
+                        "429" in str(e) or
+                        "Too Many Requests" in str(e) or
+                        "rate limit" in str(e).lower() or
+                        "connection" in str(e).lower()
+                    )
+
+                    if attempt < max_retries - 1 and is_retriable:
+                        delay = initial_delay * (2 ** attempt)
+                        print(f"RPC error: {e}, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(delay)
+                    else:
+                        raise
+
+            raise Exception(f"Failed after {max_retries} attempts")
+        return wrapper
+    return decorator
 
 
 def connect_with_retry(rpc_url, max_retries=5, initial_delay=1):
     """
     Create Web3 connection with exponential backoff retry
     Returns Web3 instance or raises exception after max retries
-
-    Note: Even if connection succeeds here, individual RPC calls can still fail
-    with rate limits (429) or other errors. Consider adding retry logic to
-    query methods as well.
     """
     for attempt in range(max_retries):
         try:
@@ -97,6 +126,7 @@ class UniswapPriceQuery:
 
         return pools
 
+    @retry_with_backoff()
     def get_liquidity_from_pool(self, pool_address):
         """
         Query liquidity from a Uniswap V3 pool
@@ -119,6 +149,7 @@ class UniswapPriceQuery:
 
         return pool_contract.functions.liquidity().call()
 
+    @retry_with_backoff()
     def get_price_from_pool(self, pool_address):
         """
         Query BTC price from a Uniswap V3 WBTC/USDC pool
@@ -190,6 +221,77 @@ class UniswapPriceQuery:
         return btc_price
 
 
+class SushiSwapPriceQuery:
+    """Query Bitcoin price from SushiSwap V2 with a single reusable connection"""
+
+    def __init__(self, w3):
+        """Initialize with existing Web3 connection"""
+        self.w3 = w3
+
+    @retry_with_backoff()
+    def get_btc_price(self):
+        """
+        Query BTC price from SushiSwap V2 WBTC/USDT pair
+        Returns price in USD (assuming USDT ≈ $1)
+        """
+        # SushiSwap V2 WBTC/USDT pair
+        SUSHI_PAIR = "0x784178D58b641a4FebF8D477a6ABd28504273132"
+
+        # SushiSwap V2 Pair ABI
+        PAIR_ABI = json.dumps([
+            {
+                "inputs": [],
+                "name": "getReserves",
+                "outputs": [
+                    {"internalType": "uint112", "name": "reserve0", "type": "uint112"},
+                    {"internalType": "uint112", "name": "reserve1", "type": "uint112"},
+                    {"internalType": "uint32", "name": "blockTimestampLast", "type": "uint32"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "token0",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "token1",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ])
+
+        pair = self.w3.eth.contract(
+            address=Web3.to_checksum_address(SUSHI_PAIR),
+            abi=PAIR_ABI
+        )
+
+        # Get reserves and token order
+        reserves = pair.functions.getReserves().call()
+        token0 = pair.functions.token0().call()
+
+        reserve0 = reserves[0]
+        reserve1 = reserves[1]
+
+        WBTC_lower = WBTC.lower()
+
+        # Calculate price based on reserves
+        # Price = reserve_quote / reserve_base (adjusted for decimals)
+        if token0.lower() == WBTC_lower:
+            # token0 is WBTC (8 decimals), token1 is USDT (6 decimals)
+            btc_price = (reserve1 / reserve0) * (10 ** 8) / (10 ** 6)
+        else:
+            # token1 is WBTC, token0 is USDT
+            btc_price = (reserve0 / reserve1) * (10 ** 8) / (10 ** 6)
+
+        return btc_price
+
+
 class ChainlinkPriceQuery:
     """Query Bitcoin price from Chainlink oracle with a single reusable connection"""
 
@@ -197,6 +299,7 @@ class ChainlinkPriceQuery:
         """Initialize with existing Web3 connection"""
         self.w3 = w3
 
+    @retry_with_backoff()
     def get_btc_price(self):
         """
         Query BTC price from Chainlink Price Feed oracle
@@ -239,7 +342,7 @@ class ChainlinkPriceQuery:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Query Bitcoin price from on-chain sources")
     parser.add_argument("--n", type=int, default=1, help="Number of times to query (default: 1, -1 for infinite)")
-    parser.add_argument("--gap", type=int, default=10, help="Seconds to wait between queries (default: 10)")
+    parser.add_argument("--gap", type=int, default=60, help="Seconds to wait between queries (default: 60)")
     args = parser.parse_args()
 
     # Create single Web3 connection with retry logic
@@ -249,6 +352,7 @@ if __name__ == "__main__":
 
     # Initialize query classes with shared connection
     uniswap = UniswapPriceQuery(w3)
+    sushiswap = SushiSwapPriceQuery(w3)
     chainlink = ChainlinkPriceQuery(w3)
 
     # Discover all WBTC/USDC pools once
@@ -274,10 +378,14 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"{'Uni ' + str(fee_pct) + '%:':<13} Error: {e}")
 
+        # Query SushiSwap (WBTC/USDT pair)
+        sushi_price = sushiswap.get_btc_price()
+        print(f"{'SushiSwap:':<13} ${sushi_price:,.2f}")
+
         # Query Chainlink
         # Chainlink reports mid-market reference price aggregated from multiple exchanges
-        btc_price = chainlink.get_btc_price()
-        print(f"{'Chainlink:':<13} ${btc_price:,.2f}")
+        chainlink_price = chainlink.get_btc_price()
+        print(f"{'Chainlink:':<13} ${chainlink_price:,.2f}")
 
         i += 1
 
