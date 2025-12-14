@@ -26,6 +26,10 @@ def connect_with_retry(rpc_url, max_retries=5, initial_delay=1):
     """
     Create Web3 connection with exponential backoff retry
     Returns Web3 instance or raises exception after max retries
+
+    Note: Even if connection succeeds here, individual RPC calls can still fail
+    with rate limits (429) or other errors. Consider adding retry logic to
+    query methods as well.
     """
     for attempt in range(max_retries):
         try:
