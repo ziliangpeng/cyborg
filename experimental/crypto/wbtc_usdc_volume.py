@@ -175,6 +175,17 @@ def persist_blocks(
         out_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
 
 
+def align_block_range(from_block: int, to_block: int, chunk_size: int) -> tuple[int, int]:
+    """
+    Align the start of the range to a clean chunk boundary so chunking produces
+    nicely-aligned requests (e.g., for chunk_size=10, starts at multiples of 10).
+    """
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    aligned_from = (from_block // chunk_size) * chunk_size
+    return aligned_from, to_block
+
+
 def find_block_for_timestamp(w3: Web3, target_ts: int, latest_block: int | None = None) -> int:
     """
     Binary search to find the earliest block whose timestamp >= target_ts.
@@ -331,9 +342,15 @@ def fetch_swap_events_for_pool(
 
     logs = []
     out_dir = Path(__file__).resolve().parent / "eth_uniswap_wbtc_usdc_blocks"
+    from_block, to_block = align_block_range(from_block, to_block, chunk_size)
     start = from_block
     while start <= to_block:
         end = min(start + chunk_size - 1, to_block)
+        print(
+            f"eth_getLogs request | pools=1 | "
+            f"from={start} ({Web3.to_hex(start)}) | to={end} ({Web3.to_hex(end)}) | "
+            f"chunk_size={chunk_size} | address={pool_address}"
+        )
         raw_logs = get_logs_safely(
             w3=w3,
             address=pool_address,
@@ -376,9 +393,15 @@ def fetch_swap_events_for_pools(
     logs_by_pool: dict[str, list] = {Web3.to_checksum_address(p): [] for p in pools}
     out_dir = Path(__file__).resolve().parent / "eth_uniswap_wbtc_usdc_blocks"
 
+    from_block, to_block = align_block_range(from_block, to_block, chunk_size)
     start = from_block
     while start <= to_block:
         end = min(start + chunk_size - 1, to_block)
+        print(
+            f"eth_getLogs request | pools={len(pools)} | "
+            f"from={start} ({Web3.to_hex(start)}) | to={end} ({Web3.to_hex(end)}) | "
+            f"chunk_size={chunk_size}"
+        )
         raw_logs = get_logs_safely(
             w3=w3,
             address=[Web3.to_checksum_address(p) for p in pools],
@@ -455,6 +478,7 @@ def compute_hourly_buckets(
         if blocks <= 0:
             raise ValueError("blocks must be positive")
         from_block = max(0, latest_block - (blocks - 1))
+        from_block, _ = align_block_range(from_block, latest_block, chunk_size=10)
         start_ts = get_block_timestamp(w3, from_block)
         window_seconds = max(1, end_ts - start_ts)
         hours = max(1, (window_seconds + 3599) // 3600)
@@ -555,8 +579,11 @@ def main():
     parser.add_argument(
         "--chunk-size",
         type=int,
-        default=5000,
-        help="Block range chunk size for log queries (default: 5000)",
+        default=10,
+        help=(
+            "Block range chunk size for eth_getLogs queries (default: 10). "
+            "Alchemy free tier enforces a 10-block max range per eth_getLogs request."
+        ),
     )
     args = parser.parse_args()
 
