@@ -42,7 +42,8 @@ def retry_with_backoff(max_retries=8, initial_delay=2):
                         "429" in str(e) or
                         "Too Many Requests" in str(e) or
                         "rate limit" in str(e).lower() or
-                        "connection" in str(e).lower()
+                        "connection" in str(e).lower() or
+                        "no response" in str(e).lower()
                     )
 
                     if attempt < max_retries - 1 and is_retriable:

@@ -11,3 +11,6 @@ __pycache__/
 
 # Downloaded data
 data/
+
+# Experimental crypto artifacts
+experimental/crypto/eth_uniswap_wbtc_usdc_blocks/
