@@ -15,16 +15,13 @@ import argparse
 import time
 
 
-def get_btc_price_from_uniswap():
+def _get_btc_price_from_uniswap_pool(pool_address):
     """
-    Query BTC price from Uniswap V3 WBTC/USDC pool
+    Helper function to query BTC price from a Uniswap V3 WBTC/USDC pool
     Returns price in USD
     """
     # Public Ethereum RPC endpoint
     RPC_URL = "https://eth.llamarpc.com"
-
-    # Uniswap V3 WBTC/USDC pool (0.3% fee tier)
-    WBTC_USDC_POOL = "0x99ac8cA7087fA4A2A1FB6357269965A2014ABc35"
 
     # Uniswap V3 Pool ABI - just the functions we need
     POOL_ABI = json.dumps([
@@ -67,7 +64,7 @@ def get_btc_price_from_uniswap():
 
     # Create contract instance
     pool_contract = w3.eth.contract(
-        address=Web3.to_checksum_address(WBTC_USDC_POOL),
+        address=Web3.to_checksum_address(pool_address),
         abi=POOL_ABI
     )
 
@@ -98,6 +95,16 @@ def get_btc_price_from_uniswap():
         btc_price = (1 / price) * (10 ** 8) / (10 ** 6)
 
     return btc_price
+
+
+def get_btc_price_from_uniswap_005():
+    """Query BTC price from Uniswap V3 WBTC/USDC 0.05% fee tier pool"""
+    return _get_btc_price_from_uniswap_pool("0x9a772018FbD77fcD2d25657e5C547BAfF3Fd7D16")
+
+
+def get_btc_price_from_uniswap_030():
+    """Query BTC price from Uniswap V3 WBTC/USDC 0.3% fee tier pool"""
+    return _get_btc_price_from_uniswap_pool("0x99ac8cA7087fA4A2A1FB6357269965A2014ABc35")
 
 
 def get_btc_price_from_chainlink():
@@ -161,11 +168,13 @@ if __name__ == "__main__":
         if i > 0:
             time.sleep(args.gap)
 
-        uniswap_price = get_btc_price_from_uniswap()
+        uniswap_005 = get_btc_price_from_uniswap_005()
+        uniswap_030 = get_btc_price_from_uniswap_030()
         chainlink_price = get_btc_price_from_chainlink()
 
-        print(f"{'Uniswap:':<11} ${uniswap_price:,.2f}")
-        print(f"{'Chainlink:':<11} ${chainlink_price:,.2f}")
+        print(f"{'Uni 0.05%:':<13} ${uniswap_005:,.2f}")
+        print(f"{'Uni 0.3%:':<13} ${uniswap_030:,.2f}")
+        print(f"{'Chainlink:':<13} ${chainlink_price:,.2f}")
 
         i += 1
 
