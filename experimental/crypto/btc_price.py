@@ -22,14 +22,38 @@ WBTC = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
 USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 
 
+def connect_with_retry(rpc_url, max_retries=5, initial_delay=1):
+    """
+    Create Web3 connection with exponential backoff retry
+    Returns Web3 instance or raises exception after max retries
+    """
+    for attempt in range(max_retries):
+        try:
+            w3 = Web3(Web3.HTTPProvider(rpc_url))
+            if w3.is_connected():
+                return w3
+            else:
+                if attempt < max_retries - 1:
+                    delay = initial_delay * (2 ** attempt)
+                    print(f"Connection failed, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+        except Exception as e:
+            if attempt < max_retries - 1:
+                delay = initial_delay * (2 ** attempt)
+                print(f"Connection error: {e}, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+            else:
+                raise
+
+    raise Exception(f"Failed to connect to {rpc_url} after {max_retries} attempts")
+
+
 class UniswapPriceQuery:
     """Query Bitcoin prices from Uniswap V3 pools with a single reusable connection"""
 
-    def __init__(self):
-        """Initialize Web3 connection once"""
-        self.w3 = Web3(Web3.HTTPProvider(RPC_URL))
-        if not self.w3.is_connected():
-            raise Exception("Failed to connect to Ethereum RPC")
+    def __init__(self, w3):
+        """Initialize with existing Web3 connection"""
+        self.w3 = w3
 
     def discover_pools(self):
         """
@@ -143,11 +167,9 @@ class UniswapPriceQuery:
 class ChainlinkPriceQuery:
     """Query Bitcoin price from Chainlink oracle with a single reusable connection"""
 
-    def __init__(self):
-        """Initialize Web3 connection once"""
-        self.w3 = Web3(Web3.HTTPProvider(RPC_URL))
-        if not self.w3.is_connected():
-            raise Exception("Failed to connect to Ethereum RPC")
+    def __init__(self, w3):
+        """Initialize with existing Web3 connection"""
+        self.w3 = w3
 
     def get_btc_price(self):
         """
@@ -194,9 +216,14 @@ if __name__ == "__main__":
     parser.add_argument("--gap", type=int, default=10, help="Seconds to wait between queries (default: 10)")
     args = parser.parse_args()
 
-    # Initialize query classes once (reuse connection)
-    uniswap = UniswapPriceQuery()
-    chainlink = ChainlinkPriceQuery()
+    # Create single Web3 connection with retry logic
+    print("Connecting to Ethereum RPC...")
+    w3 = connect_with_retry(RPC_URL)
+    print("Connected!\n")
+
+    # Initialize query classes with shared connection
+    uniswap = UniswapPriceQuery(w3)
+    chainlink = ChainlinkPriceQuery(w3)
 
     # Discover all WBTC/USDC pools once
     print("Discovering WBTC/USDC pools...")
