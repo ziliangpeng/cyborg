@@ -11,6 +11,8 @@ Uses public RPC endpoint - no centralized exchange needed
 
 from web3 import Web3
 import json
+import argparse
+import time
 
 
 def get_btc_price_from_uniswap():
@@ -98,6 +100,76 @@ def get_btc_price_from_uniswap():
     return btc_price
 
 
+def get_btc_price_from_chainlink():
+    """
+    Query BTC price from Chainlink Price Feed oracle
+    Returns price in USD
+    """
+    # Public Ethereum RPC endpoint
+    RPC_URL = "https://eth.llamarpc.com"
+
+    # Chainlink BTC/USD Price Feed on Ethereum mainnet
+    CHAINLINK_BTC_USD = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"
+
+    # Chainlink Price Feed ABI - just latestRoundData function
+    PRICE_FEED_ABI = json.dumps([
+        {
+            "inputs": [],
+            "name": "latestRoundData",
+            "outputs": [
+                {"internalType": "uint80", "name": "roundId", "type": "uint80"},
+                {"internalType": "int256", "name": "answer", "type": "int256"},
+                {"internalType": "uint256", "name": "startedAt", "type": "uint256"},
+                {"internalType": "uint256", "name": "updatedAt", "type": "uint256"},
+                {"internalType": "uint80", "name": "answeredInRound", "type": "uint80"}
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        }
+    ])
+
+    # Connect to Ethereum
+    w3 = Web3(Web3.HTTPProvider(RPC_URL))
+
+    if not w3.is_connected():
+        raise Exception("Failed to connect to Ethereum RPC")
+
+    # Create contract instance
+    price_feed = w3.eth.contract(
+        address=Web3.to_checksum_address(CHAINLINK_BTC_USD),
+        abi=PRICE_FEED_ABI
+    )
+
+    # Get latest price data
+    round_data = price_feed.functions.latestRoundData().call()
+    price = round_data[1]  # answer is at index 1
+
+    # Chainlink BTC/USD feed returns price with 8 decimals
+    btc_price = price / (10 ** 8)
+
+    return btc_price
+
+
 if __name__ == "__main__":
-    price = get_btc_price_from_uniswap()
-    print(f"${price:,.2f}")
+    parser = argparse.ArgumentParser(description="Query Bitcoin price from on-chain sources")
+    parser.add_argument("--n", type=int, default=1, help="Number of times to query (default: 1, -1 for infinite)")
+    parser.add_argument("--gap", type=int, default=5, help="Seconds to wait between queries (default: 5)")
+    args = parser.parse_args()
+
+    i = 0
+    while True:
+        if i > 0:
+            time.sleep(args.gap)
+
+        uniswap_price = get_btc_price_from_uniswap()
+        chainlink_price = get_btc_price_from_chainlink()
+
+        print(f"{'Uniswap:':<11} ${uniswap_price:,.2f}")
+        print(f"{'Chainlink:':<11} ${chainlink_price:,.2f}")
+
+        i += 1
+
+        if args.n != -1 and i >= args.n:
+            break
+
+        print()
