@@ -127,16 +127,35 @@ class UniswapPriceQuery:
         return pools
 
     @retry_with_backoff()
-    def get_liquidity_from_pool(self, pool_address):
+    def get_tvl_from_pool(self, pool_address):
         """
-        Query liquidity from a Uniswap V3 pool
-        Returns raw liquidity value (not in USD)
+        Query TVL (Total Value Locked) from a Uniswap V3 pool in USD
+        Returns TVL by reading token balances and converting to USD
         """
+        # ERC20 ABI for balanceOf
+        ERC20_ABI = json.dumps([
+            {
+                "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ])
+
+        # Pool ABI for token addresses
         POOL_ABI = json.dumps([
             {
                 "inputs": [],
-                "name": "liquidity",
-                "outputs": [{"internalType": "uint128", "name": "", "type": "uint128"}],
+                "name": "token0",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "token1",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
                 "stateMutability": "view",
                 "type": "function"
             }
@@ -147,7 +166,31 @@ class UniswapPriceQuery:
             abi=POOL_ABI
         )
 
-        return pool_contract.functions.liquidity().call()
+        # Get token addresses
+        token0 = pool_contract.functions.token0().call()
+        token1 = pool_contract.functions.token1().call()
+
+        WBTC_lower = WBTC.lower()
+        USDC_lower = USDC.lower()
+
+        # Get USDC balance (the stablecoin)
+        if token0.lower() == USDC_lower:
+            usdc_address = token0
+        else:
+            usdc_address = token1
+
+        usdc_contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(usdc_address),
+            abi=ERC20_ABI
+        )
+
+        # Get USDC balance in the pool
+        usdc_balance = usdc_contract.functions.balanceOf(Web3.to_checksum_address(pool_address)).call()
+
+        # USDC has 6 decimals, TVL = 2 × USDC balance (since it's roughly 50/50)
+        tvl_usd = 2 * usdc_balance / (10 ** 6)
+
+        return tvl_usd
 
     @retry_with_backoff()
     def get_price_from_pool(self, pool_address):
@@ -229,10 +272,10 @@ class SushiSwapPriceQuery:
         self.w3 = w3
 
     @retry_with_backoff()
-    def get_btc_price(self):
+    def get_btc_price_and_tvl(self):
         """
-        Query BTC price from SushiSwap V2 WBTC/USDT pair
-        Returns price in USD (assuming USDT ≈ $1)
+        Query BTC price and TVL from SushiSwap V2 WBTC/USDT pair
+        Returns tuple of (price in USD, TVL in USD)
         """
         # SushiSwap V2 WBTC/USDT pair
         SUSHI_PAIR = "0x784178D58b641a4FebF8D477a6ABd28504273132"
@@ -285,11 +328,15 @@ class SushiSwapPriceQuery:
         if token0.lower() == WBTC_lower:
             # token0 is WBTC (8 decimals), token1 is USDT (6 decimals)
             btc_price = (reserve1 / reserve0) * (10 ** 8) / (10 ** 6)
+            # Total TVL in USD = 2 * USDT reserve (since it's a 50/50 pool)
+            tvl_usd = 2 * reserve1 / (10 ** 6)
         else:
             # token1 is WBTC, token0 is USDT
             btc_price = (reserve0 / reserve1) * (10 ** 8) / (10 ** 6)
+            # Total TVL in USD = 2 * USDT reserve
+            tvl_usd = 2 * reserve0 / (10 ** 6)
 
-        return btc_price
+        return btc_price, tvl_usd
 
 
 class ChainlinkPriceQuery:
@@ -373,14 +420,14 @@ if __name__ == "__main__":
             fee_pct = fee_tier / 10000
             try:
                 btc_price = uniswap.get_price_from_pool(pool_address)
-                liquidity = uniswap.get_liquidity_from_pool(pool_address)
-                print(f"{'Uni ' + str(fee_pct) + '%:':<13} ${btc_price:,.2f} | Liquidity: {liquidity:,}")
+                tvl = uniswap.get_tvl_from_pool(pool_address)
+                print(f"{'Uni ' + str(fee_pct) + '%:':<13} ${btc_price:,.2f} | TVL: ${tvl:,.2f}")
             except Exception as e:
                 print(f"{'Uni ' + str(fee_pct) + '%:':<13} Error: {e}")
 
         # Query SushiSwap (WBTC/USDT pair)
-        sushi_price = sushiswap.get_btc_price()
-        print(f"{'SushiSwap:':<13} ${sushi_price:,.2f}")
+        sushi_price, sushi_tvl = sushiswap.get_btc_price_and_tvl()
+        print(f"{'SushiSwap:':<13} ${sushi_price:,.2f} | TVL: ${sushi_tvl:,.2f}")
 
         # Query Chainlink
         # Chainlink reports mid-market reference price aggregated from multiple exchanges
