@@ -13,9 +13,11 @@ from web3 import Web3
 import json
 import argparse
 import time
+import os
+from urllib.parse import urlparse
 
-# Public Ethereum RPC endpoint
-RPC_URL = "https://eth.llamarpc.com"
+# Ethereum RPC endpoint - use Alchemy if available, otherwise public endpoint
+RPC_URL = os.environ.get("ALCHEMY_RPC_URL", "https://eth.llamarpc.com")
 
 # Token addresses
 WBTC = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
@@ -264,7 +266,202 @@ class UniswapPriceQuery:
         return btc_price
 
 
-class SushiSwapPriceQuery:
+class SushiSwapV3PriceQuery:
+    """Query Bitcoin prices from SushiSwap V3 pools with a single reusable connection"""
+
+    def __init__(self, w3):
+        """Initialize with existing Web3 connection"""
+        self.w3 = w3
+
+    def discover_pools(self):
+        """
+        Discover all WBTC/USDC and WBTC/USDT SushiSwap V3 pools by querying the Factory contract
+        Returns list of (fee_tier, pool_address, pair_name) tuples for pools that exist
+        """
+        # SushiSwap V3 Factory
+        FACTORY = "0xbACEB8eC6b9355Dfc0269C18bac9d6E2Bdc29C4F"
+
+        factory_abi = json.dumps([{
+            "inputs": [
+                {"internalType": "address", "name": "tokenA", "type": "address"},
+                {"internalType": "address", "name": "tokenB", "type": "address"},
+                {"internalType": "uint24", "name": "fee", "type": "uint24"}
+            ],
+            "name": "getPool",
+            "outputs": [{"internalType": "address", "name": "pool", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }])
+
+        factory = self.w3.eth.contract(address=Web3.to_checksum_address(FACTORY), abi=factory_abi)
+
+        # Fee tiers: 0.01%, 0.05%, 0.3%, 1%
+        fee_tiers = [100, 500, 3000, 10000]
+        pools = []
+
+        # Check WBTC/USDC pools
+        for fee in fee_tiers:
+            pool_address = factory.functions.getPool(
+                Web3.to_checksum_address(WBTC),
+                Web3.to_checksum_address(USDC),
+                fee
+            ).call()
+
+            if pool_address != "0x0000000000000000000000000000000000000000":
+                pools.append((fee, pool_address, "USDC"))
+
+        # Check WBTC/USDT pools
+        for fee in fee_tiers:
+            pool_address = factory.functions.getPool(
+                Web3.to_checksum_address(WBTC),
+                Web3.to_checksum_address(USDT),
+                fee
+            ).call()
+
+            if pool_address != "0x0000000000000000000000000000000000000000":
+                pools.append((fee, pool_address, "USDT"))
+
+        return pools
+
+    @retry_with_backoff()
+    def get_tvl_from_pool(self, pool_address):
+        """
+        Query TVL (Total Value Locked) from a SushiSwap V3 pool in USD
+        Returns TVL by reading token balances and converting to USD
+        """
+        # ERC20 ABI for balanceOf
+        ERC20_ABI = json.dumps([
+            {
+                "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ])
+
+        # Pool ABI for token addresses
+        POOL_ABI = json.dumps([
+            {
+                "inputs": [],
+                "name": "token0",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "token1",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ])
+
+        pool_contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(pool_address),
+            abi=POOL_ABI
+        )
+
+        # Get token addresses
+        token0 = pool_contract.functions.token0().call()
+        token1 = pool_contract.functions.token1().call()
+
+        USDC_lower = USDC.lower()
+        USDT_lower = USDT.lower()
+
+        # Get stablecoin balance (USDC or USDT, both have 6 decimals)
+        if token0.lower() == USDC_lower or token0.lower() == USDT_lower:
+            stablecoin_address = token0
+        else:
+            stablecoin_address = token1
+
+        stablecoin_contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(stablecoin_address),
+            abi=ERC20_ABI
+        )
+
+        # Get stablecoin balance in the pool
+        stablecoin_balance = stablecoin_contract.functions.balanceOf(Web3.to_checksum_address(pool_address)).call()
+
+        # USDC and USDT have 6 decimals, TVL = 2 × stablecoin balance (since it's roughly 50/50)
+        tvl_usd = 2 * stablecoin_balance / (10 ** 6)
+
+        return tvl_usd
+
+    @retry_with_backoff()
+    def get_price_from_pool(self, pool_address):
+        """
+        Query BTC price from a SushiSwap V3 WBTC/stablecoin pool
+        Returns price in USD
+        """
+        # SushiSwap V3 Pool ABI - same as Uniswap V3
+        POOL_ABI = json.dumps([
+            {
+                "inputs": [],
+                "name": "slot0",
+                "outputs": [
+                    {"internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"},
+                    {"internalType": "int24", "name": "tick", "type": "int24"},
+                    {"internalType": "uint16", "name": "observationIndex", "type": "uint16"},
+                    {"internalType": "uint16", "name": "observationCardinality", "type": "uint16"},
+                    {"internalType": "uint16", "name": "observationCardinalityNext", "type": "uint16"},
+                    {"internalType": "uint8", "name": "feeProtocol", "type": "uint8"},
+                    {"internalType": "bool", "name": "unlocked", "type": "bool"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "token0",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "token1",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ])
+
+        # Create contract instance
+        pool_contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(pool_address),
+            abi=POOL_ABI
+        )
+
+        # Get current pool state
+        slot0 = pool_contract.functions.slot0().call()
+        sqrt_price_x96 = slot0[0]
+
+        # Get token order
+        token0 = pool_contract.functions.token0().call()
+        token1 = pool_contract.functions.token1().call()
+
+        WBTC_lower = WBTC.lower()
+
+        # Calculate price from sqrtPriceX96
+        # price = (sqrtPriceX96 / 2^96) ^ 2
+        price = (sqrt_price_x96 / (2 ** 96)) ** 2
+
+        # Adjust for decimals (WBTC: 8 decimals, USDC/USDT: 6 decimals)
+        if token0.lower() == WBTC_lower:
+            # token0 is WBTC, token1 is stablecoin
+            # price gives us stablecoin per WBTC, need to adjust decimals
+            btc_price = price * (10 ** 8) / (10 ** 6)
+        else:
+            # token1 is WBTC, token0 is stablecoin
+            # price gives us WBTC per stablecoin, need to invert
+            btc_price = (1 / price) * (10 ** 8) / (10 ** 6)
+
+        return btc_price
+
+
+class SushiSwapV2PriceQuery:
     """Query Bitcoin price from SushiSwap V2 with a single reusable connection"""
 
     def __init__(self, w3):
@@ -393,26 +590,32 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Create single Web3 connection with retry logic
-    print("Connecting to Ethereum RPC...")
+    rpc_host = urlparse(RPC_URL).netloc
+    print(f"Connecting to Ethereum RPC: {rpc_host}")
     w3 = connect_with_retry(RPC_URL)
     print("Connected!\n")
 
     # Initialize query classes with shared connection
     uniswap = UniswapPriceQuery(w3)
-    sushiswap = SushiSwapPriceQuery(w3)
+    sushiswap_v3 = SushiSwapV3PriceQuery(w3)
+    sushiswap_v2 = SushiSwapV2PriceQuery(w3)
     chainlink = ChainlinkPriceQuery(w3)
 
     # Discover all WBTC/USDC pools once
-    print("Discovering WBTC/USDC pools...")
+    print("Discovering Uniswap V3 WBTC/USDC pools...")
     uniswap_pools = uniswap.discover_pools()
-    print(f"Found {len(uniswap_pools)} pools\n")
+    print(f"Found {len(uniswap_pools)} Uniswap V3 pools")
+
+    print("Discovering SushiSwap V3 WBTC/USDC pools...")
+    sushiswap_v3_pools = sushiswap_v3.discover_pools()
+    print(f"Found {len(sushiswap_v3_pools)} SushiSwap V3 pools\n")
 
     i = 0
     while True:
         if i > 0:
             time.sleep(args.gap)
 
-        # Query prices from all discovered Uniswap pools
+        # Query prices from all discovered Uniswap V3 pools
         # Note: Uniswap AMMs have a single spot price (no bid-ask spread like CEXes).
         # The "spread" manifests as slippage + fees when you actually trade.
         # USDC is pegged 1:1 to USD, so we only display the price once.
@@ -421,13 +624,26 @@ if __name__ == "__main__":
             try:
                 btc_price = uniswap.get_price_from_pool(pool_address)
                 tvl = uniswap.get_tvl_from_pool(pool_address)
-                print(f"{'Uni ' + str(fee_pct) + '%:':<13} ${btc_price:,.2f} | TVL: ${tvl:,.2f}")
+                print(f"{'Uni ' + str(fee_pct) + '%:':<15} ${btc_price:,.2f} | TVL: ${tvl:,.2f}")
             except Exception as e:
-                print(f"{'Uni ' + str(fee_pct) + '%:':<13} Error: {e}")
+                print(f"{'Uni ' + str(fee_pct) + '%:':<15} Error: {e}")
 
-        # Query SushiSwap (WBTC/USDT pair)
-        sushi_price, sushi_tvl = sushiswap.get_btc_price_and_tvl()
-        print(f"{'SushiSwap:':<13} ${sushi_price:,.2f} | TVL: ${sushi_tvl:,.2f}")
+        # Query prices from all discovered SushiSwap V3 pools
+        if sushiswap_v3_pools:
+            for fee_tier, pool_address, pair_name in sushiswap_v3_pools:
+                fee_pct = fee_tier / 10000
+                try:
+                    btc_price = sushiswap_v3.get_price_from_pool(pool_address)
+                    tvl = sushiswap_v3.get_tvl_from_pool(pool_address)
+                    label = f"Sushi {pair_name} {fee_pct}%:"
+                    print(f"{label:<15} ${btc_price:,.2f} | TVL: ${tvl:,.2f}")
+                except Exception as e:
+                    label = f"Sushi {pair_name} {fee_pct}%:"
+                    print(f"{label:<15} Error: {e}")
+
+        # Query SushiSwap V2 (WBTC/USDT pair)
+        sushi_v2_price, sushi_v2_tvl = sushiswap_v2.get_btc_price_and_tvl()
+        print(f"{'Sushi V2:':<15} ${sushi_v2_price:,.2f} | TVL: ${sushi_v2_tvl:,.2f}")
 
         # Query Chainlink
         # Chainlink reports mid-market reference price aggregated from multiple exchanges
