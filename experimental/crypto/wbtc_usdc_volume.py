@@ -18,11 +18,9 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from web3 import Web3
+from btc_price import USDC, WBTC, connect_with_retry, retry_with_backoff
 from requests.exceptions import HTTPError
-
-from btc_price import retry_with_backoff, connect_with_retry, WBTC, USDC
-
+from web3 import Web3
 
 # Ethereum RPC endpoint - prefer Alchemy if available
 RPC_URL = os.environ.get("ALCHEMY_RPC_URL", "https://eth.llamarpc.com")
@@ -118,9 +116,7 @@ UNISWAP_V3_POOL_ABI = [
 ]
 
 
-SWAP_EVENT_TOPIC0 = Web3.keccak(
-    text="Swap(address,address,int256,int256,uint160,uint128,int24)"
-).hex()
+SWAP_EVENT_TOPIC0 = Web3.keccak(text="Swap(address,address,int256,int256,uint160,uint128,int24)").hex()
 
 
 def discover_wbtc_usdc_pools(w3: Web3) -> list[tuple[str, int]]:
@@ -292,10 +288,7 @@ def get_logs_with_retry(
 
             if is_retriable and attempt < max_retries - 1:
                 delay = initial_delay * (2**attempt)
-                print(
-                    f"RPC error (get_logs): {e}, retrying in {delay}s... "
-                    f"(attempt {attempt + 1}/{max_retries})"
-                )
+                print(f"RPC error (get_logs): {e}, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
                 attempt += 1
                 continue
@@ -328,10 +321,7 @@ def get_logs_safely(
         except HTTPError as e:
             status = e.response.status_code if e.response is not None else None
             body = e.response.text if e.response is not None else ""
-            print(
-                f"eth_getLogs HTTPError {status} for blocks "
-                f"{from_block}-{to_block}: {body}"
-            )
+            print(f"eth_getLogs HTTPError {status} for blocks {from_block}-{to_block}: {body}")
 
             if status == 429 and attempt_429 < max_429_retries:
                 delay = min(60, 2**attempt_429)
@@ -402,9 +392,7 @@ def fetch_swap_events_for_pool(
         )
         if verbose:
             blocks_with_logs = sorted({int(raw["blockNumber"]) for raw in raw_logs})
-            print(
-                f"eth_getLogs result  | logs={len(raw_logs)} | blocks_with_logs={blocks_with_logs}"
-            )
+            print(f"eth_getLogs result  | logs={len(raw_logs)} | blocks_with_logs={blocks_with_logs}")
         cache_swap_logs(raw_logs, from_block=start, to_block=end, out_dir=swap_logs_dir)
         cache_blocks(w3=w3, from_block=start, to_block=end, out_dir=out_dir)
         # Decode logs using the contract event ABI
@@ -462,9 +450,7 @@ def fetch_swap_events_for_pools(
         )
         if verbose:
             blocks_with_logs = sorted({int(raw["blockNumber"]) for raw in raw_logs})
-            print(
-                f"eth_getLogs result  | logs={len(raw_logs)} | blocks_with_logs={blocks_with_logs}"
-            )
+            print(f"eth_getLogs result  | logs={len(raw_logs)} | blocks_with_logs={blocks_with_logs}")
         cache_swap_logs(raw_logs, from_block=start, to_block=end, out_dir=swap_logs_dir)
         cache_blocks(w3=w3, from_block=start, to_block=end, out_dir=out_dir)
         for raw in raw_logs:
@@ -563,9 +549,7 @@ def compute_hourly_buckets(
 
     for pool_address, _fee in pools:
         logs = logs_by_pool.get(Web3.to_checksum_address(pool_address), [])
-        token0, token1 = token_order_by_pool.get(
-            Web3.to_checksum_address(pool_address), ("", "")
-        )
+        token0, token1 = token_order_by_pool.get(Web3.to_checksum_address(pool_address), ("", ""))
         pool_btc = [0.0 for _ in range(hours)]
         pool_usdc = [0.0 for _ in range(hours)]
 
@@ -601,8 +585,8 @@ def compute_hourly_buckets(
                 continue
 
             # Use absolute value: volume is direction-agnostic
-            btc_amount = abs(btc_raw) / (10 ** 8)
-            usdc_amount = abs(usdc_raw) / (10 ** 6)
+            btc_amount = abs(btc_raw) / (10**8)
+            usdc_amount = abs(usdc_raw) / (10**6)
 
             btc_buckets[bucket] += btc_amount
             usdc_buckets[bucket] += usdc_amount
@@ -707,10 +691,7 @@ def main():
         btc_vol = btc_buckets[i]
         usdc_vol = usdc_buckets[i]
 
-        print(
-            f"{format_utc(bucket_start)} - {format_utc(bucket_end)} UTC | "
-            f"{btc_vol:,.6f} BTC | {usdc_vol:,.2f} USDC"
-        )
+        print(f"{format_utc(bucket_start)} - {format_utc(bucket_end)} UTC | {btc_vol:,.6f} BTC | {usdc_vol:,.2f} USDC")
 
     total_btc = sum(btc_buckets)
     total_usdc = sum(usdc_buckets)

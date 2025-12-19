@@ -1,8 +1,9 @@
 from enum import Enum
 from urllib.parse import urljoin, urlparse
-import requests
+
 import aiohttp
 import httpx
+import requests
 from profiler import profile
 
 # TODO: Convert to use Python logging module with different log levels
@@ -15,21 +16,29 @@ from profiler import profile
 # User-Agent strings for Chrome from 2020-2025
 # Only macOS version (e.g., 10_15_7) and Chrome version (e.g., 87.0.0.0) change by year
 # Mozilla/5.0, AppleWebKit/537.36, Safari/537.36 are frozen compatibility tokens
-CHROME_2020 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.0.0 Safari/537.36'
-CHROME_2021 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.0.0 Safari/537.36'
-CHROME_2022 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-CHROME_2023 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-CHROME_2024 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-CHROME_2025 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'
+CHROME_2020 = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.0.0 Safari/537.36"
+CHROME_2021 = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.0.0 Safari/537.36"
+)
+CHROME_2022 = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+)
+CHROME_2023 = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+CHROME_2024 = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
+CHROME_2025 = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+)
 
-IGNORED_SUFFIXES = ['.pdf', '.parquet', '.xml']
+IGNORED_SUFFIXES = [".pdf", ".parquet", ".xml"]
 
 
 class Fetcher:
     def __init__(self, verbose: bool = False):
-        self._headers = {
-            'User-Agent': CHROME_2025
-        }
+        self._headers = {"User-Agent": CHROME_2025}
         self._timeout = 5
         self._verbose = verbose
 
@@ -50,9 +59,7 @@ class Fetcher:
 
 class AioHttpFetcher:
     def __init__(self, verbose: bool = False):
-        self._headers = {
-            'User-Agent': CHROME_2025
-        }
+        self._headers = {"User-Agent": CHROME_2025}
         self._timeout = aiohttp.ClientTimeout(total=5)
         self._session = None
         self._verbose = verbose
@@ -60,15 +67,11 @@ class AioHttpFetcher:
     async def __aenter__(self):
         # Configure connector for high concurrency (hundreds of workers, thousands of sites)
         connector = aiohttp.TCPConnector(
-            limit=5000,              # Total connections across all hosts
-            limit_per_host=2,        # Max connections per individual host (polite crawling)
-            ttl_dns_cache=300        # Cache DNS for 5 minutes
+            limit=5000,  # Total connections across all hosts
+            limit_per_host=2,  # Max connections per individual host (polite crawling)
+            ttl_dns_cache=300,  # Cache DNS for 5 minutes
         )
-        self._session = aiohttp.ClientSession(
-            connector=connector,
-            headers=self._headers,
-            timeout=self._timeout
-        )
+        self._session = aiohttp.ClientSession(connector=connector, headers=self._headers, timeout=self._timeout)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -91,9 +94,7 @@ class AioHttpFetcher:
 
 class HttpxFetcher:
     def __init__(self, verbose: bool = False):
-        self._headers = {
-            'User-Agent': CHROME_2025
-        }
+        self._headers = {"User-Agent": CHROME_2025}
         self._timeout = 5.0
         self._client = None
         self._verbose = verbose
@@ -102,7 +103,7 @@ class HttpxFetcher:
         self._client = httpx.AsyncClient(
             headers=self._headers,
             timeout=self._timeout,
-            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
         )
         return self
 
@@ -142,25 +143,25 @@ def filter_http_links(links: list[str], base_url: str) -> list[str]:
     for link in links:
         link = link.strip()
 
-        if link.startswith('http://') or link.startswith('https://'):
+        if link.startswith("http://") or link.startswith("https://"):
             category = LinkType.ABSOLUTE
-        elif link.startswith('mailto:'):
+        elif link.startswith("mailto:"):
             category = LinkType.EMAIL
-        elif link.startswith('#'):
+        elif link.startswith("#"):
             category = LinkType.ANCHOR
-        elif link.startswith('javascript:'):
+        elif link.startswith("javascript:"):
             category = LinkType.JAVASCRIPT
-        elif link.startswith('tel:'):
+        elif link.startswith("tel:"):
             category = LinkType.PHONE
-        elif link.startswith('data:'):
+        elif link.startswith("data:"):
             category = LinkType.DATA_URI
-        elif link.startswith('//'):
+        elif link.startswith("//"):
             category = LinkType.PROTOCOL_RELATIVE
-        elif link.startswith('file://'):
+        elif link.startswith("file://"):
             category = LinkType.FILE
-        elif link.startswith(('ftp://', 'magnet:', 'blob:', 'about:', 'chrome://')):
+        elif link.startswith(("ftp://", "magnet:", "blob:", "about:", "chrome://")):
             category = LinkType.OTHER_PROTOCOL
-        elif link == '':
+        elif link == "":
             category = LinkType.EMPTY
         else:
             category = LinkType.RELATIVE
