@@ -1,0 +1,29 @@
+name: Python Linter & Formatter
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint_and_format:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install ruff
+      run: pip install ruff
+
+    - name: Run Formatter Check
+      run: ruff format --check .
+
+    - name: Run Linter
+      run: ruff check .
