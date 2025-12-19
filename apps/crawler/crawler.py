@@ -1,16 +1,17 @@
-import threading
 import asyncio
+import threading
 import time
+
 from bs4 import BeautifulSoup
-from url import filter_http_links, Fetcher, AioHttpFetcher
-from pool import UrlPool, NoUrlAvailableError
+from pool import NoUrlAvailableError, UrlPool
 from profiler import profile
+from url import AioHttpFetcher, Fetcher, filter_http_links
 
 
 @profile
 def extract_links(html: str) -> list[str]:
-    soup = BeautifulSoup(html, 'html.parser')
-    links = [a.get('href') for a in soup.find_all('a') if a.get('href')]
+    soup = BeautifulSoup(html, "html.parser")
+    links = [a.get("href") for a in soup.find_all("a") if a.get("href")]
     return links
 
 

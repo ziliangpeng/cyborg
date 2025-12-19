@@ -5,20 +5,21 @@ Fetches data every minute and prints only tokens that are pumping
 """
 
 import argparse
-import requests
 import time
 from datetime import datetime
+
+import requests
 
 
 def get_trending_base_tokens():
     """Get trending pools on Base from GeckoTerminal"""
-    url = 'https://api.geckoterminal.com/api/v2/networks/base/trending_pools'
+    url = "https://api.geckoterminal.com/api/v2/networks/base/trending_pools"
 
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        return data.get('data', [])
+        return data.get("data", [])
     except Exception as e:
         print(f"❌ Error fetching trending pools: {e}")
         return []
@@ -29,36 +30,38 @@ def check_for_pumps(pools):
     pumping = []
 
     for pool in pools:
-        attrs = pool.get('attributes', {})
-        name = attrs.get('name', 'N/A')
-        price_change = attrs.get('price_change_percentage', {}) or {}
+        attrs = pool.get("attributes", {})
+        name = attrs.get("name", "N/A")
+        price_change = attrs.get("price_change_percentage", {}) or {}
 
-        m5 = float(price_change.get('m5') or 0)
-        m15 = float(price_change.get('m15') or 0)
-        m30 = float(price_change.get('m30') or 0)
+        m5 = float(price_change.get("m5") or 0)
+        m15 = float(price_change.get("m15") or 0)
+        m30 = float(price_change.get("m30") or 0)
 
         # Check if any timeframe is pumping >5%
         if m5 > 5 or m15 > 5 or m30 > 5:
             # Get volume and transaction data
-            volume = attrs.get('volume_usd', {}) or {}
-            txns = attrs.get('transactions', {}) or {}
-            h1 = float(price_change.get('h1') or 0)
+            volume = attrs.get("volume_usd", {}) or {}
+            txns = attrs.get("transactions", {}) or {}
+            h1 = float(price_change.get("h1") or 0)
 
-            vol_h1 = volume.get('h1', 0) or 0
-            h1_txns = txns.get('h1', {}) or {}
-            buys = h1_txns.get('buys', 0) or 0
-            sells = h1_txns.get('sells', 0) or 0
+            vol_h1 = volume.get("h1", 0) or 0
+            h1_txns = txns.get("h1", {}) or {}
+            buys = h1_txns.get("buys", 0) or 0
+            sells = h1_txns.get("sells", 0) or 0
 
-            pumping.append({
-                'name': name,
-                'm5': m5,
-                'm15': m15,
-                'm30': m30,
-                'h1': h1,
-                'vol_h1': float(vol_h1),
-                'buys': int(buys),
-                'sells': int(sells),
-            })
+            pumping.append(
+                {
+                    "name": name,
+                    "m5": m5,
+                    "m15": m15,
+                    "m30": m30,
+                    "h1": h1,
+                    "vol_h1": float(vol_h1),
+                    "buys": int(buys),
+                    "sells": int(sells),
+                }
+            )
 
     return pumping
 
@@ -70,9 +73,7 @@ def format_percentage(num):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Monitor trending Base tokens for price pumps >5%"
-    )
+    parser = argparse.ArgumentParser(description="Monitor trending Base tokens for price pumps >5%")
     parser.add_argument(
         "--max-iter",
         type=int,
@@ -106,14 +107,14 @@ def main():
             if pumping:
                 print(f"🔥 {len(pumping)} pumping:")
                 for token in pumping:
-                    name = token['name']
-                    m5 = token['m5']
-                    m15 = token['m15']
-                    m30 = token['m30']
-                    h1 = token['h1']
-                    vol_h1 = token['vol_h1']
-                    buys = token['buys']
-                    sells = token['sells']
+                    name = token["name"]
+                    m5 = token["m5"]
+                    m15 = token["m15"]
+                    m30 = token["m30"]
+                    h1 = token["h1"]
+                    vol_h1 = token["vol_h1"]
+                    buys = token["buys"]
+                    sells = token["sells"]
 
                     # Determine which timeframe is pumping hardest
                     max_pump = max(m5, m15, m30)
@@ -121,13 +122,15 @@ def main():
 
                     # Format volume
                     if vol_h1 >= 1_000_000:
-                        vol_str = f"${vol_h1/1_000_000:.1f}M"
+                        vol_str = f"${vol_h1 / 1_000_000:.1f}M"
                     elif vol_h1 >= 1_000:
-                        vol_str = f"${vol_h1/1_000:.1f}K"
+                        vol_str = f"${vol_h1 / 1_000:.1f}K"
                     else:
                         vol_str = f"${vol_h1:.0f}"
 
-                    print(f"  {emoji} {name:35s} 5m:{m5:>+6.1f}% 15m:{m15:>+6.1f}% 30m:{m30:>+6.1f}% 1h:{h1:>+6.1f}% | Vol:{vol_str:>8s} Txn:{buys}B/{sells}S")
+                    print(
+                        f"  {emoji} {name:35s} 5m:{m5:>+6.1f}% 15m:{m15:>+6.1f}% 30m:{m30:>+6.1f}% 1h:{h1:>+6.1f}% | Vol:{vol_str:>8s} Txn:{buys}B/{sells}S"
+                    )
             else:
                 print("😴 No pumps")
 
