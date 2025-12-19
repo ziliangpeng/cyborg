@@ -194,10 +194,7 @@ class UniswapPriceQuery:
         USDT_lower = USDT.lower()
 
         # Get stablecoin balance (USDC or USDT, both have 6 decimals)
-        if token0.lower() == USDC_lower or token0.lower() == USDT_lower:
-            stablecoin_address = token0
-        else:
-            stablecoin_address = token1
+        stablecoin_address = token0 if token0.lower() == USDC_lower or token0.lower() == USDT_lower else token1
 
         stablecoin_contract = self.w3.eth.contract(address=Web3.to_checksum_address(stablecoin_address), abi=ERC20_ABI)
 
@@ -259,7 +256,6 @@ class UniswapPriceQuery:
 
         # Get token order
         token0 = pool_contract.functions.token0().call()
-        token1 = pool_contract.functions.token1().call()
 
         WBTC_lower = WBTC.lower()
 
@@ -268,7 +264,7 @@ class UniswapPriceQuery:
         price = (sqrt_price_x96 / (2**96)) ** 2
 
         # Adjust for decimals (WBTC: 8 decimals, USDC/USDT: 6 decimals)
-        if token0.lower() == WBTC_lower:
+        if token0.lower() == WBTC_lower:  # noqa: SIM108
             # token0 is WBTC, token1 is stablecoin
             # price gives us stablecoin per WBTC, need to adjust decimals
             btc_price = price * (10**8) / (10**6)
