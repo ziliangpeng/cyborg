@@ -23,6 +23,30 @@ jobs:
         toolchain: stable
         components: clippy, rustfmt
 
+    - name: Check all Rust projects are in workspace
+      run: |
+        # Find all Cargo.toml files (excluding root and target dirs)
+        echo "Checking for Rust projects not in workspace..."
+        RUST_PROJECTS=$(find . -name Cargo.toml -not -path "./Cargo.toml" -not -path "*/target/*" -exec dirname {} \;)
+
+        # Get workspace members from cargo metadata
+        WORKSPACE_MEMBERS=$(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members[]' | cut -d' ' -f1)
+
+        # Check each project is in workspace
+        EXIT_CODE=0
+        for PROJECT in $RUST_PROJECTS; do
+          PROJECT_NAME=$(basename $PROJECT)
+          if ! echo "$WORKSPACE_MEMBERS" | grep -q "$PROJECT_NAME"; then
+            echo "ERROR: Rust project at $PROJECT is not in workspace members"
+            EXIT_CODE=1
+          fi
+        done
+
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "✓ All Rust projects are in workspace"
+        fi
+        exit $EXIT_CODE
+
     - name: Run Formatter Check
       run: cargo fmt --all -- --check
 
