@@ -110,13 +110,66 @@ int main(int argc, char *argv[]) {
     printf("Launching kernel with %d blocks and %d threads per block\n",
            blocksPerGrid, threadsPerBlock);
 
-    vectorAdd<<<blocksPerGrid, threadsPerBlock>>>(d_a, d_b, d_c, n);
+    // Create CUDA events for timing kernel execution
+    cudaEvent_t kernel_start, kernel_stop;
+    cudaEventCreate(&kernel_start);
+    cudaEventCreate(&kernel_stop);
+
+    // Run kernel multiple times to collect statistics
+    const int num_iterations = 1000;
+    float *timings = (float*)malloc(num_iterations * sizeof(float));
+
+    printf("Running kernel %d times to collect statistics...\n", num_iterations);
+    for (int i = 0; i < num_iterations; i++) {
+        cudaEventRecord(kernel_start);
+        vectorAdd<<<blocksPerGrid, threadsPerBlock>>>(d_a, d_b, d_c, n);
+        cudaEventRecord(kernel_stop);
+
+        cudaEventSynchronize(kernel_stop);
+        cudaEventElapsedTime(&timings[i], kernel_start, kernel_stop);
+    }
 
     // Check for kernel launch errors
     cudaCheckError(cudaGetLastError());
 
-    // Wait for GPU to finish
-    cudaCheckError(cudaDeviceSynchronize());
+    // Calculate statistics
+    float min_time = timings[0];
+    float max_time = timings[0];
+    float sum_time = 0.0f;
+
+    for (int i = 0; i < num_iterations; i++) {
+        if (timings[i] < min_time) min_time = timings[i];
+        if (timings[i] > max_time) max_time = timings[i];
+        sum_time += timings[i];
+    }
+    float avg_time = sum_time / num_iterations;
+
+    // Sort for percentiles
+    qsort(timings, num_iterations, sizeof(float), [](const void *a, const void *b) {
+        float fa = *(const float*)a;
+        float fb = *(const float*)b;
+        return (fa > fb) - (fa < fb);
+    });
+
+    // Calculate percentiles
+    int p50_idx = (int)(num_iterations * 0.50);
+    int p90_idx = (int)(num_iterations * 0.90);
+    int p95_idx = (int)(num_iterations * 0.95);
+    int p99_idx = (int)(num_iterations * 0.99);
+
+    printf("\n===========================================\n");
+    printf("Kernel Execution Statistics (%d runs):\n", num_iterations);
+    printf("===========================================\n");
+    printf("  Min:    %.3f ms\n", min_time);
+    printf("  Max:    %.3f ms\n", max_time);
+    printf("  Mean:   %.3f ms\n", avg_time);
+    printf("  Median: %.3f ms\n", timings[p50_idx]);
+    printf("  P90:    %.3f ms\n", timings[p90_idx]);
+    printf("  P95:    %.3f ms\n", timings[p95_idx]);
+    printf("  P99:    %.3f ms\n", timings[p99_idx]);
+    printf("===========================================\n");
+
+    free(timings);
 
     // Copy result back to host
     cudaCheckError(cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost));
@@ -150,6 +203,10 @@ int main(int argc, char *argv[]) {
     free(h_a);
     free(h_b);
     free(h_c);
+
+    // Destroy events
+    cudaEventDestroy(kernel_start);
+    cudaEventDestroy(kernel_stop);
 
     printf("\nCongratulations! Your first CUDA program ran successfully!\n");
 
