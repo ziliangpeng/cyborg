@@ -1,5 +1,6 @@
 # Ignore compiled binaries
 vector_add
+mem_benchmark
 
 # Ignore profiling reports
 *.nsys-rep

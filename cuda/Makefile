@@ -6,26 +6,27 @@ NVCC = nvcc
 # Compiler flags
 NVCC_FLAGS = -O2 -arch=sm_90
 
-# Target executable
-TARGET = vector_add
+# Targets
+TARGETS = vector_add mem_benchmark
 
-# Source files
-SOURCES = vector_add.cu
+# Default target - build all
+all: $(TARGETS)
 
-# Default target
-all: $(TARGET)
+# Build vector_add
+vector_add: vector_add.cu
+	$(NVCC) $(NVCC_FLAGS) vector_add.cu -o vector_add
 
-# Build the executable
-$(TARGET): $(SOURCES)
-	$(NVCC) $(NVCC_FLAGS) $(SOURCES) -o $(TARGET)
+# Build mem_benchmark
+mem_benchmark: mem_benchmark.cu
+	$(NVCC) $(NVCC_FLAGS) mem_benchmark.cu -o mem_benchmark
 
-# Run the program
-run: $(TARGET)
-	./$(TARGET)
+# Run vector_add
+run: vector_add
+	./vector_add
 
 # Clean build artifacts
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGETS)
 
 # Check if CUDA is available
 check:
