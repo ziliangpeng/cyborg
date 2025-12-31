@@ -21,7 +21,8 @@ int main(int argc, char *argv[]) {
     // Parse command line arguments
     bool verify = false;
     int n = 1 << 20;  // Default: 1 million elements
-    int threadsPerBlock = 256;  // Default: 256 threads per block
+    // Default: 256 threads per block (NVIDIA recommended, 8 warps, optimal for most kernels)
+    int threadsPerBlock = 256;
 
     static struct option long_options[] = {
         {"size",       required_argument, 0, 'n'},

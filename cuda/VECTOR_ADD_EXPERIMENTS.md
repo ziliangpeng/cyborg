@@ -97,6 +97,15 @@
 - **No additional parallelism**: Work is already well-distributed
 - **Register pressure**: May spill to local memory
 
+### Industry Consensus
+
+Our finding of 256 as optimal aligns with NVIDIA's official guidance and community best practices:
+
+- **NVIDIA CUDA Programming Guide**: "A thread block size of 16×16 (256 threads) is a common choice"
+- **Common practice**: Industry standard values are 128, 256, or 512 threads/block
+- **Warp alignment**: 256 = 8 warps × 32 threads, perfect for hardware utilization
+- **Benchmarks**: Studies show 256 provides best balance of occupancy and resource usage
+
 ### Recommendations
 
 1. **Use 256 threads/block as default** for memory-bound kernels like vector addition
