@@ -1,5 +1,20 @@
 # TODO
 
+## Profiling Tools Setup
+- [ ] **Enable Nsight Compute (ncu)** - Get detailed kernel profiling working
+  - Currently blocked: `ERR_NVGPUCTRPERM` - no permission to access GPU performance counters
+  - Contact system admin to enable profiling:
+    ```bash
+    sudo modprobe nvidia NVreg_RestrictProfilingToAdminUsers=0
+    # Or permanently: echo 'options nvidia "NVreg_RestrictProfilingToAdminUsers=0"' | sudo tee /etc/modprobe.d/nvidia-profiling.conf
+    ```
+  - Once enabled, can use ncu for:
+    - SM utilization analysis
+    - Memory bandwidth profiling
+    - Warp efficiency metrics
+    - Instruction throughput analysis
+  - Reference: https://developer.nvidia.com/ERR_NVGPUCTRPERM
+
 ## CUPTI Integration
 - [ ] Try using CUPTI (CUDA Profiling Tools Interface) directly
   - Explore Callback API for hooking into CUDA API calls
