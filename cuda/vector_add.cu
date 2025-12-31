@@ -3,6 +3,7 @@
 #include <time.h>
 #include <string.h>
 #include <math.h>
+#include <getopt.h>
 #include <cuda_runtime.h>
 
 // CUDA kernel: runs on the GPU
@@ -27,17 +28,49 @@ inline void cudaAssert(cudaError_t code, const char *file, int line) {
     }
 }
 
+void print_usage(const char *program_name) {
+    printf("Usage: %s [options]\n", program_name);
+    printf("Options:\n");
+    printf("  -n, --size N    Set array size (default: 1048576)\n");
+    printf("  -v, --verify    Enable result verification\n");
+    printf("  -h, --help      Show this help message\n");
+}
+
 int main(int argc, char *argv[]) {
-    // Parse command line arguments
+    // Parse command line arguments using getopt_long
     bool verify = false;
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--verify") == 0) {
-            verify = true;
+    int n = 1 << 20;  // Default: 1 million elements
+
+    static struct option long_options[] = {
+        {"size",   required_argument, 0, 'n'},
+        {"verify", no_argument,       0, 'v'},
+        {"help",   no_argument,       0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int opt;
+    while ((opt = getopt_long(argc, argv, "n:vh", long_options, NULL)) != -1) {
+        switch (opt) {
+            case 'n':
+                n = atoi(optarg);
+                if (n <= 0) {
+                    fprintf(stderr, "Error: size must be positive\n");
+                    return 1;
+                }
+                break;
+            case 'v':
+                verify = true;
+                break;
+            case 'h':
+                print_usage(argv[0]);
+                return 0;
+            case '?':
+                print_usage(argv[0]);
+                return 1;
         }
     }
 
     // Problem size
-    int n = 1 << 20;  // 1 million elements
     size_t bytes = n * sizeof(float);
 
     printf("Vector addition of %d elements\n", n);
