@@ -146,9 +146,9 @@ def retry_with_backoff(max_retries=8, initial_delay=2):
                         time.sleep(delay)
                     else:
                         raise
-                except Exception as e:
+                except ValueError as e:
                     # Fallback: check string content for rate limit indicators
-                    # This handles cases where the library doesn't use standard exceptions
+                    # web3.py often wraps JSON-RPC errors in ValueError
                     error_str = str(e).lower()
                     is_retriable = "429" in error_str or "rate limit" in error_str or "too many requests" in error_str
 
