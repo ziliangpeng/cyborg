@@ -4,8 +4,9 @@
 #include <cuda_runtime.h>
 #include <stdio.h>
 
-// H100 theoretical memory bandwidth (from spec sheet)
-#define H100_MEMORY_BANDWIDTH_GBS 3350.0f  // 3.35 TB/s
+// PCIe 5.0 x16 theoretical bandwidth (host <-> device transfers)
+// Note: This is different from HBM bandwidth (3.35 TB/s) which is GPU memory bandwidth
+#define PCIE_GEN5_X16_BANDWIDTH_GBS 64.0f  // ~64 GB/s per direction
 
 // Wrapper for cudaMemcpy that measures and reports bandwidth
 // label is optional - pass NULL to use direction only
@@ -53,7 +54,7 @@ inline cudaError_t cudaMemcpyTimed(void *dst, const void *src, size_t count,
 
     // Calculate bandwidth in GB/s
     float bandwidth_gbs = (count / (1024.0f * 1024.0f * 1024.0f)) / (time_ms / 1000.0f);
-    float efficiency = (bandwidth_gbs / H100_MEMORY_BANDWIDTH_GBS) * 100.0f;
+    float efficiency = (bandwidth_gbs / PCIE_GEN5_X16_BANDWIDTH_GBS) * 100.0f;
 
     printf("  %s: %.2f MB in %.3f ms -> %.2f GB/s (%.2f%% of peak)\n",
            full_label,
