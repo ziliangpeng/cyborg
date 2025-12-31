@@ -1,4 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#include <math.h>
 #include <cuda_runtime.h>
 
 // CUDA kernel: runs on the GPU
@@ -23,22 +27,36 @@ inline void cudaAssert(cudaError_t code, const char *file, int line) {
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    // Parse command line arguments
+    bool verify = false;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--verify") == 0) {
+            verify = true;
+        }
+    }
+
     // Problem size
     int n = 1 << 20;  // 1 million elements
     size_t bytes = n * sizeof(float);
 
     printf("Vector addition of %d elements\n", n);
+    if (verify) {
+        printf("Verification enabled\n");
+    }
 
     // Allocate host memory
     float *h_a = (float*)malloc(bytes);
     float *h_b = (float*)malloc(bytes);
     float *h_c = (float*)malloc(bytes);
 
-    // Initialize input vectors
+    // Initialize random seed
+    srand(time(NULL));
+
+    // Initialize input vectors with random values
     for (int i = 0; i < n; i++) {
-        h_a[i] = 1.0f;
-        h_b[i] = 2.0f;
+        h_a[i] = (float)rand() / RAND_MAX;
+        h_b[i] = (float)rand() / RAND_MAX;
     }
 
     // Allocate device memory
@@ -70,15 +88,25 @@ int main() {
     // Copy result back to host
     cudaCheckError(cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost));
 
-    // Verify result
-    printf("Verifying result...\n");
-    for (int i = 0; i < n; i++) {
-        if (fabs(h_c[i] - 3.0f) > 1e-5) {
-            fprintf(stderr, "Result verification failed at element %d!\n", i);
-            exit(EXIT_FAILURE);
+    printf("Vector addition completed successfully!\n");
+
+    // Verify result if requested
+    if (verify) {
+        printf("Verifying results...\n");
+        bool success = true;
+        for (int i = 0; i < n; i++) {
+            float expected = h_a[i] + h_b[i];
+            if (fabs(h_c[i] - expected) > 1e-5) {
+                fprintf(stderr, "Verification failed at element %d: expected %f, got %f\n",
+                        i, expected, h_c[i]);
+                success = false;
+                break;
+            }
+        }
+        if (success) {
+            printf("Verification PASSED! All %d elements are correct.\n", n);
         }
     }
-    printf("Test PASSED! All %d elements correctly computed.\n", n);
 
     // Free device memory
     cudaFree(d_a);

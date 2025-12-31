@@ -4,7 +4,7 @@
 NVCC = nvcc
 
 # Compiler flags
-NVCC_FLAGS = -O2 -arch=sm_70
+NVCC_FLAGS = -O2 -arch=sm_90
 
 # Target executable
 TARGET = vector_add
