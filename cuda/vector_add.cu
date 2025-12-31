@@ -5,6 +5,7 @@
 #include <math.h>
 #include <getopt.h>
 #include <cuda_runtime.h>
+#include "cuda_utils.h"
 
 // CUDA kernel: runs on the GPU
 // Each thread computes one element of the result
@@ -99,8 +100,9 @@ int main(int argc, char *argv[]) {
     cudaCheckError(cudaMalloc(&d_c, bytes));
 
     // Copy data from host to device
-    cudaCheckError(cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice));
-    cudaCheckError(cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice));
+    printf("\nMemory Transfers:\n");
+    cudaCheckError(cudaMemcpyTimed(d_a, h_a, bytes, cudaMemcpyHostToDevice, "array a"));
+    cudaCheckError(cudaMemcpyTimed(d_b, h_b, bytes, cudaMemcpyHostToDevice, "array b"));
 
     // Launch kernel
     // Use 256 threads per block
@@ -119,7 +121,7 @@ int main(int argc, char *argv[]) {
     cudaCheckError(cudaDeviceSynchronize());
 
     // Copy result back to host
-    cudaCheckError(cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost));
+    cudaCheckError(cudaMemcpyTimed(h_c, d_c, bytes, cudaMemcpyDeviceToHost, "result"));
 
     printf("Vector addition completed successfully!\n");
 
