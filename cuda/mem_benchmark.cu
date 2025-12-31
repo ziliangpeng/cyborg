@@ -124,6 +124,8 @@ int main(int argc, char *argv[]) {
     printf("Allocating host memory...\n");
     cudaEventRecord(alloc_start);
     if (use_pinned) {
+        // cudaMallocHost = malloc + mlock (pin pages) + cudaHostRegister (DMA mapping).
+        // Plain malloc + mlock alone won't enable fast DMA path without registration.
         cudaCheckError(cudaMallocHost(&h_data, bytes));
     } else {
         h_data = (float*)malloc(bytes);
