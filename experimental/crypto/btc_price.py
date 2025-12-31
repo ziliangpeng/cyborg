@@ -9,12 +9,14 @@ Uses public RPC endpoint - no centralized exchange needed
 # ]
 # ///
 
-from web3 import Web3
-import json
 import argparse
-import time
+import json
 import os
+import time
 from urllib.parse import urlparse
+
+import requests
+from web3 import Web3
 
 # Ethereum RPC endpoint - use Alchemy if available, otherwise public endpoint
 RPC_URL = os.environ.get("ALCHEMY_RPC_URL", "https://eth.llamarpc.com")
@@ -24,6 +26,87 @@ WBTC = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
 USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
 
+# Contract ABIs - defined at module level for reuse
+UNISWAP_V3_FACTORY_ABI = json.dumps(
+    [
+        {
+            "inputs": [
+                {"internalType": "address", "name": "tokenA", "type": "address"},
+                {"internalType": "address", "name": "tokenB", "type": "address"},
+                {"internalType": "uint24", "name": "fee", "type": "uint24"},
+            ],
+            "name": "getPool",
+            "outputs": [{"internalType": "address", "name": "pool", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        }
+    ]
+)
+
+ERC20_BALANCEOF_ABI = json.dumps(
+    [
+        {
+            "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+            "name": "balanceOf",
+            "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function",
+        }
+    ]
+)
+
+UNISWAP_V3_POOL_ABI = json.dumps(
+    [
+        {
+            "inputs": [],
+            "name": "slot0",
+            "outputs": [
+                {"internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"},
+                {"internalType": "int24", "name": "tick", "type": "int24"},
+                {"internalType": "uint16", "name": "observationIndex", "type": "uint16"},
+                {"internalType": "uint16", "name": "observationCardinality", "type": "uint16"},
+                {"internalType": "uint16", "name": "observationCardinalityNext", "type": "uint16"},
+                {"internalType": "uint8", "name": "feeProtocol", "type": "uint8"},
+                {"internalType": "bool", "name": "unlocked", "type": "bool"},
+            ],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "inputs": [],
+            "name": "token0",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "inputs": [],
+            "name": "token1",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+    ]
+)
+
+CHAINLINK_PRICE_FEED_ABI = json.dumps(
+    [
+        {
+            "inputs": [],
+            "name": "latestRoundData",
+            "outputs": [
+                {"internalType": "uint80", "name": "roundId", "type": "uint80"},
+                {"internalType": "int256", "name": "answer", "type": "int256"},
+                {"internalType": "uint256", "name": "startedAt", "type": "uint256"},
+                {"internalType": "uint256", "name": "updatedAt", "type": "uint256"},
+                {"internalType": "uint80", "name": "answeredInRound", "type": "uint80"},
+            ],
+            "stateMutability": "view",
+            "type": "function",
+        }
+    ]
+)
+
 
 def retry_with_backoff(max_retries=8, initial_delay=2):
     """
@@ -31,30 +114,53 @@ def retry_with_backoff(max_retries=8, initial_delay=2):
     Handles RPC rate limits (429) and temporary connection errors
     Default: 8 retries with 2s initial delay (2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s)
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             for attempt in range(max_retries):
                 try:
                     return func(*args, **kwargs)
-                except Exception as e:
-                    # Check if it's a rate limit or retriable error
-                    is_retriable = (
-                        "429" in str(e) or
-                        "Too Many Requests" in str(e) or
-                        "rate limit" in str(e).lower() or
-                        "connection" in str(e).lower() or
-                        "no response" in str(e).lower()
+                except (
+                    requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout,
+                    ConnectionError,
+                    TimeoutError,
+                ) as e:
+                    # Network/connection errors are always retriable
+                    if attempt < max_retries - 1:
+                        delay = initial_delay * (2**attempt)
+                        print(f"Connection error: {e}, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(delay)
+                    else:
+                        raise
+                except requests.exceptions.HTTPError as e:
+                    # Check if it's a 429 (rate limit) or 5xx (server error)
+                    is_retriable = e.response is not None and (
+                        e.response.status_code == 429 or e.response.status_code >= 500
                     )
+                    if attempt < max_retries - 1 and is_retriable:
+                        delay = initial_delay * (2**attempt)
+                        print(
+                            f"HTTP error {e.response.status_code}: {e}, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})"
+                        )
+                        time.sleep(delay)
+                    else:
+                        raise
+                except ValueError as e:
+                    # Fallback: check string content for rate limit indicators
+                    # web3.py often wraps JSON-RPC errors in ValueError
+                    error_str = str(e).lower()
+                    is_retriable = "429" in error_str or "rate limit" in error_str or "too many requests" in error_str
 
                     if attempt < max_retries - 1 and is_retriable:
-                        delay = initial_delay * (2 ** attempt)
+                        delay = initial_delay * (2**attempt)
                         print(f"RPC error: {e}, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
                         time.sleep(delay)
                     else:
                         raise
 
-            raise Exception(f"Failed after {max_retries} attempts")
         return wrapper
+
     return decorator
 
 
@@ -70,12 +176,12 @@ def connect_with_retry(rpc_url, max_retries=5, initial_delay=1):
                 return w3
             else:
                 if attempt < max_retries - 1:
-                    delay = initial_delay * (2 ** attempt)
+                    delay = initial_delay * (2**attempt)
                     print(f"Connection failed, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
                     time.sleep(delay)
         except Exception as e:
             if attempt < max_retries - 1:
-                delay = initial_delay * (2 ** attempt)
+                delay = initial_delay * (2**attempt)
                 print(f"Connection error: {e}, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
             else:
@@ -99,19 +205,7 @@ class UniswapPriceQuery:
         # Uniswap V3 Factory
         FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 
-        factory_abi = json.dumps([{
-            "inputs": [
-                {"internalType": "address", "name": "tokenA", "type": "address"},
-                {"internalType": "address", "name": "tokenB", "type": "address"},
-                {"internalType": "uint24", "name": "fee", "type": "uint24"}
-            ],
-            "name": "getPool",
-            "outputs": [{"internalType": "address", "name": "pool", "type": "address"}],
-            "stateMutability": "view",
-            "type": "function"
-        }])
-
-        factory = self.w3.eth.contract(address=Web3.to_checksum_address(FACTORY), abi=factory_abi)
+        factory = self.w3.eth.contract(address=Web3.to_checksum_address(FACTORY), abi=UNISWAP_V3_FACTORY_ABI)
 
         # Fee tiers: 0.01%, 0.05%, 0.3%, 1%
         fee_tiers = [100, 500, 3000, 10000]
@@ -120,9 +214,7 @@ class UniswapPriceQuery:
         # Check WBTC/USDC pools
         for fee in fee_tiers:
             pool_address = factory.functions.getPool(
-                Web3.to_checksum_address(WBTC),
-                Web3.to_checksum_address(USDC),
-                fee
+                Web3.to_checksum_address(WBTC), Web3.to_checksum_address(USDC), fee
             ).call()
 
             if pool_address != "0x0000000000000000000000000000000000000000":
@@ -131,9 +223,7 @@ class UniswapPriceQuery:
         # Check WBTC/USDT pools
         for fee in fee_tiers:
             pool_address = factory.functions.getPool(
-                Web3.to_checksum_address(WBTC),
-                Web3.to_checksum_address(USDT),
-                fee
+                Web3.to_checksum_address(WBTC), Web3.to_checksum_address(USDT), fee
             ).call()
 
             if pool_address != "0x0000000000000000000000000000000000000000":
@@ -147,39 +237,7 @@ class UniswapPriceQuery:
         Query TVL (Total Value Locked) from a Uniswap V3 pool in USD
         Returns TVL by reading token balances and converting to USD
         """
-        # ERC20 ABI for balanceOf
-        ERC20_ABI = json.dumps([
-            {
-                "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
-                "name": "balanceOf",
-                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ])
-
-        # Pool ABI for token addresses
-        POOL_ABI = json.dumps([
-            {
-                "inputs": [],
-                "name": "token0",
-                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "token1",
-                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ])
-
-        pool_contract = self.w3.eth.contract(
-            address=Web3.to_checksum_address(pool_address),
-            abi=POOL_ABI
-        )
+        pool_contract = self.w3.eth.contract(address=Web3.to_checksum_address(pool_address), abi=UNISWAP_V3_POOL_ABI)
 
         # Get token addresses
         token0 = pool_contract.functions.token0().call()
@@ -189,21 +247,17 @@ class UniswapPriceQuery:
         USDT_lower = USDT.lower()
 
         # Get stablecoin balance (USDC or USDT, both have 6 decimals)
-        if token0.lower() == USDC_lower or token0.lower() == USDT_lower:
-            stablecoin_address = token0
-        else:
-            stablecoin_address = token1
+        stablecoin_address = token0 if token0.lower() == USDC_lower or token0.lower() == USDT_lower else token1
 
         stablecoin_contract = self.w3.eth.contract(
-            address=Web3.to_checksum_address(stablecoin_address),
-            abi=ERC20_ABI
+            address=Web3.to_checksum_address(stablecoin_address), abi=ERC20_BALANCEOF_ABI
         )
 
         # Get stablecoin balance in the pool
         stablecoin_balance = stablecoin_contract.functions.balanceOf(Web3.to_checksum_address(pool_address)).call()
 
         # USDC and USDT have 6 decimals, TVL = 2 × stablecoin balance (since it's roughly 50/50)
-        tvl_usd = 2 * stablecoin_balance / (10 ** 6)
+        tvl_usd = 2 * stablecoin_balance / (10**6)
 
         return tvl_usd
 
@@ -213,44 +267,8 @@ class UniswapPriceQuery:
         Query BTC price from a Uniswap V3 WBTC/stablecoin pool
         Returns price in USD
         """
-        # Uniswap V3 Pool ABI - just the functions we need
-        POOL_ABI = json.dumps([
-            {
-                "inputs": [],
-                "name": "slot0",
-                "outputs": [
-                    {"internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"},
-                    {"internalType": "int24", "name": "tick", "type": "int24"},
-                    {"internalType": "uint16", "name": "observationIndex", "type": "uint16"},
-                    {"internalType": "uint16", "name": "observationCardinality", "type": "uint16"},
-                    {"internalType": "uint16", "name": "observationCardinalityNext", "type": "uint16"},
-                    {"internalType": "uint8", "name": "feeProtocol", "type": "uint8"},
-                    {"internalType": "bool", "name": "unlocked", "type": "bool"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "token0",
-                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "token1",
-                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ])
-
         # Create contract instance
-        pool_contract = self.w3.eth.contract(
-            address=Web3.to_checksum_address(pool_address),
-            abi=POOL_ABI
-        )
+        pool_contract = self.w3.eth.contract(address=Web3.to_checksum_address(pool_address), abi=UNISWAP_V3_POOL_ABI)
 
         # Get current pool state
         slot0 = pool_contract.functions.slot0().call()
@@ -258,23 +276,22 @@ class UniswapPriceQuery:
 
         # Get token order
         token0 = pool_contract.functions.token0().call()
-        token1 = pool_contract.functions.token1().call()
 
         WBTC_lower = WBTC.lower()
 
         # Calculate price from sqrtPriceX96
         # price = (sqrtPriceX96 / 2^96) ^ 2
-        price = (sqrt_price_x96 / (2 ** 96)) ** 2
+        price = (sqrt_price_x96 / (2**96)) ** 2
 
         # Adjust for decimals (WBTC: 8 decimals, USDC/USDT: 6 decimals)
-        if token0.lower() == WBTC_lower:
+        if token0.lower() == WBTC_lower:  # noqa: SIM108
             # token0 is WBTC, token1 is stablecoin
             # price gives us stablecoin per WBTC, need to adjust decimals
-            btc_price = price * (10 ** 8) / (10 ** 6)
+            btc_price = price * (10**8) / (10**6)
         else:
             # token1 is WBTC, token0 is stablecoin
             # price gives us WBTC per stablecoin, need to invert
-            btc_price = (1 / price) * (10 ** 8) / (10 ** 6)
+            btc_price = (1 / price) * (10**8) / (10**6)
 
         return btc_price
 
@@ -295,33 +312,15 @@ class ChainlinkPriceQuery:
         # Chainlink BTC/USD Price Feed on Ethereum mainnet
         CHAINLINK_BTC_USD = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"
 
-        # Chainlink Price Feed ABI - just latestRoundData function
-        PRICE_FEED_ABI = json.dumps([
-            {
-                "inputs": [],
-                "name": "latestRoundData",
-                "outputs": [
-                    {"internalType": "uint80", "name": "roundId", "type": "uint80"},
-                    {"internalType": "int256", "name": "answer", "type": "int256"},
-                    {"internalType": "uint256", "name": "startedAt", "type": "uint256"},
-                    {"internalType": "uint256", "name": "updatedAt", "type": "uint256"},
-                    {"internalType": "uint80", "name": "answeredInRound", "type": "uint80"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ])
-
         price_feed = self.w3.eth.contract(
-            address=Web3.to_checksum_address(CHAINLINK_BTC_USD),
-            abi=PRICE_FEED_ABI
+            address=Web3.to_checksum_address(CHAINLINK_BTC_USD), abi=CHAINLINK_PRICE_FEED_ABI
         )
 
         round_data = price_feed.functions.latestRoundData().call()
         price = round_data[1]
 
         # Chainlink BTC/USD feed returns price with 8 decimals
-        btc_price = price / (10 ** 8)
+        btc_price = price / (10**8)
 
         return btc_price
 
