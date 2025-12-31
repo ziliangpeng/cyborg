@@ -258,7 +258,8 @@ def get_logs_with_retry(
     initial_delay: int = 2,
 ):
     """
-    Call eth_getLogs with basic retry logic for transient RPC issues.
+    Call eth_getLogs with retry logic for transient RPC issues.
+    Uses the improved retry_with_backoff decorator for robust error handling.
     """
     filter_params = {
         # Use explicit hex strings for block numbers for maximum RPC compatibility
@@ -272,29 +273,11 @@ def get_logs_with_retry(
         "topics": [SWAP_EVENT_TOPIC0],
     }
 
-    attempt = 0
-    while True:
-        try:
-            return w3.eth.get_logs(filter_params)
-        except Exception as e:
-            message = str(e)
-            is_retriable = (
-                "429" in message
-                or "Too Many Requests" in message
-                or "rate limit" in message.lower()
-                or "connection" in message.lower()
-                or "no response" in message.lower()
-            )
+    @retry_with_backoff(max_retries=max_retries, initial_delay=initial_delay)
+    def _get_logs():
+        return w3.eth.get_logs(filter_params)
 
-            if is_retriable and attempt < max_retries - 1:
-                delay = initial_delay * (2**attempt)
-                print(f"RPC error (get_logs): {e}, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
-                time.sleep(delay)
-                attempt += 1
-                continue
-
-            # Non-retriable (or max retries hit) – let caller decide
-            raise
+    return _get_logs()
 
 
 def get_logs_safely(
