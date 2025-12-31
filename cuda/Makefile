@@ -24,6 +24,24 @@ mem_benchmark: mem_benchmark.cu cuda_utils.h
 run: vector_add
 	./vector_add
 
+# Test all binaries
+test: all
+	@echo "=========================================="
+	@echo "Running verification tests..."
+	@echo "=========================================="
+	@echo "Testing vector_add..."
+	@./vector_add -n 1000 -v > /dev/null && echo "  ✓ 1K elements"
+	@./vector_add -n 1000000 -v > /dev/null && echo "  ✓ 1M elements"
+	@./vector_add -n 10000000 -v > /dev/null && echo "  ✓ 10M elements"
+	@echo ""
+	@echo "Testing mem_benchmark..."
+	@./mem_benchmark -n 10 -i 1 > /dev/null && echo "  ✓ Pageable (10MB)"
+	@./mem_benchmark -n 10 -p -i 1 > /dev/null && echo "  ✓ Pinned (10MB)"
+	@echo ""
+	@echo "=========================================="
+	@echo "All tests passed!"
+	@echo "=========================================="
+
 # Clean build artifacts
 clean:
 	rm -f $(TARGETS) *.o
@@ -34,4 +52,4 @@ check:
 	@which nvcc || echo "ERROR: nvcc not found. Please install CUDA toolkit."
 	@nvcc --version || true
 
-.PHONY: all run clean check
+.PHONY: all run test clean check
