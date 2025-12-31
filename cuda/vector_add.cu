@@ -11,30 +11,40 @@
 void print_usage(const char *program_name) {
     printf("Usage: %s [options]\n", program_name);
     printf("Options:\n");
-    printf("  -n, --size N    Set array size (default: 1048576)\n");
-    printf("  -v, --verify    Enable result verification\n");
-    printf("  -h, --help      Show this help message\n");
+    printf("  -n, --size N         Set array size (default: 1048576)\n");
+    printf("  -b, --block-size N   Set threads per block (default: 256)\n");
+    printf("  -v, --verify         Enable result verification\n");
+    printf("  -h, --help           Show this help message\n");
 }
 
 int main(int argc, char *argv[]) {
     // Parse command line arguments
     bool verify = false;
     int n = 1 << 20;  // Default: 1 million elements
+    int threadsPerBlock = 256;  // Default: 256 threads per block
 
     static struct option long_options[] = {
-        {"size",   required_argument, 0, 'n'},
-        {"verify", no_argument,       0, 'v'},
-        {"help",   no_argument,       0, 'h'},
+        {"size",       required_argument, 0, 'n'},
+        {"block-size", required_argument, 0, 'b'},
+        {"verify",     no_argument,       0, 'v'},
+        {"help",       no_argument,       0, 'h'},
         {0, 0, 0, 0}
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "n:vh", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "n:b:vh", long_options, NULL)) != -1) {
         switch (opt) {
             case 'n':
                 n = atoi(optarg);
                 if (n <= 0) {
                     fprintf(stderr, "Error: size must be positive\n");
+                    return 1;
+                }
+                break;
+            case 'b':
+                threadsPerBlock = atoi(optarg);
+                if (threadsPerBlock <= 0 || threadsPerBlock > 1024) {
+                    fprintf(stderr, "Error: block-size must be between 1 and 1024\n");
                     return 1;
                 }
                 break;
@@ -75,7 +85,6 @@ int main(int argc, char *argv[]) {
     transferToDevice(d_b, h_b, n);
 
     // Configure kernel launch parameters
-    int threadsPerBlock = 256;
     int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
     printf("Launching kernel with %d blocks and %d threads per block\n",
            blocksPerGrid, threadsPerBlock);
