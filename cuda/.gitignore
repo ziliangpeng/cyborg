@@ -1,0 +1,11 @@
+# Ignore compiled binaries
+cuda/vector_add
+
+# Ignore profiling reports
+cuda/*.nsys-rep
+cuda/*.sqlite
+cuda/*.qdrep
+cuda/*.qdstrm
+
+# Ignore Claude internal files
+.claude/
