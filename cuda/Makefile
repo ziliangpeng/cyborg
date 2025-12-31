@@ -12,12 +12,12 @@ TARGETS = vector_add mem_benchmark
 # Default target - build all
 all: $(TARGETS)
 
-# Build vector_add
-vector_add: vector_add.cu
-	$(NVCC) $(NVCC_FLAGS) vector_add.cu -o vector_add
+# Build vector_add from multiple source files
+vector_add: vector_add.cu vector_kernels.cu vector_init.cu cuda_utils.h vector_kernels.h vector_init.h
+	$(NVCC) $(NVCC_FLAGS) vector_add.cu vector_kernels.cu vector_init.cu -o vector_add
 
 # Build mem_benchmark
-mem_benchmark: mem_benchmark.cu
+mem_benchmark: mem_benchmark.cu cuda_utils.h
 	$(NVCC) $(NVCC_FLAGS) mem_benchmark.cu -o mem_benchmark
 
 # Run vector_add
@@ -26,7 +26,7 @@ run: vector_add
 
 # Clean build artifacts
 clean:
-	rm -f $(TARGETS)
+	rm -f $(TARGETS) *.o
 
 # Check if CUDA is available
 check:

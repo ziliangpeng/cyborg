@@ -2,16 +2,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <cuda_runtime.h>
-
-// Helper function to check CUDA errors
-#define cudaCheckError(ans) { cudaAssert((ans), __FILE__, __LINE__); }
-inline void cudaAssert(cudaError_t code, const char *file, int line) {
-    if (code != cudaSuccess) {
-        fprintf(stderr, "CUDA Error: %s %s %d\n",
-                cudaGetErrorString(code), file, line);
-        exit(code);
-    }
-}
+#include "cuda_utils.h"
 
 // Detect PCIe generation and return theoretical bandwidth
 float get_pcie_bandwidth() {

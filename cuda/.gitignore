@@ -2,6 +2,9 @@
 vector_add
 mem_benchmark
 
+# Ignore object files
+*.o
+
 # Ignore profiling reports
 *.nsys-rep
 *.sqlite

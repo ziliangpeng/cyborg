@@ -1,32 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <string.h>
 #include <math.h>
+#include <time.h>
 #include <getopt.h>
 #include <cuda_runtime.h>
-
-// CUDA kernel: runs on the GPU
-// Each thread computes one element of the result
-__global__ void vectorAdd(const float *a, const float *b, float *c, int n) {
-    // Calculate global thread ID
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-
-    // Make sure we don't go out of bounds
-    if (idx < n) {
-        c[idx] = a[idx] + b[idx];
-    }
-}
-
-// Helper function to check CUDA errors
-#define cudaCheckError(ans) { cudaAssert((ans), __FILE__, __LINE__); }
-inline void cudaAssert(cudaError_t code, const char *file, int line) {
-    if (code != cudaSuccess) {
-        fprintf(stderr, "CUDA Error: %s %s %d\n",
-                cudaGetErrorString(code), file, line);
-        exit(code);
-    }
-}
+#include "cuda_utils.h"
+#include "vector_kernels.h"
+#include "vector_init.h"
 
 void print_usage(const char *program_name) {
     printf("Usage: %s [options]\n", program_name);
@@ -37,7 +17,7 @@ void print_usage(const char *program_name) {
 }
 
 int main(int argc, char *argv[]) {
-    // Parse command line arguments using getopt_long
+    // Parse command line arguments
     bool verify = false;
     int n = 1 << 20;  // Default: 1 million elements
 
@@ -70,47 +50,37 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Problem size
-    size_t bytes = n * sizeof(float);
-
     printf("Vector addition of %d elements\n", n);
     if (verify) {
         printf("Verification enabled\n");
     }
 
-    // Allocate host memory
-    float *h_a = (float*)malloc(bytes);
-    float *h_b = (float*)malloc(bytes);
-    float *h_c = (float*)malloc(bytes);
-
     // Initialize random seed
     srand(time(NULL));
 
-    // Initialize input vectors with random values
-    for (int i = 0; i < n; i++) {
-        h_a[i] = (float)rand() / RAND_MAX;
-        h_b[i] = (float)rand() / RAND_MAX;
-    }
+    // Allocate and initialize host vectors
+    float *h_a, *h_b, *h_c;
+    allocateAndInitVector(&h_a, n);
+    allocateAndInitVector(&h_b, n);
+    allocateAndInitVector(&h_c, n);
 
-    // Allocate device memory
+    // Allocate device vectors
     float *d_a, *d_b, *d_c;
-    cudaCheckError(cudaMalloc(&d_a, bytes));
-    cudaCheckError(cudaMalloc(&d_b, bytes));
-    cudaCheckError(cudaMalloc(&d_c, bytes));
+    allocateDeviceVector(&d_a, n);
+    allocateDeviceVector(&d_b, n);
+    allocateDeviceVector(&d_c, n);
 
-    // Copy data from host to device
-    cudaCheckError(cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice));
-    cudaCheckError(cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice));
+    // Transfer input vectors to device
+    transferToDevice(d_a, h_a, n);
+    transferToDevice(d_b, h_b, n);
 
-    // Launch kernel
-    // Use 256 threads per block
+    // Configure kernel launch parameters
     int threadsPerBlock = 256;
     int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
-
     printf("Launching kernel with %d blocks and %d threads per block\n",
            blocksPerGrid, threadsPerBlock);
 
-    // Create CUDA events for timing kernel execution
+    // Create CUDA events for timing
     cudaEvent_t kernel_start, kernel_stop;
     cudaEventCreate(&kernel_start);
     cudaEventCreate(&kernel_stop);
@@ -128,8 +98,6 @@ int main(int argc, char *argv[]) {
         cudaEventSynchronize(kernel_stop);
         cudaEventElapsedTime(&timings[i], kernel_start, kernel_stop);
     }
-
-    // Check for kernel launch errors
     cudaCheckError(cudaGetLastError());
 
     // Calculate statistics
@@ -171,9 +139,8 @@ int main(int argc, char *argv[]) {
 
     free(timings);
 
-    // Copy result back to host
-    cudaCheckError(cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost));
-
+    // Transfer result back to host
+    transferFromDevice(h_c, d_c, n);
     printf("Vector addition completed successfully!\n");
 
     // Verify result if requested
@@ -194,17 +161,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Free device memory
-    cudaFree(d_a);
-    cudaFree(d_b);
-    cudaFree(d_c);
-
-    // Free host memory
-    free(h_a);
-    free(h_b);
-    free(h_c);
-
-    // Destroy events
+    // Cleanup
+    freeDeviceVector(d_a);
+    freeDeviceVector(d_b);
+    freeDeviceVector(d_c);
+    freeHostVector(h_a);
+    freeHostVector(h_b);
+    freeHostVector(h_c);
     cudaEventDestroy(kernel_start);
     cudaEventDestroy(kernel_stop);
 
