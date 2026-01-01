@@ -30,6 +30,16 @@ __global__ void sumReductionKernel(const float *input, float *partialSums, int n
     }
 }
 
+// Atomic-based reduction kernel
+// Extremely simple but serializes - all threads contend for same result location
+__global__ void sumReductionKernel_Atomic(const float *input, float *result, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < n) {
+        atomicAdd(result, input[idx]);  // Single atomic add - hardware serializes
+    }
+}
+
 // Warp-optimized reduction kernel
 // Uses shared memory for 256→32, then warp shuffles for 32→1
 // Benchmarked ~8% faster than regular version (eliminates 5 __syncthreads barriers)
@@ -252,3 +262,29 @@ float vectorSum_Threshold_Warp(const float *d_input, int n, int threadsPerBlock,
 
     return result;
 }
+
+// Atomic method: Simple single-kernel approach using atomicAdd
+// All threads directly add to global result - hardware serializes access
+float vectorSum_Atomic(const float *d_input, int n, int threadsPerBlock) {
+    int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Allocate result on device, initialize to 0
+    float *d_result;
+    cudaCheckError(cudaMalloc(&d_result, sizeof(float)));
+    cudaCheckError(cudaMemset(d_result, 0, sizeof(float)));
+
+    // Launch atomic kernel (single kernel, no shared memory)
+    sumReductionKernel_Atomic<<<numBlocks, threadsPerBlock>>>(
+        d_input, d_result, n);
+    cudaCheckError(cudaGetLastError());
+
+    // Copy result to host
+    float result;
+    cudaCheckError(cudaMemcpy(&result, d_result, sizeof(float), cudaMemcpyDeviceToHost));
+
+    // Cleanup
+    cudaFree(d_result);
+
+    return result;
+}
+

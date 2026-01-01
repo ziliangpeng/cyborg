@@ -190,4 +190,92 @@ kernel<<<blocks, threads, threadsPerBlock * sizeof(float)>>>(...)
 
 ---
 
+## Experiment 2: Atomic Reduction Performance
+
+**Question:** Can atomicAdd simplify reduction code without sacrificing performance?
+
+**Setup:**
+- Atomic kernel: Each thread directly atomicAdd(result, input[idx])
+- No shared memory, no __syncthreads, no tree reduction
+- Single kernel launch - extremely simple code (5 lines)
+
+### Results
+
+| Array Size | Threshold+Warp (best) | Atomic | Slowdown |
+|------------|----------------------|---------|----------|
+| 1M | 0.169 ms | 1.919 ms | **11x slower** |
+| 10M | 0.184 ms | 17.722 ms | **96x slower** |
+
+### Key Findings
+
+1. **Atomic serialization is catastrophic**
+   - All threads contend for single memory location
+   - Hardware must serialize all atomicAdd operations
+   - Essentially sequential execution despite GPU parallelism
+
+2. **Slowdown scales with array size:**
+   - 1M elements: 11x slower
+   - 10M elements: 96x slower
+   - More threads = more contention = worse serialization
+
+3. **Code simplicity vs performance:**
+   - Atomic: ~5 lines of code
+   - Tree reduction: ~40 lines
+   - **But 96x slower!** Simplicity is NOT worth this cost
+
+4. **When atomics are appropriate:**
+   - ❌ NOT for single global result (like sum) - massive contention
+   - ✅ Histograms (many output bins, low contention per bin)
+   - ✅ Sparse updates (each thread hits different location)
+   - ✅ Occasional updates (not every thread)
+
+### Why Atomic is So Slow
+
+**Hardware serialization:**
+```
+10M threads all execute: atomicAdd(&result, value)
+↓
+Hardware queues them one by one
+↓
+Effectively: 10M sequential additions
+↓
+No parallelism benefit!
+```
+
+**Tree reduction parallelism:**
+```
+Iteration 1: 5M parallel adds (pairs)
+Iteration 2: 2.5M parallel adds
+...
+Iteration 24: 1 final add
+↓
+Total: log₂(10M) = 24 parallel stages
+↓
+Massive parallelism!
+```
+
+### Recommendations
+
+1. **Never use atomics for single global result**
+   - 11-96x slower than tree reduction
+   - Defeats the purpose of GPU parallelism
+
+2. **Atomics shine when:**
+   - Many independent output locations (low contention)
+   - Example: Histogram with 256 bins, 10M inputs
+     - Average 40K adds per bin (manageable contention)
+   - Scattered writes where tree reduction doesn't apply
+
+3. **For reductions:**
+   - Always use tree reduction (shared memory + warp shuffles)
+   - Complexity is worth 96x speedup!
+   - Production libraries (CUB, thrust) use optimized tree reduction
+
+4. **Code simplicity has limits:**
+   - 5 lines vs 40 lines sounds good
+   - But 96x slower is unacceptable
+   - Sometimes complexity is necessary
+
+---
+
 *Last Updated: 2026-01-01*

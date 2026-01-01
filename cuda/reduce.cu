@@ -14,7 +14,7 @@ void print_usage(const char *program_name) {
     printf("Options:\n");
     printf("  -n, --size N              Set array size (default: 1048576)\n");
     printf("  -b, --block-size N        Set threads per block (default: 256)\n");
-    printf("  -m, --method METHOD       Reduction method: 'gpu' or 'threshold' (default: threshold)\n");
+    printf("  -m, --method METHOD       Reduction method: 'gpu', 'threshold', or 'atomic' (default: threshold)\n");
     printf("  -t, --cpu-threshold N     CPU threshold for 'threshold' method (default: 1000)\n");
     printf("  -w, --warp-opt            Use warp shuffle optimization for final 32→1 reduction\n");
     printf("  -v, --verify              Enable result verification\n");
@@ -22,9 +22,11 @@ void print_usage(const char *program_name) {
     printf("\nMethods:\n");
     printf("  gpu:       Fully GPU recursive reduction (reduce until 1 element)\n");
     printf("  threshold: GPU reduction until size <= threshold, then CPU final sum\n");
+    printf("  atomic:    Single kernel using atomicAdd (simple but serializes)\n");
     printf("\nOptimization:\n");
     printf("  --warp-opt: Uses warp shuffles instead of __syncthreads for final 32→1\n");
-    printf("              Expected 10-20%% speedup\n");
+    printf("              Only applies to gpu/threshold methods\n");
+    printf("              Expected 8-10%% speedup\n");
 }
 
 // SUM reduction operation
@@ -72,12 +74,14 @@ void sum_op(int n, int threadsPerBlock, bool verify, const char *method, int cpu
             } else {
                 result = vectorSum_GPU(d_input, n, threadsPerBlock);
             }
-        } else {
+        } else if (strcmp(method, "threshold") == 0) {
             if (useWarpOpt) {
                 result = vectorSum_Threshold_Warp(d_input, n, threadsPerBlock, cpuThreshold);
             } else {
                 result = vectorSum_Threshold(d_input, n, threadsPerBlock, cpuThreshold);
             }
+        } else if (strcmp(method, "atomic") == 0) {
+            result = vectorSum_Atomic(d_input, n, threadsPerBlock);
         }
 
         cudaEventRecord(stop);
@@ -163,8 +167,8 @@ int main(int argc, char *argv[]) {
                 break;
             case 'm':
                 method = optarg;
-                if (strcmp(method, "gpu") != 0 && strcmp(method, "threshold") != 0) {
-                    fprintf(stderr, "Error: method must be 'gpu' or 'threshold'\n");
+                if (strcmp(method, "gpu") != 0 && strcmp(method, "threshold") != 0 && strcmp(method, "atomic") != 0) {
+                    fprintf(stderr, "Error: method must be 'gpu', 'threshold', or 'atomic'\n");
                     return 1;
                 }
                 break;
