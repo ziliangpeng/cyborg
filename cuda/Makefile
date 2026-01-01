@@ -7,7 +7,7 @@ NVCC = nvcc
 NVCC_FLAGS ?= -O2 -arch=sm_90
 
 # Targets
-TARGETS = vector mem_benchmark
+TARGETS = vector mem_benchmark reduce
 
 # Default target - build all
 all: $(TARGETS)
@@ -19,6 +19,10 @@ vector: vector.cu vector_kernels.cu vector_init.cu cuda_utils.cu cuda_utils.h ve
 # Build mem_benchmark
 mem_benchmark: mem_benchmark.cu cuda_utils.h
 	$(NVCC) $(NVCC_FLAGS) mem_benchmark.cu -o mem_benchmark
+
+# Build reduce
+reduce: reduce.cu reduce_kernels.cu vector_init.cu cuda_utils.cu cuda_utils.h reduce_kernels.h vector_init.h
+	$(NVCC) $(NVCC_FLAGS) reduce.cu reduce_kernels.cu vector_init.cu cuda_utils.cu -o reduce
 
 # Run vector
 run: vector
