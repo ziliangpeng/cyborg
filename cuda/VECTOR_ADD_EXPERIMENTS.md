@@ -125,4 +125,101 @@ Our finding of 256 as optimal aligns with NVIDIA's official guidance and communi
 
 ---
 
+## Experiment 2: Kernel Fusion Impact (VMA)
+
+**Question:** Does fusing multiply-add into a single kernel improve performance vs running separate kernels?
+
+**Setup:**
+- Array sizes: 1K, 10K, 100K, 1M, 10M, 100M elements
+- Block size: 256 threads/block (optimal from Experiment 1)
+- Operation: Vector Multiply-Add (VMA): `d[i] = a[i] * b[i] + c[i]`
+- Iterations: 1000 runs per configuration
+- Metric: Median execution time
+
+**Comparison:**
+- **Fused**: Single `vectorFMA` kernel
+- **Separate**: `vectorMul` then `vectorAdd` (no sync between - kernels auto-order)
+
+### Results
+
+| Array Size | Separate (mul+add) | Fused (FMA) | Speedup |
+|------------|-------------------|-------------|---------|
+| 1K | 0.009 ms | 0.006 ms | 1.5x |
+| 10K | 0.009 ms | 0.006 ms | 1.5x |
+| 100K | 0.009 ms | 0.006 ms | 1.5x |
+| 1M | 0.013 ms | 0.008 ms | 1.6x |
+| 10M | 0.094 ms | 0.058 ms | 1.6x |
+| 100M | 0.861 ms | 0.527 ms | 1.6x |
+
+### Key Findings
+
+1. **Consistent 1.5-1.6x speedup from fusion**
+   - Benefit is uniform across all workload sizes
+   - Fusion always wins
+
+2. **Small workloads (≤100K): 1.5x speedup**
+   - Double kernel launch overhead (separate has 2 launches vs 1)
+   - Minimal computation time (~0.009 ms baseline for separate)
+   - Fused eliminates one launch
+
+3. **Large workloads (≥1M): 1.6x speedup**
+   - Memory traffic dominates
+   - Separate must write intermediate result (temp) to global memory
+   - Fused keeps intermediate value in registers
+   - Saves bandwidth: no temp buffer write/read
+
+4. **No sync needed between kernels**
+   - Initially tested with `cudaDeviceSynchronize()` between mul and add
+   - Removed it - kernels on same stream auto-order
+   - Separate mode improved ~1.6x from removing unnecessary sync
+
+### Why Fusion Wins
+
+**Fused kernel benefits:**
+- ✅ Single kernel launch (vs 2 launches)
+- ✅ Intermediate value stays in registers (no memory traffic)
+- ✅ Better instruction pipelining
+- ✅ Lower scheduling overhead
+
+**Separate kernel overhead:**
+- ❌ Two kernel launches per iteration
+- ❌ Must write temp result to global memory
+- ❌ Must read temp result back for second kernel
+- ❌ Double the memory bandwidth usage
+
+### Performance Analysis
+
+For 100M elements:
+- Fused: 0.527 ms
+- Separate: 0.861 ms
+- Extra cost: 0.334 ms for intermediate memory traffic
+
+**Memory traffic calculation:**
+- Temp buffer: 100M × 4 bytes = 400 MB
+- Write + Read = 800 MB total
+- Time: 0.334 ms
+- Implied bandwidth: 800 MB / 0.334 ms = **2.4 GB/s**
+
+This is well below peak bandwidth, suggesting the overhead comes from:
+- Kernel launch latency (~10-20 μs each)
+- Memory access latency
+- Scheduler overhead
+
+### Recommendations
+
+1. **Always fuse operations when possible**
+   - Consistent 1.5-1.6x speedup
+   - No downsides
+
+2. **Kernel fusion is critical for:**
+   - Complex operations with intermediate results
+   - Compute pipelines (multiply, add, divide chains)
+   - Image/signal processing filters
+
+3. **Don't use cudaDeviceSynchronize() between kernels**
+   - Kernels on same stream execute in order automatically
+   - Sync only when CPU needs to access results
+
+---
+
 *Last Updated: 2025-12-31*
