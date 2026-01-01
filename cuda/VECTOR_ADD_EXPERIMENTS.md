@@ -249,4 +249,104 @@ This is well below peak bandwidth, suggesting the overhead comes from:
 
 ---
 
-*Last Updated: 2025-12-31*
+## Experiment 3: Triton vs CUDA Performance
+
+**Question:** How does Triton's Python-based GPU programming compare to hand-written CUDA for simple vector operations?
+
+**Setup:**
+- Operation: VMA fused multiply-add `d[i] = a[i] * b[i] + c[i]`
+- CUDA: Optimal 128 threads/block, hand-written kernel
+- Triton: Auto-tuned BLOCK_SIZE (tested 256, 512, 1024, 2048), JIT compiled
+- Iterations: 100-1000 runs per configuration
+
+### Results
+
+| Array Size | CUDA (128 threads) | Triton (auto-tuned) | Slowdown |
+|------------|-------------------|---------------------|----------|
+| 1M | 0.011 ms | 0.037 ms | **3.4x** |
+| 10M | 0.058 ms | 0.088 ms | **1.5x** |
+| 100M | 0.521 ms | 0.540 ms | **1.04x** (4% slower) |
+
+### Key Findings
+
+1. **Overhead is fixed, not proportional to data size**
+   - Small arrays (1M): 3.4x slower - framework overhead dominates
+   - Large arrays (100M): Only 4% slower - kernel execution dominates
+   - Triton has ~0.02 ms fixed overhead (launch, PyTorch tensors, JIT)
+
+2. **Performance gap narrows with scale**
+   - At 100M elements, Triton nearly matches CUDA
+   - For large-scale ML workloads, Triton is competitive
+   - For small operations, CUDA has clear advantage
+
+3. **Code complexity comparison**
+   - CUDA VMA kernel: ~40 lines (kernel + host code in vector.cu)
+   - Triton VMA kernel: ~20 lines with auto-tuning
+   - **2x simpler code** for 1.04-3.4x performance cost
+
+4. **Auto-tuning works**
+   - Triton tested 4 BLOCK_SIZE values (256, 512, 1024, 2048)
+   - Selected optimal configuration automatically
+   - Compilation details: 128 CUDA threads (4 warps), BLOCK_SIZE=512-1024
+
+### Triton Compilation Details
+
+**What Triton compiled to:**
+- CUDA threads/block: 128 (4 warps)
+- BLOCK_SIZE: 512-1024 elements
+- Elements/thread: 4-8 (automatic vectorization)
+- Registers/thread: Auto-optimized by compiler
+
+**Comparison to CUDA:**
+- CUDA: 256 threads/block, 1 element/thread, 39,063 blocks
+- Triton: 128 threads/block, 8 elements/thread, 9,766 blocks
+- Fewer blocks but more work per thread
+
+### Industry Context
+
+Based on recent benchmarks (2024-2026):
+- **Complex operations** (Flash Attention, matmul): Triton achieves 76-95% of CUDA performance
+- **Simple element-wise ops**: Triton typically 25-100% of CUDA (highly variable)
+- **Key insight:** "Triton's block-based abstraction may not be particularly helpful for embarrassingly parallel (element-wise) computations"
+
+Our results align with industry findings: simple vector operations show Triton overhead, but gap closes for larger workloads.
+
+### When to Use Which
+
+**Use CUDA when:**
+- Simple element-wise operations needing peak performance
+- Small data sizes where launch overhead matters
+- Every microsecond counts
+- You have CUDA expertise
+
+**Use Triton when:**
+- Complex fused kernels (multiple operations combined)
+- Large-scale ML workloads (overhead amortized)
+- Rapid prototyping and iteration
+- Team lacks deep CUDA expertise
+- Code maintainability > absolute performance
+
+**Use PyTorch built-ins when:**
+- Standard operations already optimized
+- Don't need custom kernels
+
+### Recommendations
+
+1. **For learning:** Implement both CUDA and Triton
+   - CUDA teaches low-level GPU programming
+   - Triton teaches modern ML kernel development
+   - Understanding trade-offs is valuable
+
+2. **For production:**
+   - Simple ops: Use PyTorch or CUDA
+   - Complex ops: Triton is excellent
+   - Measure before optimizing
+
+3. **Performance scaling:**
+   - If workload < 1M elements: CUDA advantage significant
+   - If workload > 100M elements: Triton nearly equivalent
+   - Fixed overhead amortizes at scale
+
+---
+
+*Last Updated: 2026-01-01*
