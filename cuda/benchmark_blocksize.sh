@@ -16,7 +16,7 @@ for size in 10000 100000 1000000 10000000 100000000; do
 
     for block in 1 2 4 8 16 32 64 128 256 512 1024; do
         echo -n "Size: $size_name, Block: $block ... "
-        median=$(./vector_add -n $size -b $block 2>&1 | grep "Median:" | awk '{print $2}')
+        median=$(./vector -n $size -b $block 2>&1 | grep "Median:" | awk '{print $2}')
         echo "$median"
     done
 done

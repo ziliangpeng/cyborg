@@ -3,8 +3,8 @@
 # CUDA compiler
 NVCC = nvcc
 
-# Compiler flags
-NVCC_FLAGS = -O2 -arch=sm_90
+# Compiler flags (can be overridden: make NVCC_FLAGS="-O2 -arch=sm_86")
+NVCC_FLAGS ?= -O2 -arch=sm_90
 
 # Targets
 TARGETS = vector mem_benchmark
@@ -49,7 +49,7 @@ clean:
 # Check if CUDA is available
 check:
 	@echo "Checking CUDA installation..."
-	@which nvcc || echo "ERROR: nvcc not found. Please install CUDA toolkit."
-	@nvcc --version || true
+	@which nvcc >/dev/null || (echo "ERROR: nvcc not found. Please install CUDA toolkit." && exit 1)
+	@nvcc --version
 
 .PHONY: all run test clean check

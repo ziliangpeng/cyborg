@@ -9,6 +9,10 @@ void allocateAndInitVector(float **h_vec, int n) {
 
     // Allocate host memory
     *h_vec = (float*)malloc(bytes);
+    if (!*h_vec) {
+        fprintf(stderr, "Failed to allocate host memory (%zu bytes)\n", bytes);
+        exit(EXIT_FAILURE);
+    }
 
     // Initialize with random values
     for (int i = 0; i < n; i++) {

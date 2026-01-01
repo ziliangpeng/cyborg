@@ -145,26 +145,28 @@ int main(int argc, char *argv[]) {
     // Benchmark Host -> Device transfers
     printf("\n--- Host -> Device Transfer ---\n");
     float h2d_total = 0;
-    for (int i = 0; i < iterations; i++) {
-        cudaEvent_t start, stop;
-        cudaEventCreate(&start);
-        cudaEventCreate(&stop);
 
-        cudaEventRecord(start);
+    // Create events once outside loop to avoid overhead
+    cudaEvent_t h2d_start, h2d_stop;
+    cudaEventCreate(&h2d_start);
+    cudaEventCreate(&h2d_stop);
+
+    for (int i = 0; i < iterations; i++) {
+        cudaEventRecord(h2d_start);
         cudaCheckError(cudaMemcpy(d_data, h_data, bytes, cudaMemcpyHostToDevice));
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
+        cudaEventRecord(h2d_stop);
+        cudaEventSynchronize(h2d_stop);
 
         float time_ms;
-        cudaEventElapsedTime(&time_ms, start, stop);
+        cudaEventElapsedTime(&time_ms, h2d_start, h2d_stop);
         h2d_total += time_ms;
 
         float bandwidth_gbs = (bytes / (1024.0f * 1024.0f * 1024.0f)) / (time_ms / 1000.0f);
         printf("  Iter %2d: %.3f ms -> %.2f GB/s\n", i + 1, time_ms, bandwidth_gbs);
-
-        cudaEventDestroy(start);
-        cudaEventDestroy(stop);
     }
+
+    cudaEventDestroy(h2d_start);
+    cudaEventDestroy(h2d_stop);
     float h2d_avg = h2d_total / iterations;
     float h2d_bandwidth = (bytes / (1024.0f * 1024.0f * 1024.0f)) / (h2d_avg / 1000.0f);
     printf("  Average: %.3f ms -> %.2f GB/s\n", h2d_avg, h2d_bandwidth);
@@ -172,26 +174,28 @@ int main(int argc, char *argv[]) {
     // Benchmark Device -> Host transfers
     printf("\n--- Device -> Host Transfer ---\n");
     float d2h_total = 0;
-    for (int i = 0; i < iterations; i++) {
-        cudaEvent_t start, stop;
-        cudaEventCreate(&start);
-        cudaEventCreate(&stop);
 
-        cudaEventRecord(start);
+    // Create events once outside loop to avoid overhead
+    cudaEvent_t d2h_start, d2h_stop;
+    cudaEventCreate(&d2h_start);
+    cudaEventCreate(&d2h_stop);
+
+    for (int i = 0; i < iterations; i++) {
+        cudaEventRecord(d2h_start);
         cudaCheckError(cudaMemcpy(h_data, d_data, bytes, cudaMemcpyDeviceToHost));
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
+        cudaEventRecord(d2h_stop);
+        cudaEventSynchronize(d2h_stop);
 
         float time_ms;
-        cudaEventElapsedTime(&time_ms, start, stop);
+        cudaEventElapsedTime(&time_ms, d2h_start, d2h_stop);
         d2h_total += time_ms;
 
         float bandwidth_gbs = (bytes / (1024.0f * 1024.0f * 1024.0f)) / (time_ms / 1000.0f);
         printf("  Iter %2d: %.3f ms -> %.2f GB/s\n", i + 1, time_ms, bandwidth_gbs);
-
-        cudaEventDestroy(start);
-        cudaEventDestroy(stop);
     }
+
+    cudaEventDestroy(d2h_start);
+    cudaEventDestroy(d2h_stop);
     float d2h_avg = d2h_total / iterations;
     float d2h_bandwidth = (bytes / (1024.0f * 1024.0f * 1024.0f)) / (d2h_avg / 1000.0f);
     printf("  Average: %.3f ms -> %.2f GB/s\n", d2h_avg, d2h_bandwidth);

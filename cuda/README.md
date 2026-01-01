@@ -39,7 +39,7 @@ make check
 make
 
 # Run it
-./vector_add
+./vector
 
 # Or compile and run in one command
 make run
@@ -51,11 +51,11 @@ make clean
 ### Manual compilation
 
 ```bash
-nvcc -O2 -arch=sm_70 vector_add.cu -o vector_add
-./vector_add
+nvcc -O2 -arch=sm_90 vector.cu vector_kernels.cu vector_init.cu -o vector
+./vector
 ```
 
-Note: You may need to adjust `-arch=sm_70` based on your GPU's compute capability.
+Note: You may need to adjust `-arch=sm_90` based on your GPU's compute capability.
 
 ## Expected output
 
