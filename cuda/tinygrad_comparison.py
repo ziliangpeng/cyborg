@@ -5,9 +5,10 @@ Demonstrates abstraction gap and performance trade-offs.
 """
 
 import time
+
 import numpy as np
-from tinygrad.tensor import Tensor
 from tinygrad import Device
+from tinygrad.tensor import Tensor
 
 # Ensure GPU usage
 Device.DEFAULT = "CUDA"
@@ -19,7 +20,7 @@ def benchmark(fn, *args, iterations=1000, warmup=100):
     """
     print(f"  Warming up ({warmup} iterations)...", end='', flush=True)
     # Warmup - important for JIT compilation
-    for i in range(warmup):
+    for _i in range(warmup):
         result = fn(*args)
         result.realize()  # Force execution (TinyGrad is lazy)
         # Force synchronization by retrieving a value (ensures GPU work is complete)

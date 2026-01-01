@@ -3,8 +3,8 @@
 Simple script to run CUDA vs TinyGrad comparison and collect results.
 """
 
-import subprocess
 import re
+import subprocess
 
 sizes = [100000, 1000000, 10000000, 100000000]
 size_labels = ["100K", "1M", "10M", "100M"]
@@ -21,7 +21,7 @@ print("-" * 80)
 print(f"{'Size':<10} | {'CUDA Fused':<15} | {'TinyGrad':<15} | {'Slowdown':<10}")
 print("-" * 80)
 
-for size, label in zip(sizes, size_labels):
+for size, label in zip(sizes, size_labels, strict=True):
     # Run CUDA
     cuda_cmd = f"./vector -n {size} --mode vma --fused"
     cuda_output = subprocess.run(cuda_cmd, shell=True, capture_output=True, text=True)
@@ -48,7 +48,7 @@ print("-" * 80)
 print(f"{'Size':<10} | {'CUDA Warp-opt':<15} | {'TinyGrad':<15} | {'Slowdown':<10}")
 print("-" * 80)
 
-for size, label in zip(sizes, size_labels):
+for size, label in zip(sizes, size_labels, strict=True):
     # Run CUDA
     cuda_cmd = f"./reduce -n {size} --method threshold --warp-opt"
     cuda_output = subprocess.run(cuda_cmd, shell=True, capture_output=True, text=True)
@@ -75,7 +75,7 @@ print("-" * 80)
 print(f"{'Size':<10} | {'CUDA Multi-pass':<15} | {'TinyGrad':<15} | {'Slowdown':<10}")
 print("-" * 80)
 
-for size, label in zip(sizes, size_labels):
+for size, label in zip(sizes, size_labels, strict=True):
     # Run CUDA
     cuda_cmd = f"./softmax -n {size} --method multi"
     cuda_output = subprocess.run(cuda_cmd, shell=True, capture_output=True, text=True)
