@@ -6,10 +6,10 @@ Computes: d[i] = a[i] * b[i] + c[i]
 Compare with CUDA implementation in vector.cu --mode vma --fused
 """
 
+import numpy as np
 import torch
 import triton
 import triton.language as tl
-import numpy as np
 
 
 @triton.autotune(
@@ -79,7 +79,8 @@ def vector_fma_triton(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor):
 
     # Calculate grid size (number of programs to launch)
     # Triton autotune will try different BLOCK_SIZE values
-    grid = lambda meta: (triton.cdiv(n, meta["BLOCK_SIZE"]),)
+    def grid(meta):
+        return (triton.cdiv(n, meta["BLOCK_SIZE"]),)
 
     # Launch kernel (autotune picks optimal BLOCK_SIZE)
     vector_fma_kernel[grid](a, b, c, d, n)
@@ -107,21 +108,21 @@ def print_kernel_metadata():
         # Try to get additional metadata if available
         try:
             print(f"  Registers/thread:   {compiled_kernel.n_regs}")
-        except:
-            print(f"  Registers/thread:   (not available)")
+        except AttributeError:
+            print("  Registers/thread:   (not available)")
 
         try:
             print(f"  Shared memory:      {compiled_kernel.shared} bytes")
-        except:
-            print(f"  Shared memory:      (not available)")
+        except AttributeError:
+            print("  Shared memory:      (not available)")
 
         # Show how Triton mapped BLOCK_SIZE to CUDA threads
         # Config key contains the BLOCK_SIZE
-        print(f"\n  Triton → CUDA Mapping:")
+        print("\n  Triton → CUDA Mapping:")
         print(f"    Configs tested:    {len(vector_fma_kernel.cache)}")
 
         # Print all tested configs (if autotune ran multiple)
-        print(f"\n  Tested configurations:")
+        print("\n  Tested configurations:")
         for i, (cfg, kern) in enumerate(cache_items):
             cuda_t = kern.num_warps * 32
             # Try to extract BLOCK_SIZE from config kwargs
@@ -130,8 +131,8 @@ def print_kernel_metadata():
                 block_sz = cfg.kwargs["BLOCK_SIZE"]
             print(f"    Config {i + 1}: BLOCK_SIZE={block_sz}, warps={kern.num_warps}, threads={cuda_t}")
 
-        print(f"\n  Note: Triton only caches winning config after autotune")
-        print(f"        All 4 configs were benchmarked during warmup")
+        print("\n  Note: Triton only caches winning config after autotune")
+        print("        All 4 configs were benchmarked during warmup")
 
     else:
         print("  No compiled kernel found in cache")
@@ -148,10 +149,10 @@ def benchmark_triton(n: int, num_iterations: int = 1000):
         n: Array size
         num_iterations: Number of timing runs
     """
-    print(f"Triton Vector FMA Benchmark")
+    print("Triton Vector FMA Benchmark")
     print(f"Array size: {n:,} elements")
     print(f"Iterations: {num_iterations}")
-    print(f"Auto-tuning BLOCK_SIZE...\n")
+    print("Auto-tuning BLOCK_SIZE...\n")
 
     # Allocate GPU tensors
     a = torch.rand(n, device="cuda", dtype=torch.float32)
@@ -184,9 +185,9 @@ def benchmark_triton(n: int, num_iterations: int = 1000):
 
     # Calculate statistics
     timings = np.array(timings)
-    print(f"\n===========================================")
+    print("\n===========================================")
     print(f"Kernel Execution Statistics ({num_iterations} runs):")
-    print(f"===========================================")
+    print("===========================================")
     print(f"  Min:         {np.min(timings):.3f} ms")
     print(f"  Max:         {np.max(timings):.3f} ms")
     print(f"  Mean:        {np.mean(timings):.3f} ms")
@@ -194,14 +195,14 @@ def benchmark_triton(n: int, num_iterations: int = 1000):
     print(f"  P90:         {np.percentile(timings, 90):.3f} ms")
     print(f"  P95:         {np.percentile(timings, 95):.3f} ms")
     print(f"  P99:         {np.percentile(timings, 99):.3f} ms")
-    print(f"===========================================\n")
+    print("===========================================\n")
 
     # Verify correctness
     expected = a * b + c
     if torch.allclose(d, expected, rtol=1e-5):
         print(f"✓ Verification PASSED - All {n:,} elements correct")
     else:
-        print(f"✗ Verification FAILED")
+        print("✗ Verification FAILED")
         max_diff = torch.max(torch.abs(d - expected)).item()
         print(f"  Max difference: {max_diff}")
 
