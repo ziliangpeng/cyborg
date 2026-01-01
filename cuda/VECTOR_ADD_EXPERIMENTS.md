@@ -205,6 +205,28 @@ This is well below peak bandwidth, suggesting the overhead comes from:
 - Memory access latency
 - Scheduler overhead
 
+### Vectorized Loads (float4) Results
+
+**Question:** Does using float4 vectorized loads improve fused FMA performance?
+
+**Test:** Compare regular FMA vs float4 FMA (each thread processes 4 elements at once)
+
+| Array Size | Regular FMA | float4 FMA | Improvement |
+|------------|-------------|------------|-------------|
+| 1M | 0.008 ms | 0.008 ms | 0% (no difference) |
+| 10M | 0.058 ms | 0.057 ms | 2% faster |
+| 100M | 0.527 ms | 0.513 ms | 3% faster |
+
+**Finding:** Vectorization provides **minimal benefit (0-3%)** for this kernel.
+
+**Why so little improvement?**
+1. **Already memory-bound**: Memory bandwidth is the bottleneck, not instruction count
+2. **Compiler auto-vectorization**: Modern nvcc likely vectorizes automatically
+3. **H100 memory system**: Advanced caching/prefetching reduces explicit vectorization benefit
+4. **Simple operation**: FMA is already highly optimized
+
+**Conclusion:** For simple memory-bound kernels on modern GPUs, explicit float4 vectorization adds complexity without significant performance gain. The compiler already does a good job.
+
 ### Recommendations
 
 1. **Always fuse operations when possible**
@@ -219,6 +241,11 @@ This is well below peak bandwidth, suggesting the overhead comes from:
 3. **Don't use cudaDeviceSynchronize() between kernels**
    - Kernels on same stream execute in order automatically
    - Sync only when CPU needs to access results
+
+4. **Vectorization (float4) has diminishing returns:**
+   - Minimal benefit for simple memory-bound kernels
+   - Modern compilers auto-vectorize effectively
+   - Only consider for complex compute-bound operations or older hardware
 
 ---
 

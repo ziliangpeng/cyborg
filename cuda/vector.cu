@@ -16,12 +16,14 @@ void print_usage(const char *program_name) {
     printf("  -b, --block-size N   Set threads per block (default: 256)\n");
     printf("  -m, --mode MODE      Computation mode: 'add' or 'vma' (default: add)\n");
     printf("  -f, --fused          Use fused kernel for VMA (default: separate)\n");
+    printf("  -V, --vectorized     Use float4 vectorized kernel (requires --fused, VMA mode)\n");
     printf("  -v, --verify         Enable result verification\n");
     printf("  -h, --help           Show this help message\n");
     printf("\nModes:\n");
     printf("  add: c = a + b (2 inputs, 1 output)\n");
     printf("  vma: d = (a * b) + c (3 inputs, 1 output)\n");
     printf("       --fused: use single FMA kernel\n");
+    printf("       --fused --vectorized: use float4 FMA kernel (4 elements/thread)\n");
     printf("       (default): use separate mul then add kernels\n");
 }
 
@@ -148,9 +150,11 @@ void add_op(int n, int threadsPerBlock, bool verify) {
 }
 
 // VMA operation: d = (a * b) + c
-void vma_op(int n, int threadsPerBlock, bool verify, bool fused) {
+void vma_op(int n, int threadsPerBlock, bool verify, bool fused, bool vectorized) {
     printf("Vector operation: vma mode on %d elements\n", n);
-    if (fused) {
+    if (fused && vectorized) {
+        printf("Using fused FMA kernel with float4 vectorization\n");
+    } else if (fused) {
         printf("Using fused FMA kernel\n");
     } else {
         printf("Using separate multiply + add kernels\n");
@@ -202,7 +206,12 @@ void vma_op(int n, int threadsPerBlock, bool verify, bool fused) {
     for (int i = 0; i < num_iterations; i++) {
         cudaEventRecord(kernel_start);
 
-        if (fused) {
+        if (fused && vectorized) {
+            // VMA vectorized fused: each thread processes 4 elements
+            int n_vec = n / 4;
+            int blocksPerGrid_vec = (n_vec + threadsPerBlock - 1) / threadsPerBlock;
+            vectorFMA_float4<<<blocksPerGrid_vec, threadsPerBlock>>>(d_a, d_b, d_c, d_d, n);
+        } else if (fused) {
             // VMA fused mode: d = (a * b) + c
             vectorFMA<<<blocksPerGrid, threadsPerBlock>>>(d_a, d_b, d_c, d_d, n);
         } else {
@@ -303,6 +312,7 @@ int main(int argc, char *argv[]) {
     // Parse command line arguments
     bool verify = false;
     bool fused = false;
+    bool vectorized = false;
     const char *mode = "add";  // Default mode
     int n = 1 << 20;  // Default: 1 million elements
     // Default: 256 threads per block (NVIDIA recommended, 8 warps, optimal for most kernels)
@@ -313,13 +323,14 @@ int main(int argc, char *argv[]) {
         {"block-size", required_argument, 0, 'b'},
         {"mode",       required_argument, 0, 'm'},
         {"fused",      no_argument,       0, 'f'},
+        {"vectorized", no_argument,       0, 'V'},
         {"verify",     no_argument,       0, 'v'},
         {"help",       no_argument,       0, 'h'},
         {0, 0, 0, 0}
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "n:b:m:fvh", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "n:b:m:fVvh", long_options, NULL)) != -1) {
         switch (opt) {
             case 'n':
                 n = atoi(optarg);
@@ -345,6 +356,9 @@ int main(int argc, char *argv[]) {
             case 'f':
                 fused = true;
                 break;
+            case 'V':
+                vectorized = true;
+                break;
             case 'v':
                 verify = true;
                 break;
@@ -357,6 +371,22 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // Validate flags
+    if (vectorized && !fused) {
+        fprintf(stderr, "Error: --vectorized requires --fused flag\n");
+        return 1;
+    }
+
+    if (vectorized && strcmp(mode, "vma") != 0) {
+        fprintf(stderr, "Error: --vectorized only supported for VMA mode\n");
+        return 1;
+    }
+
+    if (vectorized && n % 4 != 0) {
+        fprintf(stderr, "Error: --vectorized requires array size to be multiple of 4\n");
+        return 1;
+    }
+
     // Initialize random seed
     srand(time(NULL));
 
@@ -364,7 +394,7 @@ int main(int argc, char *argv[]) {
     if (strcmp(mode, "add") == 0) {
         add_op(n, threadsPerBlock, verify);
     } else if (strcmp(mode, "vma") == 0) {
-        vma_op(n, threadsPerBlock, verify, fused);
+        vma_op(n, threadsPerBlock, verify, fused, vectorized);
     } else {
         fprintf(stderr, "Error: operation '%s' is not supported\n", mode);
         return 1;
