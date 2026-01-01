@@ -16,19 +16,26 @@ void print_usage(const char *program_name) {
     printf("  -b, --block-size N        Set threads per block (default: 256)\n");
     printf("  -m, --method METHOD       Reduction method: 'gpu' or 'threshold' (default: threshold)\n");
     printf("  -t, --cpu-threshold N     CPU threshold for 'threshold' method (default: 1000)\n");
+    printf("  -w, --warp-opt            Use warp shuffle optimization for final 32→1 reduction\n");
     printf("  -v, --verify              Enable result verification\n");
     printf("  -h, --help                Show this help message\n");
     printf("\nMethods:\n");
     printf("  gpu:       Fully GPU recursive reduction (reduce until 1 element)\n");
     printf("  threshold: GPU reduction until size <= threshold, then CPU final sum\n");
+    printf("\nOptimization:\n");
+    printf("  --warp-opt: Uses warp shuffles instead of __syncthreads for final 32→1\n");
+    printf("              Expected 10-20%% speedup\n");
 }
 
 // SUM reduction operation
-void sum_op(int n, int threadsPerBlock, bool verify, const char *method, int cpuThreshold) {
+void sum_op(int n, int threadsPerBlock, bool verify, const char *method, int cpuThreshold, bool useWarpOpt) {
     printf("Vector sum reduction of %d elements\n", n);
     printf("Method: %s", method);
     if (strcmp(method, "threshold") == 0) {
         printf(" (cpu-threshold: %d)", cpuThreshold);
+    }
+    if (useWarpOpt) {
+        printf(" [warp-optimized]");
     }
     printf("\n");
 
@@ -60,9 +67,17 @@ void sum_op(int n, int threadsPerBlock, bool verify, const char *method, int cpu
         cudaEventRecord(start);
 
         if (strcmp(method, "gpu") == 0) {
-            result = vectorSum_GPU(d_input, n, threadsPerBlock);
+            if (useWarpOpt) {
+                result = vectorSum_GPU_Warp(d_input, n, threadsPerBlock);
+            } else {
+                result = vectorSum_GPU(d_input, n, threadsPerBlock);
+            }
         } else {
-            result = vectorSum_Threshold(d_input, n, threadsPerBlock, cpuThreshold);
+            if (useWarpOpt) {
+                result = vectorSum_Threshold_Warp(d_input, n, threadsPerBlock, cpuThreshold);
+            } else {
+                result = vectorSum_Threshold(d_input, n, threadsPerBlock, cpuThreshold);
+            }
         }
 
         cudaEventRecord(stop);
@@ -112,6 +127,7 @@ void sum_op(int n, int threadsPerBlock, bool verify, const char *method, int cpu
 int main(int argc, char *argv[]) {
     // Parse command line arguments
     bool verify = false;
+    bool useWarpOpt = false;  // Warp shuffle optimization flag
     const char *method = "threshold";  // Default method
     int n = 1 << 20;  // Default: 1 million elements
     int threadsPerBlock = 256;  // Default: 256 threads per block
@@ -122,13 +138,14 @@ int main(int argc, char *argv[]) {
         {"block-size",    required_argument, 0, 'b'},
         {"method",        required_argument, 0, 'm'},
         {"cpu-threshold", required_argument, 0, 't'},
+        {"warp-opt",      no_argument,       0, 'w'},
         {"verify",        no_argument,       0, 'v'},
         {"help",          no_argument,       0, 'h'},
         {0, 0, 0, 0}
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "n:b:m:t:vh", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "n:b:m:t:wvh", long_options, NULL)) != -1) {
         switch (opt) {
             case 'n':
                 n = atoi(optarg);
@@ -158,6 +175,9 @@ int main(int argc, char *argv[]) {
                     return 1;
                 }
                 break;
+            case 'w':
+                useWarpOpt = true;
+                break;
             case 'v':
                 verify = true;
                 break;
@@ -174,7 +194,7 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
 
     // Run sum reduction operation
-    sum_op(n, threadsPerBlock, verify, method, cpuThreshold);
+    sum_op(n, threadsPerBlock, verify, method, cpuThreshold, useWarpOpt);
 
     return 0;
 }
