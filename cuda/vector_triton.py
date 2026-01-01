@@ -14,12 +14,12 @@ import numpy as np
 
 @triton.autotune(
     configs=[
-        triton.Config({'BLOCK_SIZE': 256}),
-        triton.Config({'BLOCK_SIZE': 512}),
-        triton.Config({'BLOCK_SIZE': 1024}),
-        triton.Config({'BLOCK_SIZE': 2048}),
+        triton.Config({"BLOCK_SIZE": 256}),
+        triton.Config({"BLOCK_SIZE": 512}),
+        triton.Config({"BLOCK_SIZE": 1024}),
+        triton.Config({"BLOCK_SIZE": 2048}),
     ],
-    key=['n'],  # Auto-tune based on array size
+    key=["n"],  # Auto-tune based on array size
 )
 @triton.jit
 def vector_fma_kernel(
@@ -27,7 +27,7 @@ def vector_fma_kernel(
     b_ptr,  # Pointer to input vector b
     c_ptr,  # Pointer to input vector c
     d_ptr,  # Pointer to output vector d
-    n,      # Number of elements
+    n,  # Number of elements
     BLOCK_SIZE: tl.constexpr,
 ):
     """
@@ -79,7 +79,7 @@ def vector_fma_triton(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor):
 
     # Calculate grid size (number of programs to launch)
     # Triton autotune will try different BLOCK_SIZE values
-    grid = lambda meta: (triton.cdiv(n, meta['BLOCK_SIZE']),)
+    grid = lambda meta: (triton.cdiv(n, meta["BLOCK_SIZE"]),)
 
     # Launch kernel (autotune picks optimal BLOCK_SIZE)
     vector_fma_kernel[grid](a, b, c, d, n)
@@ -125,10 +125,10 @@ def print_kernel_metadata():
         for i, (cfg, kern) in enumerate(cache_items):
             cuda_t = kern.num_warps * 32
             # Try to extract BLOCK_SIZE from config kwargs
-            block_sz = 'unknown'
-            if hasattr(cfg, 'kwargs') and 'BLOCK_SIZE' in cfg.kwargs:
-                block_sz = cfg.kwargs['BLOCK_SIZE']
-            print(f"    Config {i+1}: BLOCK_SIZE={block_sz}, warps={kern.num_warps}, threads={cuda_t}")
+            block_sz = "unknown"
+            if hasattr(cfg, "kwargs") and "BLOCK_SIZE" in cfg.kwargs:
+                block_sz = cfg.kwargs["BLOCK_SIZE"]
+            print(f"    Config {i + 1}: BLOCK_SIZE={block_sz}, warps={kern.num_warps}, threads={cuda_t}")
 
         print(f"\n  Note: Triton only caches winning config after autotune")
         print(f"        All 4 configs were benchmarked during warmup")
@@ -154,9 +154,9 @@ def benchmark_triton(n: int, num_iterations: int = 1000):
     print(f"Auto-tuning BLOCK_SIZE...\n")
 
     # Allocate GPU tensors
-    a = torch.rand(n, device='cuda', dtype=torch.float32)
-    b = torch.rand(n, device='cuda', dtype=torch.float32)
-    c = torch.rand(n, device='cuda', dtype=torch.float32)
+    a = torch.rand(n, device="cuda", dtype=torch.float32)
+    b = torch.rand(n, device="cuda", dtype=torch.float32)
+    c = torch.rand(n, device="cuda", dtype=torch.float32)
 
     # Warmup (triggers JIT compilation and auto-tuning)
     print("Warming up (JIT compilation + auto-tuning)...")
@@ -212,7 +212,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Triton Vector FMA Benchmark with Auto-tuning',
+        description="Triton Vector FMA Benchmark with Auto-tuning",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -222,12 +222,10 @@ Examples:
 Compare with CUDA:
   ./vector -n 1000000 --mode vma --fused
   python vector_triton.py -n 1000000
-        """
+        """,
     )
-    parser.add_argument('-n', '--size', type=int, default=1000000,
-                        help='Array size (default: 1000000)')
-    parser.add_argument('-i', '--iterations', type=int, default=1000,
-                        help='Number of iterations (default: 1000)')
+    parser.add_argument("-n", "--size", type=int, default=1000000, help="Array size (default: 1000000)")
+    parser.add_argument("-i", "--iterations", type=int, default=1000, help="Number of iterations (default: 1000)")
 
     args = parser.parse_args()
 
