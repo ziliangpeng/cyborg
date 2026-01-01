@@ -40,5 +40,5 @@ void freeHostVector(float *h_vec) {
 }
 
 void freeDeviceVector(float *d_vec) {
-    cudaFree(d_vec);
+    cudaCheckError(cudaFree(d_vec));
 }

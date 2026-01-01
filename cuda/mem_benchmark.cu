@@ -109,8 +109,8 @@ int main(int argc, char *argv[]) {
     // Measure allocation time
     float *h_data;
     cudaEvent_t alloc_start, alloc_stop;
-    cudaEventCreate(&alloc_start);
-    cudaEventCreate(&alloc_stop);
+    cudaCheckError(cudaEventCreate(&alloc_start));
+    cudaCheckError(cudaEventCreate(&alloc_stop));
 
     printf("Allocating host memory...\n");
     cudaEventRecord(alloc_start);
@@ -148,8 +148,8 @@ int main(int argc, char *argv[]) {
 
     // Create events once outside loop to avoid overhead
     cudaEvent_t h2d_start, h2d_stop;
-    cudaEventCreate(&h2d_start);
-    cudaEventCreate(&h2d_stop);
+    cudaCheckError(cudaEventCreate(&h2d_start));
+    cudaCheckError(cudaEventCreate(&h2d_stop));
 
     for (int i = 0; i < iterations; i++) {
         cudaEventRecord(h2d_start);
@@ -177,8 +177,8 @@ int main(int argc, char *argv[]) {
 
     // Create events once outside loop to avoid overhead
     cudaEvent_t d2h_start, d2h_stop;
-    cudaEventCreate(&d2h_start);
-    cudaEventCreate(&d2h_stop);
+    cudaCheckError(cudaEventCreate(&d2h_start));
+    cudaCheckError(cudaEventCreate(&d2h_stop));
 
     for (int i = 0; i < iterations; i++) {
         cudaEventRecord(d2h_start);

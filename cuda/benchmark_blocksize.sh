@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipifail
 # Benchmark block size performance across different array sizes
 
 echo "Running block size experiments..."

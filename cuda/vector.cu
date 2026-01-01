@@ -57,12 +57,16 @@ void add_op(int n, int threadsPerBlock, bool verify) {
 
     // Create CUDA events for timing
     cudaEvent_t kernel_start, kernel_stop;
-    cudaEventCreate(&kernel_start);
-    cudaEventCreate(&kernel_stop);
+    cudaCheckError(cudaEventCreate(&kernel_start));
+    cudaCheckError(cudaEventCreate(&kernel_stop));
 
     // Run kernel multiple times to collect statistics
     const int num_iterations = 1000;
     float *timings = (float*)malloc(num_iterations * sizeof(float));
+    if (timings == NULL) {
+        fprintf(stderr, "Failed to allocate timings array\n");
+        exit(EXIT_FAILURE);
+    }
 
     printf("Running kernel %d times to collect statistics...\n", num_iterations);
     for (int i = 0; i < num_iterations; i++) {
@@ -189,12 +193,16 @@ void vma_op(int n, int threadsPerBlock, bool verify, bool fused, bool vectorized
 
     // Create CUDA events for timing
     cudaEvent_t kernel_start, kernel_stop;
-    cudaEventCreate(&kernel_start);
-    cudaEventCreate(&kernel_stop);
+    cudaCheckError(cudaEventCreate(&kernel_start));
+    cudaCheckError(cudaEventCreate(&kernel_stop));
 
     // Run kernel multiple times to collect statistics
     const int num_iterations = 1000;
     float *timings = (float*)malloc(num_iterations * sizeof(float));
+    if (timings == NULL) {
+        fprintf(stderr, "Failed to allocate timings array\n");
+        exit(EXIT_FAILURE);
+    }
 
     // Allocate temp buffer once for separate mode (reuse across iterations)
     float *d_temp = NULL;
