@@ -15,4 +15,8 @@ inline void cudaAssert(cudaError_t code, const char *file, int line) {
     }
 }
 
+// Calculate and print timing statistics (min, max, mean, median, P90, P95, P99)
+// Takes ownership of timings array and frees it
+void calculate_and_print_statistics(float *timings, int num_iterations);
+
 #endif

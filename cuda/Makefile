@@ -13,8 +13,8 @@ TARGETS = vector mem_benchmark
 all: $(TARGETS)
 
 # Build vector from multiple source files
-vector: vector.cu vector_kernels.cu vector_init.cu cuda_utils.h vector_kernels.h vector_init.h
-	$(NVCC) $(NVCC_FLAGS) vector.cu vector_kernels.cu vector_init.cu -o vector
+vector: vector.cu vector_kernels.cu vector_init.cu cuda_utils.cu cuda_utils.h vector_kernels.h vector_init.h
+	$(NVCC) $(NVCC_FLAGS) vector.cu vector_kernels.cu vector_init.cu cuda_utils.cu -o vector
 
 # Build mem_benchmark
 mem_benchmark: mem_benchmark.cu cuda_utils.h
