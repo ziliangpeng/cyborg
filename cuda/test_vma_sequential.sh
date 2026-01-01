@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 # Test VMA fused vs separate sequentially for accuracy
 
 echo "Running VMA tests sequentially for accuracy..."
