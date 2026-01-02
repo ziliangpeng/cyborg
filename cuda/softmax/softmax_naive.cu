@@ -1,6 +1,7 @@
 #include "softmax_naive.h"
 #include "cuda_utils.h"
 #include "reduce_kernels.h"
+#include "elementwise_kernels.h"
 #include <cuda_runtime.h>
 #include <stdlib.h>
 #include <math.h>
@@ -120,14 +121,7 @@ __global__ void expSumReductionKernel(const float *input, float *partialSums, in
     }
 }
 
-// Kernel: Normalize by dividing exp(x) by sum (naive - no max subtraction)
-__global__ void naiveNormalizeKernel(const float *input, float sum_exp, float *output, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < n) {
-        output[idx] = expf(input[idx]) / sum_exp;
-    }
-}
+// Note: naiveNormalizeKernel is now provided by elementwise_kernels.h
 
 // Host function: Naive softmax (demonstrates overflow)
 float softmax_Naive(const float *d_input, float *d_output, int n, int threadsPerBlock) {

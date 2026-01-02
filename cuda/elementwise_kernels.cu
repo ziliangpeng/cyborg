@@ -69,7 +69,17 @@ __global__ void vectorFMA_float4(const float *a, const float *b, const float *c,
 // UNARY ELEMENT-WISE OPERATIONS
 // ============================================================================
 
-// Softmax normalization kernel: output[i] = exp(input[i] - max_val) / sum_exp
+// Naive normalization kernel: output[i] = exp(input[i]) / sum_exp
+// Used by naive softmax (no max subtraction - numerically unstable)
+__global__ void naiveNormalizeKernel(const float *input, float sum_exp, float *output, int n) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (idx < n) {
+        output[idx] = expf(input[idx]) / sum_exp;
+    }
+}
+
+// Stable softmax normalization kernel: output[i] = exp(input[i] - max_val) / sum_exp
 // Shared by multi-pass and fused softmax implementations
 __global__ void softmaxNormalizeKernel(const float *input, float max_val, float sum_exp, float *output, int n) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
