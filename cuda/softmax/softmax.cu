@@ -12,6 +12,7 @@
 #include "softmax_fused2.h"
 #include "softmax_fused1.h"
 #include "softmax_online.h"
+#include "softmax_cub.h"
 #include "vector_init.h"
 
 void print_usage(const char *program_name) {
@@ -19,7 +20,7 @@ void print_usage(const char *program_name) {
     printf("Options:\n");
     printf("  -n, --size N              Set array size (default: 1048576)\n");
     printf("  -b, --block-size N        Set threads per block (default: 256)\n");
-    printf("  -m, --method METHOD       Softmax method: 'naive', 'multi', 'fused3', 'fused2', 'fused1', or 'online' (default: multi)\n");
+    printf("  -m, --method METHOD       Softmax method: 'naive', 'multi', 'fused3', 'fused2', 'fused1', 'online', or 'cub' (default: multi)\n");
     printf("  -v, --verify              Enable result verification\n");
     printf("  -h, --help                Show this help message\n");
     printf("\nMethods:\n");
@@ -29,6 +30,7 @@ void print_usage(const char *program_name) {
     printf("  fused2:  2-kernel fused (cooperative groups, grid sync) [IMPLEMENTED]\n");
     printf("  fused1:  1-kernel fused (single kernel, grid sync, cooperative groups) [SKELETON]\n");
     printf("  online:  Single-pass online algorithm (streaming max/sum) [SKELETON]\n");
+    printf("  cub:     3-kernel with NVIDIA CUB library optimizations [IMPLEMENTED]\n");
 }
 
 // CPU reference implementation for verification (numerically stable)
@@ -113,6 +115,8 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
             softmax_Fused1(d_input, d_output, n, threadsPerBlock);
         } else if (strcmp(method, "online") == 0) {
             softmax_Online(d_input, d_output, n, threadsPerBlock);
+        } else if (strcmp(method, "cub") == 0) {
+            softmax_Cub(d_input, d_output, n, threadsPerBlock);
         }
 
         cudaEventRecord(stop);
@@ -139,6 +143,8 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
             softmax_Fused1(d_input, d_output, n, threadsPerBlock);
         } else if (strcmp(method, "online") == 0) {
             softmax_Online(d_input, d_output, n, threadsPerBlock);
+        } else if (strcmp(method, "cub") == 0) {
+            softmax_Cub(d_input, d_output, n, threadsPerBlock);
         }
         cudaDeviceSynchronize();
 
@@ -249,8 +255,9 @@ int main(int argc, char *argv[]) {
                 method = optarg;
                 if (strcmp(method, "naive") != 0 && strcmp(method, "multi") != 0 &&
                     strcmp(method, "fused3") != 0 && strcmp(method, "fused2") != 0 &&
-                    strcmp(method, "fused1") != 0 && strcmp(method, "online") != 0) {
-                    fprintf(stderr, "Error: method must be 'naive', 'multi', 'fused3', 'fused2', 'fused1', or 'online'\n");
+                    strcmp(method, "fused1") != 0 && strcmp(method, "online") != 0 &&
+                    strcmp(method, "cub") != 0) {
+                    fprintf(stderr, "Error: method must be 'naive', 'multi', 'fused3', 'fused2', 'fused1', 'online', or 'cub'\n");
                     return 1;
                 }
                 break;

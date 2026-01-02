@@ -79,6 +79,18 @@ cuda_library(
     includes = [".."],
 )
 
+# CUB-based softmax implementation (using NVIDIA CUB library)
+cuda_library(
+    name = "softmax_cub",
+    srcs = ["softmax_cub.cu"],
+    hdrs = ["softmax_cub.h"],
+    deps = [
+        "//cuda:cuda_utils",
+        "//cuda:elementwise_kernels",
+    ],
+    includes = [".."],
+)
+
 # ============================================================================
 # Softmax Main Binary
 # ============================================================================
@@ -93,6 +105,7 @@ cuda_binary(
         ":softmax_fused2",
         ":softmax_fused1",
         ":softmax_online",
+        ":softmax_cub",
         "//cuda:cuda_utils",
         "//cuda:vector_init",
     ],
