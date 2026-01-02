@@ -1,19 +1,79 @@
 load("@rules_cuda//cuda:defs.bzl", "cuda_library", "cuda_binary", "cuda_test")
 
 # ============================================================================
-# Softmax Kernels Library
+# Softmax Implementation Libraries (one per approach)
 # ============================================================================
 
+# Naive implementation (numerically unstable)
 cuda_library(
-    name = "softmax_kernels",
-    srcs = ["softmax_kernels.cu"],
-    hdrs = ["softmax_kernels.h"],
+    name = "softmax_naive",
+    srcs = ["softmax_naive.cu"],
+    hdrs = ["softmax_naive.h"],
     deps = [
-        "//cuda:cuda_utils",      # Reference parent shared lib
-        "//cuda:reduce_kernels",  # Reference parent shared lib
+        "//cuda:cuda_utils",
+        "//cuda:reduce_kernels",
     ],
-    includes = [".."],  # Add parent directory to include path
-    visibility = ["//cuda/softmax:__subpackages__"],
+    includes = [".."],
+)
+
+# Multi-pass implementation (stable baseline)
+cuda_library(
+    name = "softmax_multipass",
+    srcs = ["softmax_multipass.cu"],
+    hdrs = ["softmax_multipass.h"],
+    deps = [
+        "//cuda:cuda_utils",
+        "//cuda:reduce_kernels",
+    ],
+    includes = [".."],
+)
+
+# Fused 3-kernel implementation (optimized)
+cuda_library(
+    name = "softmax_fused",
+    srcs = ["softmax_fused.cu"],
+    hdrs = ["softmax_fused.h"],
+    deps = [
+        "//cuda:cuda_utils",
+        "//cuda:reduce_kernels",
+    ],
+    includes = [".."],
+)
+
+# Fused 2-kernel implementation (skeleton)
+cuda_library(
+    name = "softmax_fused2",
+    srcs = ["softmax_fused2.cu"],
+    hdrs = ["softmax_fused2.h"],
+    deps = [
+        "//cuda:cuda_utils",
+        "//cuda:reduce_kernels",
+    ],
+    includes = [".."],
+)
+
+# Fused 1-kernel implementation (skeleton)
+cuda_library(
+    name = "softmax_fused1",
+    srcs = ["softmax_fused1.cu"],
+    hdrs = ["softmax_fused1.h"],
+    deps = [
+        "//cuda:cuda_utils",
+        "//cuda:reduce_kernels",
+    ],
+    includes = [".."],
+)
+
+# Online softmax implementation (skeleton)
+cuda_library(
+    name = "softmax_online",
+    srcs = ["softmax_online.cu"],
+    hdrs = ["softmax_online.h"],
+    deps = [
+        "//cuda:cuda_utils",
+        "//cuda:reduce_kernels",
+    ],
+    includes = [".."],
 )
 
 # ============================================================================
@@ -24,7 +84,12 @@ cuda_binary(
     name = "softmax",
     srcs = ["softmax.cu"],
     deps = [
-        ":softmax_kernels",
+        ":softmax_naive",
+        ":softmax_multipass",
+        ":softmax_fused",
+        ":softmax_fused2",
+        ":softmax_fused1",
+        ":softmax_online",
         "//cuda:cuda_utils",
         "//cuda:vector_init",
     ],
@@ -41,7 +106,7 @@ cuda_test(
     name = "softmax_naive_1k_test",
     srcs = ["softmax.cu"],
     args = ["--size", "1000", "--method", "naive", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
 )
 
@@ -49,7 +114,7 @@ cuda_test(
     name = "softmax_naive_10k_test",
     srcs = ["softmax.cu"],
     args = ["--size", "10000", "--method", "naive", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
 )
 
@@ -58,7 +123,7 @@ cuda_test(
     name = "softmax_multi_1k_test",
     srcs = ["softmax.cu"],
     args = ["--size", "1000", "--method", "multi", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
 )
 
@@ -66,7 +131,7 @@ cuda_test(
     name = "softmax_multi_100k_test",
     srcs = ["softmax.cu"],
     args = ["--size", "100000", "--method", "multi", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
 )
 
@@ -74,7 +139,7 @@ cuda_test(
     name = "softmax_multi_1m_test",
     srcs = ["softmax.cu"],
     args = ["--size", "1000000", "--method", "multi", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
 )
 
@@ -83,7 +148,7 @@ cuda_test(
     name = "softmax_fused_1k_test",
     srcs = ["softmax.cu"],
     args = ["--size", "1000", "--method", "fused", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
 )
 
@@ -91,7 +156,7 @@ cuda_test(
     name = "softmax_fused_100k_test",
     srcs = ["softmax.cu"],
     args = ["--size", "100000", "--method", "fused", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
 )
 
@@ -99,7 +164,7 @@ cuda_test(
     name = "softmax_fused_1m_test",
     srcs = ["softmax.cu"],
     args = ["--size", "1000000", "--method", "fused", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
 )
 
@@ -107,7 +172,7 @@ cuda_test(
     name = "softmax_fused_10m_test",
     srcs = ["softmax.cu"],
     args = ["--size", "10000000", "--method", "fused", "--verify"],
-    deps = [":softmax_kernels", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused", ":softmax_fused2", ":softmax_fused1", ":softmax_online", "//cuda:cuda_utils", "//cuda:vector_init"],
     tags = ["cuda", "gpu"],
     timeout = "moderate",  # Larger test needs more time
 )

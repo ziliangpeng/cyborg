@@ -6,7 +6,12 @@
 #include <getopt.h>
 #include <cuda_runtime.h>
 #include "cuda_utils.h"
-#include "softmax_kernels.h"
+#include "softmax_naive.h"
+#include "softmax_multipass.h"
+#include "softmax_fused.h"
+#include "softmax_fused2.h"
+#include "softmax_fused1.h"
+#include "softmax_online.h"
 #include "vector_init.h"
 
 void print_usage(const char *program_name) {
