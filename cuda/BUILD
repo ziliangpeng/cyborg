@@ -50,6 +50,7 @@ cuda_binary(
         ":vector_init",
         ":vector_kernels",
     ],
+    tags = ["cuda", "gpu"],
 )
 
 # Reduction binary
@@ -61,6 +62,7 @@ cuda_binary(
         ":vector_init",
         ":reduce_kernels",
     ],
+    tags = ["cuda", "gpu"],
 )
 
 # Memory benchmark binary
@@ -68,6 +70,7 @@ cuda_binary(
     name = "mem_benchmark",
     srcs = ["mem_benchmark.cu"],
     deps = [":cuda_utils"],
+    tags = ["cuda", "gpu"],
 )
 
 # ============================================================================
