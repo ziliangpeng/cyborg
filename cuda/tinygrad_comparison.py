@@ -25,7 +25,7 @@ def benchmark(fn, *args, iterations=1000, warmup=100):
         result = fn(*args)
         result.realize()  # Force execution (TinyGrad is lazy)
         # Force synchronization by retrieving a value (ensures GPU work is complete)
-        _ = result.numpy()[0]  # Read first element to force completion
+        _ = result.numpy().flatten()[0]  # Read first element to force completion
     print(" done")
 
     # Benchmark with proper GPU synchronization
@@ -36,7 +36,7 @@ def benchmark(fn, *args, iterations=1000, warmup=100):
         result = fn(*args)
         result.realize()  # Force execution
         # Force synchronization by retrieving a value
-        _ = result.numpy()[0]  # Read first element to force GPU completion
+        _ = result.numpy().flatten()[0]  # Read first element to force GPU completion
         end = time.perf_counter()
         times.append((end - start) * 1000)  # Convert to ms
     print(" done")
