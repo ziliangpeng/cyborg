@@ -13,12 +13,13 @@ from tinygrad.tensor import Tensor
 # Ensure GPU usage
 Device.DEFAULT = "CUDA"
 
+
 def benchmark(fn, *args, iterations=1000, warmup=100):
     """
     Benchmark a TinyGrad operation with proper warmup for JIT compilation.
     Returns: (times_list, result)
     """
-    print(f"  Warming up ({warmup} iterations)...", end='', flush=True)
+    print(f"  Warming up ({warmup} iterations)...", end="", flush=True)
     # Warmup - important for JIT compilation
     for _i in range(warmup):
         result = fn(*args)
@@ -28,7 +29,7 @@ def benchmark(fn, *args, iterations=1000, warmup=100):
     print(" done")
 
     # Benchmark with proper GPU synchronization
-    print(f"  Benchmarking ({iterations} iterations)...", end='', flush=True)
+    print(f"  Benchmarking ({iterations} iterations)...", end="", flush=True)
     times = []
     for _ in range(iterations):
         start = time.perf_counter()
@@ -47,6 +48,7 @@ def benchmark(fn, *args, iterations=1000, warmup=100):
 # Operation 1: Vector Multiply-Add (VMA)
 # ============================================================================
 
+
 def vma_tinygrad(a, b, c):
     """Vector multiply-add: d = a * b + c"""
     return a * b + c
@@ -56,6 +58,7 @@ def vma_tinygrad(a, b, c):
 # Operation 2: Vector Reduction (Sum)
 # ============================================================================
 
+
 def reduction_tinygrad(x):
     """Vector sum reduction"""
     return x.sum()
@@ -64,6 +67,7 @@ def reduction_tinygrad(x):
 # ============================================================================
 # Operation 3: Softmax
 # ============================================================================
+
 
 def softmax_tinygrad(x):
     """Softmax using built-in operation"""
@@ -85,27 +89,28 @@ def softmax_manual(x):
 # Benchmarking and Statistics
 # ============================================================================
 
+
 def calculate_statistics(times):
     """Calculate statistics from timing results"""
     times_sorted = sorted(times)
     n = len(times)
 
     return {
-        'min': times_sorted[0],
-        'max': times_sorted[-1],
-        'mean': sum(times) / n,
-        'median': times_sorted[n // 2],
-        'p90': times_sorted[int(n * 0.90)],
-        'p95': times_sorted[int(n * 0.95)],
-        'p99': times_sorted[int(n * 0.99)],
+        "min": times_sorted[0],
+        "max": times_sorted[-1],
+        "mean": sum(times) / n,
+        "median": times_sorted[n // 2],
+        "p90": times_sorted[int(n * 0.90)],
+        "p95": times_sorted[int(n * 0.95)],
+        "p99": times_sorted[int(n * 0.99)],
     }
 
 
 def print_statistics(name, stats):
     """Print statistics in formatted table"""
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"{name} - Execution Statistics (1000 runs)")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"  Min:    {stats['min']:.3f} ms")
     print(f"  Max:    {stats['max']:.3f} ms")
     print(f"  Mean:   {stats['mean']:.3f} ms")
@@ -113,31 +118,33 @@ def print_statistics(name, stats):
     print(f"  P90:    {stats['p90']:.3f} ms")
     print(f"  P95:    {stats['p95']:.3f} ms")
     print(f"  P99:    {stats['p99']:.3f} ms")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
 
 # ============================================================================
 # Main Benchmark Script
 # ============================================================================
 
+
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='TinyGrad operations benchmark')
-    parser.add_argument('-n', '--size', type=int, default=1000000,
-                        help='Array size (default: 1000000)')
-    parser.add_argument('-o', '--operation', choices=['vma', 'reduce', 'softmax', 'all'],
-                        default='all', help='Operation to benchmark')
-    parser.add_argument('--iterations', type=int, default=1000,
-                        help='Number of iterations (default: 1000)')
-    parser.add_argument('--inspect-kernels', action='store_true',
-                        help='Enable kernel inspection (prints generated GPU code)')
+    parser = argparse.ArgumentParser(description="TinyGrad operations benchmark")
+    parser.add_argument("-n", "--size", type=int, default=1000000, help="Array size (default: 1000000)")
+    parser.add_argument(
+        "-o", "--operation", choices=["vma", "reduce", "softmax", "all"], default="all", help="Operation to benchmark"
+    )
+    parser.add_argument("--iterations", type=int, default=1000, help="Number of iterations (default: 1000)")
+    parser.add_argument(
+        "--inspect-kernels", action="store_true", help="Enable kernel inspection (prints generated GPU code)"
+    )
 
     args = parser.parse_args()
 
     # Enable kernel inspection if requested
     if args.inspect_kernels:
         import os
+
         os.environ["DEBUG"] = "4"
         print("Kernel inspection enabled (DEBUG=4)")
 
@@ -146,10 +153,10 @@ def main():
     print(f"Device: {Device.DEFAULT}")
 
     # Run benchmarks
-    if args.operation in ['vma', 'all']:
-        print("\n" + "="*50)
+    if args.operation in ["vma", "all"]:
+        print("\n" + "=" * 50)
         print("VMA Operation: d = a * b + c")
-        print("="*50)
+        print("=" * 50)
 
         # Prepare data
         a = Tensor.randn(n)
@@ -170,10 +177,10 @@ def main():
         max_error = np.abs(result_np - expected).max()
         print(f"\nVerification: Max error = {max_error:.2e}")
 
-    if args.operation in ['reduce', 'all']:
-        print("\n" + "="*50)
+    if args.operation in ["reduce", "all"]:
+        print("\n" + "=" * 50)
         print("Reduction Operation: sum(x)")
-        print("="*50)
+        print("=" * 50)
 
         # Prepare data
         x = Tensor.randn(n)
@@ -191,10 +198,10 @@ def main():
         rel_error = error / abs(expected)
         print(f"\nVerification: Relative error = {rel_error:.2e}")
 
-    if args.operation in ['softmax', 'all']:
-        print("\n" + "="*50)
+    if args.operation in ["softmax", "all"]:
+        print("\n" + "=" * 50)
         print("Softmax Operation")
-        print("="*50)
+        print("=" * 50)
 
         # Prepare data
         x = Tensor.randn(n)
@@ -222,5 +229,5 @@ def main():
         print(f"              Max value = {result_np.max():.6f}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
