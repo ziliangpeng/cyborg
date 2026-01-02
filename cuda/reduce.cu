@@ -16,7 +16,7 @@ void print_usage(const char *program_name) {
     printf("  -b, --block-size N        Set threads per block (default: 256)\n");
     printf("  -m, --method METHOD       Reduction method: 'gpu', 'threshold', or 'atomic' (default: threshold)\n");
     printf("  -t, --cpu-threshold N     CPU threshold for 'threshold' method (default: 1000)\n");
-    printf("  -w, --warp-opt            Use warp shuffle optimization for final 32→1 reduction\n");
+    printf("  -w, --warp-opt            Use warp shuffle optimization (requires block size >= 64 and power of 2)\n");
     printf("  -v, --verify              Enable result verification\n");
     printf("  -h, --help                Show this help message\n");
     printf("\nMethods:\n");
@@ -25,6 +25,7 @@ void print_usage(const char *program_name) {
     printf("  atomic:    Single kernel using atomicAdd (simple but serializes)\n");
     printf("\nOptimization:\n");
     printf("  --warp-opt: Uses warp shuffles instead of __syncthreads for final 32→1\n");
+    printf("              Requires block size >= 64 and power of 2 (64, 128, 256, 512, 1024)\n");
     printf("              Only applies to gpu/threshold methods\n");
     printf("              Expected 8-10%% speedup\n");
 }
@@ -128,6 +129,11 @@ void sum_op(int n, int threadsPerBlock, bool verify, const char *method, int cpu
     printf("\nReduction completed successfully!\n");
 }
 
+// Helper function to check if a number is a power of 2
+bool isPowerOfTwo(int n) {
+    return n > 0 && (n & (n - 1)) == 0;
+}
+
 int main(int argc, char *argv[]) {
     // Parse command line arguments
     bool verify = false;
@@ -192,6 +198,14 @@ int main(int argc, char *argv[]) {
                 print_usage(argv[0]);
                 return 1;
         }
+    }
+
+    // Validate warp optimization requirements
+    if (useWarpOpt && (threadsPerBlock < 64 || !isPowerOfTwo(threadsPerBlock))) {
+        fprintf(stderr, "Error: --warp-opt requires block size >= 64 and power of 2\n");
+        fprintf(stderr, "       Current block size: %d\n", threadsPerBlock);
+        fprintf(stderr, "       Valid sizes: 64, 128, 256, 512, 1024\n");
+        return 1;
     }
 
     // Initialize random seed

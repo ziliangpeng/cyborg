@@ -6,9 +6,6 @@ echo "Environment: H100 80GB, CUDA 12.4, sm_90"
 echo "=========================================="
 echo ""
 
-# Activate venv for TinyGrad
-source /home/ziliang/cyborg/.venv/bin/activate
-
 # Array sizes to test (100K, 1M, 10M, 100M, 1B)
 sizes=(100000 1000000 10000000 100000000 1000000000)
 
@@ -22,7 +19,7 @@ for size in "${sizes[@]}"; do
     cuda_result=$(./vector -n $size --mode vma --fused 2>&1 | grep "Median:" | awk '{print $2}')
 
     # TinyGrad
-    tinygrad_result=$(python cuda/tinygrad_comparison.py -n $size -o vma 2>&1 | grep "Median:" | awk '{print $2}')
+    tinygrad_result=$(uv run tinygrad_comparison.py -n $size -o vma 2>&1 | grep "Median:" | awk '{print $2}')
 
     # Calculate slowdown
     slowdown=$(echo "scale=1; $tinygrad_result / $cuda_result" | bc)
@@ -50,7 +47,7 @@ for size in "${sizes[@]}"; do
     cuda_result=$(./reduce -n $size --method threshold --warp-opt 2>&1 | grep "Median:" | awk '{print $2}')
 
     # TinyGrad
-    tinygrad_result=$(python cuda/tinygrad_comparison.py -n $size -o reduce 2>&1 | grep "Median:" | awk '{print $2}')
+    tinygrad_result=$(uv run tinygrad_comparison.py -n $size -o reduce 2>&1 | grep "Median:" | awk '{print $2}')
 
     # Calculate slowdown
     slowdown=$(echo "scale=1; $tinygrad_result / $cuda_result" | bc)
@@ -78,7 +75,7 @@ for size in "${sizes[@]}"; do
     cuda_result=$(./softmax -n $size --method multi 2>&1 | grep "Median:" | awk '{print $2}')
 
     # TinyGrad (extract built-in softmax result)
-    tinygrad_result=$(python cuda/tinygrad_comparison.py -n $size -o softmax 2>&1 | grep -A 10 "Built-in softmax" | grep "Median:" | awk '{print $2}')
+    tinygrad_result=$(uv run tinygrad_comparison.py -n $size -o softmax 2>&1 | grep -A 10 "Built-in softmax" | grep "Median:" | awk '{print $2}')
 
     # Calculate slowdown
     slowdown=$(echo "scale=1; $tinygrad_result / $cuda_result" | bc)
