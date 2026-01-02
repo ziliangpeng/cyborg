@@ -181,6 +181,13 @@ static float vectorSum_Threshold_internal(const float *d_input, int n, int threa
 
     // Transfer remaining elements to CPU and finish reduction
     float *h_partial = (float*)malloc(currentSize * sizeof(float));
+    if (!h_partial) {
+        fprintf(stderr, "Failed to allocate host memory for partial results in reduction\n");
+        if (allocated) {
+            cudaFree((void*)d_current);
+        }
+        exit(EXIT_FAILURE);
+    }
     cudaCheckError(cudaMemcpy(h_partial, d_current, currentSize * sizeof(float),
                                cudaMemcpyDeviceToHost));
 
