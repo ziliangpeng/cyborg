@@ -103,6 +103,21 @@ cuda_library(
     includes = [".."],
 )
 
+# cuDNN-based softmax implementation (industry-standard deep learning library)
+cuda_library(
+    name = "softmax_cudnn",
+    srcs = ["softmax_cudnn.cu"],
+    hdrs = ["softmax_cudnn.h"],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
+    includes = [".."],
+)
+
 # ============================================================================
 # Softmax Main Binary
 # ============================================================================
@@ -119,8 +134,13 @@ cuda_binary(
         ":softmax_online",
         ":softmax_cub_block",
         ":softmax_cub_device",
+        ":softmax_cudnn",
         "//cuda:cuda_utils",
         "//cuda:vector_init",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
     ],
     tags = ["cuda", "gpu"],
 )

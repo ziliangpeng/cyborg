@@ -14,6 +14,7 @@
 #include "softmax_online.h"
 #include "softmax_cub_block.h"
 #include "softmax_cub_device.h"
+#include "softmax_cudnn.h"
 #include "vector_init.h"
 
 void print_usage(const char *program_name) {
@@ -21,7 +22,7 @@ void print_usage(const char *program_name) {
     printf("Options:\n");
     printf("  -n, --size N              Set array size (default: 1048576)\n");
     printf("  -b, --block-size N        Set threads per block (default: 256)\n");
-    printf("  -m, --method METHOD       Softmax method: 'naive', 'multi', 'fused3', 'fused2', 'fused1', 'online', 'cub_block', or 'cub_device' (default: multi)\n");
+    printf("  -m, --method METHOD       Softmax method: 'naive', 'multi', 'fused3', 'fused2', 'fused1', 'online', 'cub_block', 'cub_device', or 'cudnn' (default: multi)\n");
     printf("  -v, --verify              Enable result verification\n");
     printf("  -h, --help                Show this help message\n");
     printf("\nMethods:\n");
@@ -32,7 +33,8 @@ void print_usage(const char *program_name) {
     printf("  fused1:     1-kernel fused (single kernel, grid sync, cooperative groups) [SKELETON]\n");
     printf("  online:     Single-pass online algorithm (streaming max/sum) [SKELETON]\n");
     printf("  cub_block:  3-kernel with CUB block-level primitives [IMPLEMENTED]\n");
-    printf("  cub_device: CUB device-level primitives (single-call reductions) [SKELETON]\n");
+    printf("  cub_device: CUB device-level primitives (single-call reductions) [IMPLEMENTED]\n");
+    printf("  cudnn:      NVIDIA cuDNN library (industry-standard) [IMPLEMENTED]\n");
 }
 
 // CPU reference implementation for verification (numerically stable)
@@ -121,8 +123,8 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
             softmax_CubBlock(d_input, d_output, n, threadsPerBlock);
         } else if (strcmp(method, "cub_device") == 0) {
             softmax_CubDevice(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "cub_device") == 0) {
-            softmax_CubDevice(d_input, d_output, n, threadsPerBlock);
+        } else if (strcmp(method, "cudnn") == 0) {
+            softmax_Cudnn(d_input, d_output, n, threadsPerBlock);
         }
 
         cudaEventRecord(stop);
@@ -264,8 +266,9 @@ int main(int argc, char *argv[]) {
                 if (strcmp(method, "naive") != 0 && strcmp(method, "multi") != 0 &&
                     strcmp(method, "fused3") != 0 && strcmp(method, "fused2") != 0 &&
                     strcmp(method, "fused1") != 0 && strcmp(method, "online") != 0 &&
-                    strcmp(method, "cub_block") != 0 && strcmp(method, "cub_device") != 0) {
-                    fprintf(stderr, "Error: method must be 'naive', 'multi', 'fused3', 'fused2', 'fused1', 'online', 'cub_block', or 'cub_device'\n");
+                    strcmp(method, "cub_block") != 0 && strcmp(method, "cub_device") != 0 &&
+                    strcmp(method, "cudnn") != 0) {
+                    fprintf(stderr, "Error: method must be 'naive', 'multi', 'fused3', 'fused2', 'fused1', 'online', 'cub_block', 'cub_device', or 'cudnn'\n");
                     return 1;
                 }
                 break;
