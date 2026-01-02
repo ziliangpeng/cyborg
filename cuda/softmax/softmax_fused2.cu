@@ -1,5 +1,5 @@
 #include "softmax_fused2.h"
-#include "softmax_fused.h"  // Reuse softmaxFused_BlockStats (regular launch, no grid-stride needed)
+#include "softmax_fused3.h"  // Reuse softmaxFused3_BlockStats (regular launch, no grid-stride needed)
 #include "cuda_utils.h"
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
@@ -187,7 +187,7 @@ __device__ __forceinline__ float atomicMaxFloat(float* addr, float value) {
     return __int_as_float(old);
 }
 
-// Note: Kernel 1 is reused from softmax_fused.h (softmaxFused_BlockStats)
+// Note: Kernel 1 is reused from softmax_fused3.h (softmaxFused3_BlockStats)
 // It uses regular launch (no cooperative constraints) so no grid-stride loop needed
 // This allows full parallelism: for 1M elements, use 3,907 blocks instead of 1,056!
 
@@ -335,7 +335,7 @@ float softmax_Fused2(const float *d_input, float *d_output, int n, int threadsPe
 
     // Kernel 1: Compute block statistics (REGULAR LAUNCH - full parallelism!)
     // For 1M elements: 3,907 blocks (not limited by cooperative constraints)
-    softmaxFused_BlockStats<<<numBlocks_K1, threadsPerBlock, sharedMemSize>>>(
+    softmaxFused3_BlockStats<<<numBlocks_K1, threadsPerBlock, sharedMemSize>>>(
         d_input, d_block_maxes, d_block_sums, n);
     cudaCheckError(cudaGetLastError());
 

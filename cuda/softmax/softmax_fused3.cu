@@ -1,4 +1,4 @@
-#include "softmax_fused.h"
+#include "softmax_fused3.h"
 #include "cuda_utils.h"
 #include "reduce_kernels.h"
 #include "elementwise_kernels.h"
@@ -21,13 +21,13 @@
 //
 // IMPLEMENTATION DETAILS:
 // -----------------------
-// Kernel 1 - softmaxFused_BlockStats (numBlocks launches, e.g., 3,907 for 1M):
+// Kernel 1 - softmaxFused3_BlockStats (numBlocks launches, e.g., 3,907 for 1M):
 //   Phase 1: Find block maximum via tree reduction (blockDim → 1)
 //   Phase 2: Compute sum(exp(x - block_max)) via tree reduction
 //   Output: block_maxes[blockIdx.x], block_sums[blockIdx.x]
 //   Memory optimization: Reuses same shared memory for both phases
 //
-// Kernel 2 - softmaxFused_GlobalReduce (1 block with 256 threads):
+// Kernel 2 - softmaxFused3_GlobalReduce (1 block with 256 threads):
 //   THE MAGIC KERNEL - eliminates recursive reduction!
 //   Phase 1: Find global max using grid-stride loop over all block_maxes
 //     - Each thread processes multiple blocks (tid, tid+256, tid+512, ...)
@@ -39,7 +39,7 @@
 //     So: block_sum * exp(block_max - global_max) adjusts to global reference
 //   Output: global_max[0], global_sum[0]
 //
-// Kernel 3 - softmaxFused_Normalize (numBlocks launches):
+// Kernel 3 - softmaxFused3_Normalize (numBlocks launches):
 //   Computes output[i] = exp(x[i] - global_max) / global_sum
 //   Each thread handles one element independently
 //
@@ -84,9 +84,9 @@
 // KERNEL LAUNCH COUNT:
 // --------------------
 // For 1M elements with 256 threads/block:
-//   Kernel 1: softmaxFused_BlockStats (3,907 blocks)
-//   Kernel 2: softmaxFused_GlobalReduce (1 block)
-//   Kernel 3: softmaxFused_Normalize (3,907 blocks)
+//   Kernel 1: softmaxFused3_BlockStats (3,907 blocks)
+//   Kernel 2: softmaxFused3_GlobalReduce (1 block)
+//   Kernel 3: softmaxFused3_Normalize (3,907 blocks)
 //   Total: 3 kernel launches (vs 7 for multi-pass)
 //
 // WHY IT'S 2X FASTER THAN MULTI-PASS:
@@ -134,7 +134,7 @@
 // ============================================================================
 
 // Kernel 1: Compute block-level statistics (max and exp-sum)
-__global__ void softmaxFused_BlockStats(
+__global__ void softmaxFused3_BlockStats(
     const float *input,
     float *block_maxes,
     float *block_sums,
@@ -182,7 +182,7 @@ __global__ void softmaxFused_BlockStats(
 }
 
 // Kernel 2: Reduce block statistics to global max and adjusted global sum
-__global__ void softmaxFused_GlobalReduce(
+__global__ void softmaxFused3_GlobalReduce(
     const float *block_maxes,
     const float *block_sums,
     float *global_max,
@@ -246,7 +246,7 @@ __global__ void softmaxFused_GlobalReduce(
 // The shared kernel uses scalar parameters instead of device pointers for better efficiency
 
 // Host function: 3-kernel fused softmax
-float softmax_Fused(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+float softmax_Fused3(const float *d_input, float *d_output, int n, int threadsPerBlock) {
     // Calculate grid dimensions
     int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
 
@@ -264,12 +264,12 @@ float softmax_Fused(const float *d_input, float *d_output, int n, int threadsPer
     size_t sharedMemSize = threadsPerBlock * sizeof(float);
 
     // Launch Kernel 1: Compute block statistics
-    softmaxFused_BlockStats<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
+    softmaxFused3_BlockStats<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
         d_input, d_block_maxes, d_block_sums, n);
     cudaCheckError(cudaGetLastError());
 
     // Launch Kernel 2: Reduce to global statistics (single block)
-    softmaxFused_GlobalReduce<<<1, threadsPerBlock, sharedMemSize>>>(
+    softmaxFused3_GlobalReduce<<<1, threadsPerBlock, sharedMemSize>>>(
         d_block_maxes, d_block_sums, d_global_max, d_global_sum, numBlocks);
     cudaCheckError(cudaGetLastError());
 

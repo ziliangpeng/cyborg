@@ -1,5 +1,5 @@
-#ifndef SOFTMAX_FUSED_H
-#define SOFTMAX_FUSED_H
+#ifndef SOFTMAX_FUSED3_H
+#define SOFTMAX_FUSED3_H
 
 // Fused 3-kernel softmax - optimized stable approach
 //
@@ -12,11 +12,11 @@
 // recursive kernel launches.
 //
 // Returns execution time in milliseconds
-float softmax_Fused(const float *d_input, float *d_output, int n, int threadsPerBlock);
+float softmax_Fused3(const float *d_input, float *d_output, int n, int threadsPerBlock);
 
 // Kernel 1: Compute block-level statistics (max and exp-sum)
 // Exposed for reuse by other implementations (e.g., 2-kernel fused)
-__global__ void softmaxFused_BlockStats(
+__global__ void softmaxFused3_BlockStats(
     const float *input,
     float *block_maxes,
     float *block_sums,
