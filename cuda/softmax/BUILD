@@ -24,6 +24,7 @@ cuda_library(
     deps = [
         "//cuda:cuda_utils",
         "//cuda:reduce_kernels",
+        "//cuda:elementwise_kernels",
     ],
     includes = [".."],
 )
@@ -36,6 +37,7 @@ cuda_library(
     deps = [
         "//cuda:cuda_utils",
         "//cuda:reduce_kernels",
+        "//cuda:elementwise_kernels",
     ],
     includes = [".."],
 )

@@ -1,4 +1,9 @@
-#include "vector_kernels.h"
+#include "elementwise_kernels.h"
+#include <math.h>
+
+// ============================================================================
+// BINARY ELEMENT-WISE OPERATIONS
+// ============================================================================
 
 // CUDA kernel: runs on the GPU
 // Each thread computes one element of the result
@@ -20,6 +25,10 @@ __global__ void vectorMul(const float *a, const float *b, float *c, int n) {
         c[idx] = a[idx] * b[idx];
     }
 }
+
+// ============================================================================
+// TERNARY ELEMENT-WISE OPERATIONS
+// ============================================================================
 
 // CUDA kernel for fused multiply-add (FMA)
 // Computes d[i] = a[i] * b[i] + c[i] in a single kernel
@@ -53,5 +62,19 @@ __global__ void vectorFMA_float4(const float *a, const float *b, const float *c,
 
         // Store 4 floats at once (single memory transaction)
         ((float4*)d)[idx] = vd;
+    }
+}
+
+// ============================================================================
+// UNARY ELEMENT-WISE OPERATIONS
+// ============================================================================
+
+// Softmax normalization kernel: output[i] = exp(input[i] - max_val) / sum_exp
+// Shared by multi-pass and fused softmax implementations
+__global__ void softmaxNormalizeKernel(const float *input, float max_val, float sum_exp, float *output, int n) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (idx < n) {
+        output[idx] = expf(input[idx] - max_val) / sum_exp;
     }
 }

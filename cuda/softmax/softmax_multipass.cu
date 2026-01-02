@@ -1,6 +1,7 @@
 #include "softmax_multipass.h"
 #include "cuda_utils.h"
 #include "reduce_kernels.h"
+#include "elementwise_kernels.h"
 #include <cuda_runtime.h>
 #include <stdlib.h>
 #include <math.h>
@@ -170,15 +171,7 @@ __global__ void expSumReductionKernel_Stable(const float *input, float max_val, 
     }
 }
 
-// Kernel: Normalize with stable formula: exp(x - max) / sum
-__global__ void softmaxNormalizeKernel(const float *input, float max_val, float sum_exp, float *output, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < n) {
-        output[idx] = expf(input[idx] - max_val) / sum_exp;
-    }
-}
-
+// Note: softmaxNormalizeKernel is now provided by elementwise_kernels.h
 // Note: vectorMax_GPU is now provided by reduce_kernels.h
 
 // Helper: GPU reduction to compute sum(exp(x - max))

@@ -1,6 +1,7 @@
 #include "softmax_fused.h"
 #include "cuda_utils.h"
 #include "reduce_kernels.h"
+#include "elementwise_kernels.h"
 #include <cuda_runtime.h>
 #include <stdlib.h>
 #include <math.h>
@@ -241,21 +242,8 @@ __global__ void softmaxFused_GlobalReduce(
     }
 }
 
-// Kernel 3: Final normalization using global statistics
-__global__ void softmaxFused_Normalize(
-    const float *input,
-    const float *global_max,
-    const float *global_sum,
-    float *output,
-    int n
-) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
-        float max_val = global_max[0];
-        float sum_val = global_sum[0];
-        output[idx] = expf(input[idx] - max_val) / sum_val;
-    }
-}
+// Note: Normalization kernel is now provided by elementwise_kernels.h (softmaxNormalizeKernel)
+// The shared kernel uses scalar parameters instead of device pointers for better efficiency
 
 // Host function: 3-kernel fused softmax
 float softmax_Fused(const float *d_input, float *d_output, int n, int threadsPerBlock) {
@@ -285,9 +273,14 @@ float softmax_Fused(const float *d_input, float *d_output, int n, int threadsPer
         d_block_maxes, d_block_sums, d_global_max, d_global_sum, numBlocks);
     cudaCheckError(cudaGetLastError());
 
-    // Launch Kernel 3: Final normalization
-    softmaxFused_Normalize<<<numBlocks, threadsPerBlock>>>(
-        d_input, d_global_max, d_global_sum, d_output, n);
+    // Copy global statistics to host for use as scalar parameters
+    float max_val, sum_exp;
+    cudaCheckError(cudaMemcpy(&max_val, d_global_max, sizeof(float), cudaMemcpyDeviceToHost));
+    cudaCheckError(cudaMemcpy(&sum_exp, d_global_sum, sizeof(float), cudaMemcpyDeviceToHost));
+
+    // Launch Kernel 3: Final normalization using shared element-wise kernel
+    softmaxNormalizeKernel<<<numBlocks, threadsPerBlock>>>(
+        d_input, max_val, sum_exp, d_output, n);
     cudaCheckError(cudaGetLastError());
 
     // Synchronize before cleanup
