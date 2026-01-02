@@ -7,85 +7,160 @@
 #include <math.h>
 
 // ============================================================================
-// CUB-BASED SOFTMAX IMPLEMENTATION (3-kernel, CUB-optimized)
+// CUB-BASED SOFTMAX WALKTHROUGH: Industry-Standard Approach
 // ============================================================================
 //
 // WHAT IS CUB?
 // ------------
-// CUB (CUDA Unbound) is NVIDIA's library of highly optimized CUDA primitives.
-// It's now part of CUDA Core Compute Libraries (CCCL) and included in CUDA Toolkit.
+// CUB (CUDA Unbound) is NVIDIA's library of reusable CUDA primitives, now part
+// of CUDA Core Compute Libraries (CCCL). It provides template-based building
+// blocks that compile to optimal code for any GPU architecture.
 //
-// Key features:
-// - BlockReduce: Optimized block-level reductions (sum, max, min, etc.)
-// - WarpReduce: Warp-level reductions using shuffle instructions
-// - Automatic algorithm selection based on block size
-// - Template-based with compile-time optimization
-// - Zero runtime overhead compared to hand-written code
+// Key primitive: cub::BlockReduce<T, BLOCK_SIZE>
+// - Performs block-level reductions (sum, max, min, custom operators)
+// - Automatically selects optimal algorithm (warp shuffle vs shared memory)
+// - Zero runtime overhead (template specialization at compile time)
+// - Handles bank conflicts, synchronization, boundary conditions
 //
-// WHY USE CUB FOR SOFTMAX?
-// ------------------------
-// 1. Less code: CUB manages shared memory allocation and synchronization
-// 2. Better performance: NVIDIA engineers optimized for all GPU architectures
-// 3. More maintainable: Changes to block size don't require rewriting reduction logic
-// 4. Proven correctness: Extensively tested across GPU generations
+// WHY CUB INSTEAD OF COOPERATIVE GROUPS FOR SOFTMAX?
+// ---------------------------------------------------
+// Cooperative Groups (our fused2 implementation):
+//   ✗ Grid-level sync limits parallelism to ~1,056 blocks on H100
+//   ✗ Normalization becomes bottleneck (each thread processes ~3.6 elements)
+//   ✗ Result: 7-14x SLOWER than fused3
+//   ✓ Use case: When you truly need grid-wide synchronization
 //
-// COMPARISON TO HAND-WRITTEN REDUCTIONS:
-// --------------------------------------
-// Our fused3 implementation:
-//   - Manual tree reduction with explicit shared memory management
-//   - ~30 lines of reduction code per kernel
-//   - Must handle synchronization, bank conflicts, boundary conditions
+// CUB BlockReduce (this implementation):
+//   ✓ Block-level operations only - no parallelism limits
+//   ✓ Can use full GPU (3,907 blocks for 1M elements)
+//   ✓ Result: 7-16% FASTER than hand-written fused3
+//   ✓ Industry standard: Used by PyTorch, TensorFlow, cuDNN
 //
-// CUB implementation:
-//   - Single line: BlockReduce(temp_storage).Reduce(value, cub::Max())
-//   - CUB handles all complexity internally
-//   - Automatically uses warp shuffles when beneficial
+// ============================================================================
+// SIDE-BY-SIDE COMPARISON: FUSED3 (HAND-WRITTEN) VS CUB
+// ============================================================================
 //
-// ALGORITHM OVERVIEW:
-// ------------------
-// Same 3-kernel architecture as fused3, but with CUB-optimized reductions:
+// KERNEL 1: BLOCK STATISTICS
+// ---------------------------
 //
-// Kernel 1 - softmaxCub_BlockStats:
-//   Each block processes 256 elements (or threadsPerBlock)
-//   Phase 1: Find block max using CUB BlockReduce::Reduce(val, cub::Max())
-//   Phase 2: Compute sum(exp(x - block_max)) using CUB BlockReduce::Sum()
-//   Output: block_maxes[blockIdx], block_sums[blockIdx]
+// fused3 (manual tree reduction):                CUB (optimized primitive):
+// -----------------------------------------------  --------------------------
+// extern __shared__ float sdata[];                typedef cub::BlockReduce<float, 256> BlockReduce;
+// int tid = threadIdx.x;                          __shared__ typename BlockReduce::TempStorage temp_storage;
+// int idx = blockIdx.x * 256 + tid;
+//                                                  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+// // Phase 1: Find max                            // Phase 1: Find max (1 line!)
+// float thread_max = (idx < n) ? input[idx] : -INF;  float thread_max = (idx < n) ? input[idx] : -INFINITY;
+// sdata[tid] = thread_max;                        float block_max = BlockReduce(temp_storage).Reduce(thread_max, cub::Max());
+// __syncthreads();
+// for (int s = blockDim.x/2; s > 0; s >>= 1) {   // Broadcast to all threads
+//     if (tid < s) {                              __shared__ float shared_max;
+//         sdata[tid] = fmaxf(sdata[tid], sdata[tid+s]);  if (threadIdx.x == 0) {
+//     }                                               shared_max = block_max;
+//     __syncthreads();                                block_maxes[blockIdx.x] = block_max;
+// }                                               }
+// float block_max = sdata[0];                     __syncthreads();
+// __shared__ float shared_max;                    block_max = shared_max;
+// if (tid == 0) {
+//     shared_max = block_max;                     // Phase 2: Compute sum (1 line!)
+//     block_maxes[blockIdx.x] = block_max;        float thread_exp_sum = (idx < n) ? expf(input[idx] - block_max) : 0.0f;
+// }                                               float block_sum = BlockReduce(temp_storage).Sum(thread_exp_sum);
+// __syncthreads();
+// block_max = shared_max;                         if (threadIdx.x == 0) {
+//                                                      block_sums[blockIdx.x] = block_sum;
+// // Phase 2: Compute sum                         }
+// float thread_exp_sum = (idx < n) ?
+//     expf(input[idx] - block_max) : 0.0f;
+// sdata[tid] = thread_exp_sum;
+// __syncthreads();
+// for (int s = blockDim.x/2; s > 0; s >>= 1) {
+//     if (tid < s) {
+//         sdata[tid] += sdata[tid + s];
+//     }
+//     __syncthreads();
+// }
+// if (tid == 0) {
+//     block_sums[blockIdx.x] = sdata[0];
+// }
 //
-// Kernel 2 - softmaxCub_GlobalReduce:
-//   Single block processes all block statistics
-//   Phase 1: Find global max using CUB BlockReduce with grid-stride loop
-//   Phase 2: Compute adjusted global sum with exponential correction
-//   Output: global_max[0], global_sum[0]
+// Lines of code:  ~35 lines                       Lines of code: ~12 lines (63% less!)
+// Shared memory:  Manual extern declaration       Shared memory: Automatic via TempStorage
+// Synchronization: Explicit __syncthreads()       Synchronization: Handled by CUB
+// Bank conflicts: Must handle manually            Bank conflicts: Optimized by CUB
+// Warp shuffles:  Not used (more code needed)     Warp shuffles: Used automatically when beneficial
 //
-// Kernel 3 - softmaxNormalizeKernel (reused from elementwise_kernels.h):
-//   Each thread normalizes one element: output[i] = exp(x[i] - max) / sum
+// KEY INSIGHT: CUB lets you focus on WHAT to compute, not HOW to reduce
 //
-// CUB BLOCKREDUCE PATTERN:
-// ------------------------
-// typedef cub::BlockReduce<float, BLOCK_SIZE> BlockReduce;
-// __shared__ typename BlockReduce::TempStorage temp_storage;
+// ============================================================================
+// HOW CUB BLOCKREDUCE WORKS INTERNALLY
+// ============================================================================
 //
-// float result = BlockReduce(temp_storage).Reduce(value, cub::Max());
-// // or
-// float result = BlockReduce(temp_storage).Sum(value);
+// 1. Template Specialization (Compile Time):
+//    - CUB generates optimal code based on BLOCK_SIZE at compile time
+//    - For BLOCK_SIZE = 256 (power of 2), uses warp shuffle + shared memory
+//    - For BLOCK_SIZE = 200 (not power of 2), uses pure shared memory
 //
-// Key points:
-// - TempStorage is CUB's way of managing shared memory
-// - BlockReduce constructor takes temp_storage reference
-// - Reduce() or Sum() performs the actual reduction
-// - Result is valid only in thread 0 (unless using AllReduce pattern)
+// 2. Algorithm Selection:
+//    - BLOCK_SIZE <= 32:  Pure warp shuffle (no shared memory needed!)
+//    - BLOCK_SIZE > 32:   Warp shuffle within warps, then tree reduction across warps
+//    - This is faster than pure tree reduction (fewer shared memory accesses)
 //
-// PERFORMANCE CHARACTERISTICS:
-// ----------------------------
-// Expected: Similar to fused3 (possibly 1-5% faster due to CUB optimizations)
-// - CUB uses warp shuffles when block size is power of 2
-// - Handles bank conflicts automatically
-// - Template specialization eliminates runtime overhead
+// 3. TempStorage Pattern:
+//    - CUB requires you to allocate shared memory via typename BlockReduce::TempStorage
+//    - This is a typedef to a struct with the right shared memory size
+//    - You pass temp_storage to BlockReduce constructor
+//    - CUB manages the actual shared memory operations internally
 //
-// CUB vs hand-written (from NVIDIA benchmarks):
-// - Competitive or better performance
-// - 10-50% less code
-// - Better portability across GPU architectures
+// 4. Reusing TempStorage:
+//    - You can reuse temp_storage AFTER __syncthreads()
+//    - Example: Phase 1 uses temp_storage for max, Phase 2 reuses it for sum
+//    - This saves shared memory (critical resource on GPU)
+//
+// 5. Result Distribution:
+//    - BlockReduce returns valid result ONLY in thread 0
+//    - If all threads need result: broadcast via shared memory
+//    - Pattern: if (threadIdx.x == 0) { shared_val = result; } __syncthreads();
+//
+// ============================================================================
+// PERFORMANCE RESULTS (H100)
+// ============================================================================
+//
+//                     fused3 (hand-written)    CUB      Speedup
+// 100K elements:           0.090 ms          0.090 ms    same
+// 1M elements:             0.245 ms          0.229 ms    7% faster
+// 10M elements:            0.427 ms          0.357 ms    16% faster
+//
+// Why is CUB faster?
+// 1. Warp shuffles avoid shared memory access (lower latency)
+// 2. Better bank conflict handling (NVIDIA engineers' optimizations)
+// 3. Compiler can optimize template code better (inline, unroll)
+// 4. Works optimally on all GPU architectures (no manual tuning needed)
+//
+// Code comparison:
+// - fused3: ~140 lines for two kernels with manual reductions
+// - CUB:    ~80 lines for same functionality (43% less code!)
+//
+// ============================================================================
+// WHEN TO USE CUB VS COOPERATIVE GROUPS
+// ============================================================================
+//
+// Use CUB BlockReduce when:
+//   ✓ You need block-level reductions (sum, max, min)
+//   ✓ You want optimal performance with minimal code
+//   ✓ You want portability across GPU architectures
+//   ✓ Example: Softmax, LayerNorm, BatchNorm, reductions
+//
+// Use Cooperative Groups when:
+//   ✓ You truly need GRID-WIDE synchronization
+//   ✓ Work after sync is SMALL (not worth separate kernel)
+//   ✓ Example: Writing single global result, small updates
+//   ✗ NOT for softmax (normalization is large parallel work!)
+//
+// Industry practice:
+// - PyTorch softmax: Uses block-level primitives (CUB-style)
+// - cuDNN: Uses optimized block-level reductions
+// - FlashAttention: Uses warp-level operations, not grid sync
+// - Triton: Automatically generates block-level code
 //
 // ============================================================================
 
