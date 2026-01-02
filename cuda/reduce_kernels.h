@@ -1,6 +1,9 @@
 #ifndef REDUCE_KERNELS_H
 #define REDUCE_KERNELS_H
 
+// CUDA kernel for tree reduction (shared across modules)
+__global__ void sumReductionKernel(const float *input, float *partialSums, int n);
+
 // Option B: Fully GPU recursive reduction (reduces until 1 element)
 float vectorSum_GPU(const float *d_input, int n, int threadsPerBlock);
 

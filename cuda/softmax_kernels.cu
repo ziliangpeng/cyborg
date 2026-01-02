@@ -1,5 +1,6 @@
 #include "softmax_kernels.h"
 #include "cuda_utils.h"
+#include "reduce_kernels.h"
 #include <cuda_runtime.h>
 #include <stdlib.h>
 #include <math.h>
@@ -8,30 +9,7 @@
 // NAIVE SOFTMAX IMPLEMENTATION (Numerically Unstable - For Educational Demo)
 // ============================================================================
 
-// Kernel: Simple sum reduction (for already-computed values)
-__global__ void sumReductionKernel(const float *input, float *partialSums, int n) {
-    extern __shared__ float sdata[];
-
-    int tid = threadIdx.x;
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // Load input (no transformation)
-    sdata[tid] = (idx < n) ? input[idx] : 0.0f;
-    __syncthreads();
-
-    // Tree reduction to sum values
-    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (tid < stride) {
-            sdata[tid] += sdata[tid + stride];
-        }
-        __syncthreads();
-    }
-
-    // Thread 0 writes this block's partial sum
-    if (tid == 0) {
-        partialSums[blockIdx.x] = sdata[0];
-    }
-}
+// Note: sumReductionKernel is now imported from reduce_kernels.h (no duplication)
 
 // Kernel: Compute exp(x) and reduce to sum using tree reduction
 __global__ void expSumReductionKernel(const float *input, float *partialSums, int n) {

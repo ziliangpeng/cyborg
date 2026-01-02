@@ -77,6 +77,14 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
     // Configure timing
     const int num_iterations = 1000;
     float *timings = (float*)malloc(num_iterations * sizeof(float));
+    if (!timings) {
+        fprintf(stderr, "Failed to allocate memory for timings\n");
+        freeHostVector(h_input);
+        free(h_output);
+        freeDeviceVector(d_input);
+        freeDeviceVector(d_output);
+        return;
+    }
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);

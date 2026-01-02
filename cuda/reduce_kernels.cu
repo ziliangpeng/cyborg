@@ -88,9 +88,9 @@ __global__ void sumReductionKernel_Warp(const float *input, float *partialSums, 
     }
 }
 
-// Option B: Fully GPU recursive reduction
+// Internal helper: Fully GPU recursive reduction (with optional warp optimization)
 // Keeps launching kernels until only 1 element remains
-float vectorSum_GPU(const float *d_input, int n, int threadsPerBlock) {
+static float vectorSum_GPU_internal(const float *d_input, int n, int threadsPerBlock, bool useWarpOpt) {
     const float *d_current = d_input;
     int currentSize = n;
     bool allocated = false;
@@ -103,10 +103,15 @@ float vectorSum_GPU(const float *d_input, int n, int threadsPerBlock) {
         float *d_output;
         cudaCheckError(cudaMalloc(&d_output, numBlocks * sizeof(float)));
 
-        // Launch reduction kernel
+        // Launch reduction kernel (choose based on optimization flag)
         size_t sharedMemSize = threadsPerBlock * sizeof(float);
-        sumReductionKernel<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
-            d_current, d_output, currentSize);
+        if (useWarpOpt) {
+            sumReductionKernel_Warp<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
+                d_current, d_output, currentSize);
+        } else {
+            sumReductionKernel<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
+                d_current, d_output, currentSize);
+        }
         cudaCheckError(cudaGetLastError());
 
         // Free previous temp buffer (if we allocated it)
@@ -132,9 +137,14 @@ float vectorSum_GPU(const float *d_input, int n, int threadsPerBlock) {
     return result;
 }
 
-// Option D: GPU with configurable CPU threshold
+// Option B: Fully GPU recursive reduction
+float vectorSum_GPU(const float *d_input, int n, int threadsPerBlock) {
+    return vectorSum_GPU_internal(d_input, n, threadsPerBlock, false);
+}
+
+// Internal helper: GPU with configurable CPU threshold (with optional warp optimization)
 // Reduces on GPU until size <= threshold, then finishes on CPU
-float vectorSum_Threshold(const float *d_input, int n, int threadsPerBlock, int cpuThreshold) {
+static float vectorSum_Threshold_internal(const float *d_input, int n, int threadsPerBlock, int cpuThreshold, bool useWarpOpt) {
     const float *d_current = d_input;
     int currentSize = n;
     bool allocated = false;
@@ -147,10 +157,15 @@ float vectorSum_Threshold(const float *d_input, int n, int threadsPerBlock, int 
         float *d_output;
         cudaCheckError(cudaMalloc(&d_output, numBlocks * sizeof(float)));
 
-        // Launch reduction kernel
+        // Launch reduction kernel (choose based on optimization flag)
         size_t sharedMemSize = threadsPerBlock * sizeof(float);
-        sumReductionKernel<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
-            d_current, d_output, currentSize);
+        if (useWarpOpt) {
+            sumReductionKernel_Warp<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
+                d_current, d_output, currentSize);
+        } else {
+            sumReductionKernel<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
+                d_current, d_output, currentSize);
+        }
         cudaCheckError(cudaGetLastError());
 
         // Free previous buffer if we allocated it
@@ -184,83 +199,19 @@ float vectorSum_Threshold(const float *d_input, int n, int threadsPerBlock, int 
     return result;
 }
 
+// Option D: GPU with configurable CPU threshold
+float vectorSum_Threshold(const float *d_input, int n, int threadsPerBlock, int cpuThreshold) {
+    return vectorSum_Threshold_internal(d_input, n, threadsPerBlock, cpuThreshold, false);
+}
+
 // Warp-optimized version: Fully GPU recursive reduction
 float vectorSum_GPU_Warp(const float *d_input, int n, int threadsPerBlock) {
-    const float *d_current = d_input;
-    int currentSize = n;
-    bool allocated = false;
-
-    while (currentSize > 1) {
-        int numBlocks = (currentSize + threadsPerBlock - 1) / threadsPerBlock;
-
-        float *d_output;
-        cudaCheckError(cudaMalloc(&d_output, numBlocks * sizeof(float)));
-
-        size_t sharedMemSize = threadsPerBlock * sizeof(float);
-        sumReductionKernel_Warp<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
-            d_current, d_output, currentSize);
-        cudaCheckError(cudaGetLastError());
-
-        if (allocated) {
-            cudaCheckError(cudaFree((void*)d_current));
-        }
-
-        d_current = d_output;
-        currentSize = numBlocks;
-        allocated = true;
-    }
-
-    float result;
-    cudaCheckError(cudaMemcpy(&result, d_current, sizeof(float), cudaMemcpyDeviceToHost));
-
-    if (allocated) {
-        cudaCheckError(cudaFree((void*)d_current));
-    }
-
-    return result;
+    return vectorSum_GPU_internal(d_input, n, threadsPerBlock, true);
 }
 
 // Warp-optimized version: GPU with configurable CPU threshold
 float vectorSum_Threshold_Warp(const float *d_input, int n, int threadsPerBlock, int cpuThreshold) {
-    const float *d_current = d_input;
-    int currentSize = n;
-    bool allocated = false;
-
-    while (currentSize > cpuThreshold) {
-        int numBlocks = (currentSize + threadsPerBlock - 1) / threadsPerBlock;
-
-        float *d_output;
-        cudaCheckError(cudaMalloc(&d_output, numBlocks * sizeof(float)));
-
-        size_t sharedMemSize = threadsPerBlock * sizeof(float);
-        sumReductionKernel_Warp<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
-            d_current, d_output, currentSize);
-        cudaCheckError(cudaGetLastError());
-
-        if (allocated) {
-            cudaCheckError(cudaFree((void*)d_current));
-        }
-
-        d_current = d_output;
-        currentSize = numBlocks;
-        allocated = true;
-    }
-
-    float *h_partial = (float*)malloc(currentSize * sizeof(float));
-    cudaCheckError(cudaMemcpy(h_partial, d_current, currentSize * sizeof(float),
-                               cudaMemcpyDeviceToHost));
-
-    float result = 0.0f;
-    for (int i = 0; i < currentSize; i++) {
-        result += h_partial[i];
-    }
-
-    free(h_partial);
-    if (allocated) {
-        cudaCheckError(cudaFree((void*)d_current));
-    }
-
-    return result;
+    return vectorSum_Threshold_internal(d_input, n, threadsPerBlock, cpuThreshold, true);
 }
 
 // Atomic method: Simple single-kernel approach using atomicAdd

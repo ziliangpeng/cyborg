@@ -57,6 +57,12 @@ void sum_op(int n, int threadsPerBlock, bool verify, const char *method, int cpu
     // Configure timing
     const int num_iterations = 1000;
     float *timings = (float*)malloc(num_iterations * sizeof(float));
+    if (!timings) {
+        fprintf(stderr, "Failed to allocate memory for timings\n");
+        freeHostVector(h_input);
+        freeDeviceVector(d_input);
+        return;
+    }
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);

@@ -25,8 +25,8 @@ reduce: reduce.cu reduce_kernels.cu vector_init.cu cuda_utils.cu cuda_utils.h re
 	$(NVCC) $(NVCC_FLAGS) reduce.cu reduce_kernels.cu vector_init.cu cuda_utils.cu -o reduce
 
 # Build softmax
-softmax: softmax.cu softmax_kernels.cu vector_init.cu cuda_utils.cu cuda_utils.h softmax_kernels.h vector_init.h
-	$(NVCC) $(NVCC_FLAGS) softmax.cu softmax_kernels.cu vector_init.cu cuda_utils.cu -o softmax
+softmax: softmax.cu softmax_kernels.cu reduce_kernels.cu vector_init.cu cuda_utils.cu cuda_utils.h softmax_kernels.h reduce_kernels.h vector_init.h
+	$(NVCC) $(NVCC_FLAGS) softmax.cu softmax_kernels.cu reduce_kernels.cu vector_init.cu cuda_utils.cu -o softmax
 
 # Run vector
 run: vector
