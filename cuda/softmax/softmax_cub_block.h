@@ -1,7 +1,7 @@
-#ifndef SOFTMAX_CUB_H
-#define SOFTMAX_CUB_H
+#ifndef SOFTMAX_CUB_BLOCK_H
+#define SOFTMAX_CUB_BLOCK_H
 
-// CUB-based softmax implementation
+// CUB Block-Level softmax implementation
 //
 // Uses NVIDIA's CUB (CUDA Unbound) library for optimized block-level reductions.
 // CUB is part of the CUDA Core Compute Libraries (CCCL) and provides highly
@@ -35,6 +35,6 @@
 // - C++11 or later
 //
 // Returns execution time in milliseconds (currently 0.0f, timing handled by caller)
-float softmax_Cub(const float *d_input, float *d_output, int n, int threadsPerBlock);
+float softmax_CubBlock(const float *d_input, float *d_output, int n, int threadsPerBlock);
 
 #endif

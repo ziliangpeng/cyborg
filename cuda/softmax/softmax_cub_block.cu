@@ -1,4 +1,4 @@
-#include "softmax_cub.h"
+#include "softmax_cub_block.h"
 #include "cuda_utils.h"
 #include "elementwise_kernels.h"
 #include <cuda_runtime.h>
@@ -249,8 +249,8 @@ __global__ void softmaxCub_GlobalReduce(
     }
 }
 
-// Host function: CUB-based softmax
-float softmax_Cub(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+// Host function: CUB block-level softmax
+float softmax_CubBlock(const float *d_input, float *d_output, int n, int threadsPerBlock) {
     // Calculate grid dimensions
     int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
 
