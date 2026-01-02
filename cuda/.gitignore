@@ -1,10 +1,4 @@
-# Ignore compiled binaries
-vector
-mem_benchmark
-reduce
-softmax.old
-
-# Ignore object files
+# Ignore object files (if any legacy builds happen)
 *.o
 
 # Ignore profiling reports
