@@ -43,14 +43,14 @@ cuda_library(
     includes = [".."],
 )
 
-# Fused 2-kernel implementation (skeleton)
+# Fused 2-kernel implementation using cooperative groups with grid-stride loops
 cuda_library(
     name = "softmax_fused2",
     srcs = ["softmax_fused2.cu"],
     hdrs = ["softmax_fused2.h"],
     deps = [
+        ":softmax_fused",  # Reuse softmaxFused_BlockStats from 3-kernel version
         "//cuda:cuda_utils",
-        "//cuda:reduce_kernels",
     ],
     includes = [".."],
 )
