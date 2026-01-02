@@ -1,0 +1,14 @@
+module(
+    name = "cyborg",
+    version = "0.1.0",
+)
+
+# ============================================================================
+# CUDA Rules
+# ============================================================================
+
+bazel_dep(name = "rules_cuda", version = "0.2.5")
+
+# Register CUDA toolchains (auto-detect CUDA installation)
+cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
+cuda.local_toolchain()

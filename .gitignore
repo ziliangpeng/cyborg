@@ -15,3 +15,6 @@ data/
 # Experimental crypto artifacts
 experimental/crypto/eth_uniswap_wbtc_usdc_blocks/
 experimental/crypto/eth_uniswap_wbtc_usdc_swap_events/
+
+# Bazel symlinks (created at repo root)
+/bazel-*

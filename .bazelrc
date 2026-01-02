@@ -1,0 +1,36 @@
+# ============================================================================
+# General Build Settings (applies to entire monorepo)
+# ============================================================================
+
+# Use MODULE.bazel (Bzlmod) - required for Bazel 8+ with rules_cuda
+# WORKSPACE has circular dependency issues with rules_cc in Bazel 8
+
+# Show errors for failed tests
+test --test_output=errors
+
+# Verbose failures
+build --verbose_failures
+
+# Enable caching
+build --disk_cache=~/.cache/bazel
+
+# Use sandboxing for reproducible builds
+build --spawn_strategy=sandboxed
+
+# ============================================================================
+# CI Configuration (for GitHub Actions without GPU/CUDA)
+# ============================================================================
+
+# Exclude CUDA targets from CI builds (no GPU available)
+# Usage: bazel test --config=ci //...
+build:ci --build_tag_filters=-gpu,-cuda
+test:ci --test_tag_filters=-gpu,-cuda
+
+# ============================================================================
+# Local Development Configuration (for machines with GPU)
+# ============================================================================
+
+# Include all targets including GPU/CUDA
+# Usage: bazel test --config=local //...  (or just: bazel test //...)
+build:local --build_tag_filters=
+test:local --test_tag_filters=
