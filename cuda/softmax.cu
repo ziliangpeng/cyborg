@@ -14,14 +14,16 @@ void print_usage(const char *program_name) {
     printf("Options:\n");
     printf("  -n, --size N              Set array size (default: 1048576)\n");
     printf("  -b, --block-size N        Set threads per block (default: 256)\n");
-    printf("  -m, --method METHOD       Softmax method: 'naive', 'multi', 'fused', or 'online' (default: multi)\n");
+    printf("  -m, --method METHOD       Softmax method: 'naive', 'multi', 'fused', 'fused2', 'fused1', or 'online' (default: multi)\n");
     printf("  -v, --verify              Enable result verification\n");
     printf("  -h, --help                Show this help message\n");
     printf("\nMethods:\n");
-    printf("  naive:  Naive exp(x)/sum (unstable - demonstrates overflow)\n");
-    printf("  multi:  3-kernel stable approach (max → exp-sum → normalize)\n");
-    printf("  fused:  1-2 kernel optimized (block-level fusion) [NOT IMPLEMENTED]\n");
-    printf("  online: Single-pass online algorithm (streaming max/sum) [NOT IMPLEMENTED]\n");
+    printf("  naive:   Naive exp(x)/sum (unstable - demonstrates overflow)\n");
+    printf("  multi:   Multi-pass stable (max → exp-sum → normalize)\n");
+    printf("  fused:   3-kernel fused (block stats → global reduce → normalize) [IMPLEMENTED]\n");
+    printf("  fused2:  2-kernel fused (block stats → fused reduce+normalize) [SKELETON]\n");
+    printf("  fused1:  1-kernel fused (single kernel, grid sync, cooperative groups) [SKELETON]\n");
+    printf("  online:  Single-pass online algorithm (streaming max/sum) [SKELETON]\n");
 }
 
 // CPU reference implementation for verification (numerically stable)
@@ -92,6 +94,10 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
             softmax_MultiPass(d_input, d_output, n, threadsPerBlock);
         } else if (strcmp(method, "fused") == 0) {
             softmax_Fused(d_input, d_output, n, threadsPerBlock);
+        } else if (strcmp(method, "fused2") == 0) {
+            softmax_Fused2(d_input, d_output, n, threadsPerBlock);
+        } else if (strcmp(method, "fused1") == 0) {
+            softmax_Fused1(d_input, d_output, n, threadsPerBlock);
         } else if (strcmp(method, "online") == 0) {
             softmax_Online(d_input, d_output, n, threadsPerBlock);
         }
@@ -114,6 +120,10 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
             softmax_MultiPass(d_input, d_output, n, threadsPerBlock);
         } else if (strcmp(method, "fused") == 0) {
             softmax_Fused(d_input, d_output, n, threadsPerBlock);
+        } else if (strcmp(method, "fused2") == 0) {
+            softmax_Fused2(d_input, d_output, n, threadsPerBlock);
+        } else if (strcmp(method, "fused1") == 0) {
+            softmax_Fused1(d_input, d_output, n, threadsPerBlock);
         } else if (strcmp(method, "online") == 0) {
             softmax_Online(d_input, d_output, n, threadsPerBlock);
         }
@@ -225,8 +235,9 @@ int main(int argc, char *argv[]) {
             case 'm':
                 method = optarg;
                 if (strcmp(method, "naive") != 0 && strcmp(method, "multi") != 0 &&
-                    strcmp(method, "fused") != 0 && strcmp(method, "online") != 0) {
-                    fprintf(stderr, "Error: method must be 'naive', 'multi', 'fused', or 'online'\n");
+                    strcmp(method, "fused") != 0 && strcmp(method, "fused2") != 0 &&
+                    strcmp(method, "fused1") != 0 && strcmp(method, "online") != 0) {
+                    fprintf(stderr, "Error: method must be 'naive', 'multi', 'fused', 'fused2', 'fused1', or 'online'\n");
                     return 1;
                 }
                 break;
