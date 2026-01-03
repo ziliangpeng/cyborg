@@ -4,6 +4,7 @@
 #include <math.h>
 #include <time.h>
 #include <getopt.h>
+#include <algorithm>
 #include <cuda_runtime.h>
 #include "cuda_utils.h"
 #include "softmax_naive.h"
@@ -38,7 +39,7 @@ const char* BENCHMARK_METHODS[] = {
 const int NUM_METHODS = 9;
 
 const int BENCHMARK_SIZES[] = {1<<17, 1<<20, 1<<23, 1<<26};  // 131K, 1M, 8M, 67M
-const int NUM_SIZES = 4;
+const int NUM_SIZES = sizeof(BENCHMARK_SIZES) / sizeof(BENCHMARK_SIZES[0]);
 const char* SIZE_LABELS[] = {"131K", "1M", "8M", "67M"};
 
 // Result structures
@@ -135,12 +136,8 @@ float get_median_time(SoftmaxKernel *kernel, const float *d_input, float *d_outp
         cudaEventElapsedTime(&timings[i], start, stop);
     }
 
-    // Sort for median
-    qsort(timings, num_iterations, sizeof(float), [](const void *a, const void *b) {
-        float fa = *(const float*)a;
-        float fb = *(const float*)b;
-        return (fa > fb) - (fa < fb);
-    });
+    // Sort for median using std::sort (C++ standard, more efficient than qsort)
+    std::sort(timings, timings + num_iterations);
 
     int median_idx = num_iterations / 2;
     float median = timings[median_idx];
