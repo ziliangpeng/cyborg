@@ -277,14 +277,9 @@ void Fused3Softmax::execute(const float *d_input, float *d_output) {
         d_block_maxes, d_block_sums, d_global_max, d_global_sum, numBlocks);
     cudaCheckError(cudaGetLastError());
 
-    // Copy global statistics to host for use as scalar parameters
-    float max_val, sum_exp;
-    cudaCheckError(cudaMemcpy(&max_val, d_global_max, sizeof(float), cudaMemcpyDeviceToHost));
-    cudaCheckError(cudaMemcpy(&sum_exp, d_global_sum, sizeof(float), cudaMemcpyDeviceToHost));
-
-    // Launch Kernel 3: Final normalization using shared element-wise kernel
-    softmaxNormalizeKernel<<<numBlocks, threadsPerBlock>>>(
-        d_input, max_val, sum_exp, d_output, n);
+    // Launch Kernel 3: Final normalization using device pointer version (avoids D2H transfer)
+    softmaxNormalizeKernel_DevicePtr<<<numBlocks, threadsPerBlock>>>(
+        d_input, d_global_max, d_global_sum, d_output, n);
     cudaCheckError(cudaGetLastError());
 }
 

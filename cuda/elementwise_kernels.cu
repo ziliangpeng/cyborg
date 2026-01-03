@@ -88,3 +88,26 @@ __global__ void softmaxNormalizeKernel(const float *input, float max_val, float 
         output[idx] = expf(input[idx] - max_val) / sum_exp;
     }
 }
+
+// Device pointer version of naive normalization kernel
+// Accepts device pointers for sum_exp to avoid host-device transfers
+__global__ void naiveNormalizeKernel_DevicePtr(const float *input, const float *d_sum_exp, float *output, int n) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (idx < n) {
+        float sum_exp = *d_sum_exp;  // Single read from global memory
+        output[idx] = expf(input[idx]) / sum_exp;
+    }
+}
+
+// Device pointer version of softmax normalization kernel
+// Accepts device pointers for max_val and sum_exp to avoid host-device transfers
+__global__ void softmaxNormalizeKernel_DevicePtr(const float *input, const float *d_max_val, const float *d_sum_exp, float *output, int n) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (idx < n) {
+        float max_val = *d_max_val;    // Single read from global memory
+        float sum_exp = *d_sum_exp;    // Single read from global memory
+        output[idx] = expf(input[idx] - max_val) / sum_exp;
+    }
+}

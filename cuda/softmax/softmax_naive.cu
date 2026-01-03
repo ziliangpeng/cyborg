@@ -175,14 +175,11 @@ void NaiveSoftmax::execute(const float *d_input, float *d_output) {
         offset = (offset == 0) ? (max_workspace_size / 2) : 0;
     }
 
-    // Copy final sum to host (still necessary for algorithm)
-    float sum_exp;
-    cudaCheckError(cudaMemcpy(&sum_exp, d_current, sizeof(float), cudaMemcpyDeviceToHost));
-
-    // Stage 2: Normalize (divide by sum)
+    // Stage 2: Normalize (divide by sum) using device pointer version (avoids D2H transfer)
+    // d_current now points to the final sum in device memory
     int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
-    naiveNormalizeKernel<<<numBlocks, threadsPerBlock>>>(
-        d_input, sum_exp, d_output, n);
+    naiveNormalizeKernel_DevicePtr<<<numBlocks, threadsPerBlock>>>(
+        d_input, d_current, d_output, n);
     cudaCheckError(cudaGetLastError());
 }
 

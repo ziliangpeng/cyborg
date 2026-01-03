@@ -265,17 +265,10 @@ void OnlineSimpleSoftmax::execute(const float *d_input, float *d_output) {
     cudaCheckError(cudaGetLastError());
 
     // ========================================================================
-    // Copy global stats to host (needed for normalization kernel)
+    // Kernel 3: Normalize output using device pointer version (avoids D2H transfer)
     // ========================================================================
-    float h_global_max, h_global_sum;
-    cudaCheckError(cudaMemcpy(&h_global_max, d_global_max, sizeof(float), cudaMemcpyDeviceToHost));
-    cudaCheckError(cudaMemcpy(&h_global_sum, d_global_sum, sizeof(float), cudaMemcpyDeviceToHost));
-
-    // ========================================================================
-    // Kernel 3: Normalize output (reuse existing kernel)
-    // ========================================================================
-    softmaxNormalizeKernel<<<numBlocks, threadsPerBlock>>>(
-        d_input, h_global_max, h_global_sum, d_output, n);
+    softmaxNormalizeKernel_DevicePtr<<<numBlocks, threadsPerBlock>>>(
+        d_input, d_global_max, d_global_sum, d_output, n);
     cudaCheckError(cudaGetLastError());
 }
 

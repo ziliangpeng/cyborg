@@ -33,4 +33,10 @@ __global__ void naiveNormalizeKernel(const float *input, float sum_exp, float *o
 // Shared by multi-pass and fused softmax implementations
 __global__ void softmaxNormalizeKernel(const float *input, float max_val, float sum_exp, float *output, int n);
 
+// Device pointer version of naive normalization kernel (avoids host-device transfers)
+__global__ void naiveNormalizeKernel_DevicePtr(const float *input, const float *d_sum_exp, float *output, int n);
+
+// Device pointer version of softmax normalization kernel (avoids host-device transfers)
+__global__ void softmaxNormalizeKernel_DevicePtr(const float *input, const float *d_max_val, const float *d_sum_exp, float *output, int n);
+
 #endif
