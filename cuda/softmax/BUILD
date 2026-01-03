@@ -76,7 +76,7 @@ cuda_library(
     includes = [".."],
 )
 
-# Online softmax implementation (skeleton)
+# Online softmax implementation (skeleton - deprecated)
 cuda_library(
     name = "softmax_online",
     srcs = ["softmax_online.cu"],
@@ -84,6 +84,35 @@ cuda_library(
     deps = [
         "//cuda:cuda_utils",
         "//cuda:reduce_kernels",
+    ],
+    includes = [".."],
+)
+
+# Online softmax - simple thread-level implementation (educational)
+cuda_library(
+    name = "softmax_online_simple",
+    srcs = ["softmax_online_simple.cu"],
+    hdrs = [
+        "softmax_online_simple.h",
+        "softmax_kernel.h",  # Base interface
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+        "//cuda:elementwise_kernels",
+    ],
+    includes = [".."],
+)
+
+# Online softmax - warp-level cooperative implementation (performance)
+cuda_library(
+    name = "softmax_online_warp",
+    srcs = ["softmax_online_warp.cu"],
+    hdrs = [
+        "softmax_online_warp.h",
+        "softmax_kernel.h",  # Base interface
+    ],
+    deps = [
+        "//cuda:cuda_utils",
     ],
     includes = [".."],
 )
@@ -150,6 +179,8 @@ cuda_binary(
         ":softmax_fused2",
         ":softmax_fused1",
         ":softmax_online",
+        ":softmax_online_simple",
+        ":softmax_online_warp",
         ":softmax_cub_block",
         ":softmax_cub_device",
         ":softmax_cudnn",
