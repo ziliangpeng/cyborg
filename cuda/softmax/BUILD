@@ -204,7 +204,11 @@ cuda_test(
     name = "softmax_naive_1k_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "1000", "--method", "naive", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
 )
 
@@ -212,7 +216,11 @@ cuda_test(
     name = "softmax_naive_10k_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "10000", "--method", "naive", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
 )
 
@@ -221,7 +229,11 @@ cuda_test(
     name = "softmax_multi_1k_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "1000", "--method", "multi", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
 )
 
@@ -229,7 +241,11 @@ cuda_test(
     name = "softmax_multi_100k_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "100000", "--method", "multi", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
 )
 
@@ -237,7 +253,11 @@ cuda_test(
     name = "softmax_multi_1m_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "1000000", "--method", "multi", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
 )
 
@@ -246,7 +266,11 @@ cuda_test(
     name = "softmax_fused3_1k_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "1000", "--method", "fused3", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
 )
 
@@ -254,7 +278,11 @@ cuda_test(
     name = "softmax_fused3_100k_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "100000", "--method", "fused3", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
 )
 
@@ -262,7 +290,11 @@ cuda_test(
     name = "softmax_fused3_1m_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "1000000", "--method", "fused3", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
 )
 
@@ -270,7 +302,11 @@ cuda_test(
     name = "softmax_fused3_10m_test",
     srcs = ["softmax.cpp"],
     args = ["--size", "10000000", "--method", "fused3", "--verify"],
-    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", "//cuda:cuda_utils", "//cuda:vector_init"],
+    deps = [":softmax_naive", ":softmax_multipass", ":softmax_fused3", ":softmax_fused2", ":softmax_fused1", ":softmax_online", ":softmax_online_simple", ":softmax_online_warp", ":softmax_cub_block", ":softmax_cub_device", ":softmax_cudnn", "//cuda:cuda_utils", "//cuda:vector_init"],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
     tags = ["cuda", "gpu"],
     timeout = "moderate",  # Larger test needs more time
 )
