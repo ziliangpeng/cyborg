@@ -8,7 +8,10 @@ load("@rules_cuda//cuda:defs.bzl", "cuda_library", "cuda_binary", "cuda_test")
 cuda_library(
     name = "softmax_naive",
     srcs = ["softmax_naive.cu"],
-    hdrs = ["softmax_naive.h"],
+    hdrs = [
+        "softmax_naive.h",
+        "softmax_kernel.h",  # Base interface
+    ],
     deps = [
         "//cuda:cuda_utils",
         "//cuda:reduce_kernels",

@@ -116,6 +116,8 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
         kernel = new Fused3Softmax(n, threadsPerBlock);
     } else if (strcmp(method, "fused2") == 0) {
         kernel = new Fused2Softmax(n, threadsPerBlock);
+    } else if (strcmp(method, "naive") == 0) {
+        kernel = new NaiveSoftmax(n, threadsPerBlock);
     }
 
     if (kernel) {
@@ -133,9 +135,7 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
         for (int i = 0; i < num_iterations; i++) {
             cudaEventRecord(start);
 
-            if (strcmp(method, "naive") == 0) {
-                softmax_Naive(d_input, d_output, n, threadsPerBlock);
-            } else if (strcmp(method, "multi") == 0) {
+            if (strcmp(method, "multi") == 0) {
                 softmax_MultiPass(d_input, d_output, n, threadsPerBlock);
             } else if (strcmp(method, "fused1") == 0) {
                 softmax_Fused1(d_input, d_output, n, threadsPerBlock);

@@ -123,20 +123,34 @@ __global__ void expSumReductionKernel(const float *input, float *partialSums, in
 
 // Note: naiveNormalizeKernel is now provided by elementwise_kernels.h
 
-// Host function: Naive softmax (demonstrates overflow)
-float softmax_Naive(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+// ============================================================================
+// CLASS-BASED IMPLEMENTATION: Separates setup from execution
+// ============================================================================
+
+// Constructor: Allocate workspace for reduction stages
+NaiveSoftmax::NaiveSoftmax(int n, int threadsPerBlock)
+    : n(n), threadsPerBlock(threadsPerBlock) {
+    // Calculate maximum workspace needed (first stage output size)
+    max_workspace_size = (n + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Allocate workspace (reused across all reduction stages)
+    cudaCheckError(cudaMalloc(&d_workspace, max_workspace_size * sizeof(float)));
+}
+
+// Execute: Pure kernel execution (ONLY this is timed in benchmarks)
+void NaiveSoftmax::execute(const float *d_input, float *d_output) {
     const float *d_current = d_input;
     int currentSize = n;
-    bool allocated = false;
+    bool useWorkspace = false;
     bool firstStage = true;
+    int offset = 0;  // Offset into workspace for ping-pong buffering
 
     // Stage 1: Compute sum(exp(x)) using reduction
     while (currentSize > 1) {
         int numBlocks = (currentSize + threadsPerBlock - 1) / threadsPerBlock;
 
-        // Allocate output for this reduction stage
-        float *d_output_stage;
-        cudaCheckError(cudaMalloc(&d_output_stage, numBlocks * sizeof(float)));
+        // Output goes to workspace (reusing pre-allocated buffer)
+        float *d_output_stage = d_workspace + offset;
 
         // Launch appropriate kernel
         size_t sharedMemSize = threadsPerBlock * sizeof(float);
@@ -153,32 +167,37 @@ float softmax_Naive(const float *d_input, float *d_output, int n, int threadsPer
         }
         cudaCheckError(cudaGetLastError());
 
-        // Free previous buffer if we allocated it
-        if (allocated) {
-            cudaCheckError(cudaFree((void*)d_current));
-        }
-
-        // Move to next stage
+        // Move to next stage (ping-pong between two halves of workspace)
         d_current = d_output_stage;
         currentSize = numBlocks;
-        allocated = true;
+        useWorkspace = true;
+        // Simple ping-pong: alternate between start and middle of workspace
+        offset = (offset == 0) ? (max_workspace_size / 2) : 0;
     }
 
-    // Copy final sum to host
+    // Copy final sum to host (still necessary for algorithm)
     float sum_exp;
     cudaCheckError(cudaMemcpy(&sum_exp, d_current, sizeof(float), cudaMemcpyDeviceToHost));
-
-    // Cleanup reduction buffer
-    if (allocated) {
-        cudaCheckError(cudaFree((void*)d_current));
-    }
 
     // Stage 2: Normalize (divide by sum)
     int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
     naiveNormalizeKernel<<<numBlocks, threadsPerBlock>>>(
         d_input, sum_exp, d_output, n);
     cudaCheckError(cudaGetLastError());
-    cudaDeviceSynchronize();
+}
 
+// Destructor: Free workspace
+NaiveSoftmax::~NaiveSoftmax() {
+    cudaFree(d_workspace);
+}
+
+// ============================================================================
+// LEGACY C-STYLE API: Wrapper for backwards compatibility
+// ============================================================================
+
+// Host function: Naive softmax (demonstrates overflow)
+float softmax_Naive(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+    NaiveSoftmax kernel(n, threadsPerBlock);
+    kernel.execute(d_input, d_output);
     return 0.0f;  // Timing handled by caller
 }
