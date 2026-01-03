@@ -171,7 +171,7 @@ cuda_library(
 
 cuda_binary(
     name = "softmax",
-    srcs = ["softmax.cu"],
+    srcs = ["softmax.cpp"],
     deps = [
         ":softmax_naive",
         ":softmax_multipass",

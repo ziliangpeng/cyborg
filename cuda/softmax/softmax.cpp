@@ -37,9 +37,9 @@ const char* BENCHMARK_METHODS[] = {
 };
 const int NUM_METHODS = 9;
 
-const int BENCHMARK_SIZES[] = {10000, 100000, 1000000, 10000000, 100000000};
-const int NUM_SIZES = 5;
-const char* SIZE_LABELS[] = {"10K", "100K", "1M", "10M", "100M"};
+const int BENCHMARK_SIZES[] = {1<<17, 1<<20, 1<<23, 1<<26};  // 131K, 1M, 8M, 67M
+const int NUM_SIZES = 4;
+const char* SIZE_LABELS[] = {"131K", "1M", "8M", "67M"};
 
 // Result structures
 struct BenchmarkResult {
@@ -78,8 +78,8 @@ void print_usage(const char *program_name) {
     printf("  cudnn:         NVIDIA cuDNN library (industry-standard) [IMPLEMENTED]\n");
     printf("\nSpecial method:\n");
     printf("  all:           Run comprehensive benchmark across all methods and sizes\n");
-    printf("                 Tests sizes: 10K, 100K, 1M, 10M, 100M\n");
-    printf("                 Iterations: 1000 per test\n");
+    printf("                 Tests sizes: 131K, 1M, 8M, 67M (powers of 2)\n");
+    printf("                 Iterations: 100 per test\n");
     printf("                 Output: Formatted performance table\n");
     printf("\n                 When combined with --verify:\n");
     printf("                   - Validates correctness against CPU reference\n");
@@ -219,7 +219,7 @@ void print_performance_table(BenchmarkResult results[][NUM_SIZES]) {
     printf("=============================================================================\n");
     printf("                    SOFTMAX PERFORMANCE BENCHMARK\n");
     printf("=============================================================================\n");
-    printf("Iterations per test: 1000\n");
+    printf("Iterations per test: 100\n");
     printf("Metric: Median execution time (ms)\n\n");
 
     // Print header
@@ -341,8 +341,8 @@ void benchmark_all_methods(int threadsPerBlock, bool verify) {
     printf("                    RUNNING COMPREHENSIVE BENCHMARK\n");
     printf("=============================================================================\n");
     printf("Methods to test: %d\n", NUM_METHODS);
-    printf("Sizes to test: %d (10K, 100K, 1M, 10M, 100M)\n", NUM_SIZES);
-    printf("Iterations per test: 1000\n");
+    printf("Sizes to test: %d (131K, 1M, 8M, 67M)\n", NUM_SIZES);
+    printf("Iterations per test: 100\n");
     printf("Threads per block: %d\n", threadsPerBlock);
     if (verify) {
         printf("Verification: ENABLED\n");
@@ -451,7 +451,7 @@ void benchmark_all_methods(int threadsPerBlock, bool verify) {
                     strcpy(perf_results[m][s].skip_reason, "Unknown method");
                 } else {
                     // Run performance benchmark
-                    float median_time = get_median_time(kernel, d_input, d_output, n, 1000);
+                    float median_time = get_median_time(kernel, d_input, d_output, n, 100);
 
                     if (median_time < 0.0f) {
                         printf("SKIPPED (benchmark failed)\n");
