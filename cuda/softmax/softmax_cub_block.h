@@ -1,6 +1,8 @@
 #ifndef SOFTMAX_CUB_BLOCK_H
 #define SOFTMAX_CUB_BLOCK_H
 
+#include "softmax_kernel.h"
+
 // CUB Block-Level softmax implementation
 //
 // Uses NVIDIA's CUB (CUDA Unbound) library for optimized block-level reductions.
@@ -33,8 +35,26 @@
 // Requirements:
 // - CUDA 11.0+ (CUB is included in CUDA Toolkit)
 // - C++11 or later
-//
-// Returns execution time in milliseconds (currently 0.0f, timing handled by caller)
+
+// Class-based interface for accurate profiling
+class CubBlockSoftmax : public SoftmaxKernel {
+private:
+    float *d_block_maxes, *d_block_sums;
+    float *d_global_max, *d_global_sum;
+    int n, threadsPerBlock, numBlocks;
+
+public:
+    // Constructor: Allocate intermediate buffers
+    CubBlockSoftmax(int n, int threadsPerBlock);
+
+    // Execute: Pure kernel execution (no setup/teardown overhead)
+    void execute(const float *d_input, float *d_output) override;
+
+    // Destructor: Free intermediate buffers
+    ~CubBlockSoftmax() override;
+};
+
+// Legacy C-style API (for backwards compatibility)
 float softmax_CubBlock(const float *d_input, float *d_output, int n, int threadsPerBlock);
 
 #endif

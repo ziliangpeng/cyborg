@@ -1,6 +1,8 @@
 #ifndef SOFTMAX_FUSED2_H
 #define SOFTMAX_FUSED2_H
 
+#include "softmax_kernel.h"
+
 // Fused 2-kernel softmax using cooperative groups with grid-stride loops
 //
 // Architecture:
@@ -52,8 +54,27 @@
 //   - Input size > 1M elements → Use softmax_Fused (3-kernel) instead
 //   - Older GPUs (compute capability < 6.0) → Use softmax_MultiPass
 //   - Maximum portability needed → Use softmax_MultiPass
-//
-// Returns execution time in milliseconds (currently 0.0f, timing handled by caller)
+
+// Class-based interface for accurate profiling
+class Fused2Softmax : public SoftmaxKernel {
+private:
+    float *d_block_maxes, *d_block_sums;
+    float *d_global_max, *d_global_sum;
+    int n, threadsPerBlock;
+    int numBlocks_K1, numBlocks_K2;
+
+public:
+    // Constructor: Allocate intermediate buffers
+    Fused2Softmax(int n, int threadsPerBlock);
+
+    // Execute: Pure kernel execution (no setup/teardown overhead)
+    void execute(const float *d_input, float *d_output) override;
+
+    // Destructor: Free intermediate buffers
+    ~Fused2Softmax() override;
+};
+
+// Legacy C-style API (for backwards compatibility)
 float softmax_Fused2(const float *d_input, float *d_output, int n, int threadsPerBlock);
 
 #endif

@@ -282,48 +282,54 @@ __global__ void softmaxFused2_ReduceAndNormalize(
 }
 
 // Host function: 2-kernel fused softmax with cooperative launch
-float softmax_Fused2(const float *d_input, float *d_output, int n, int threadsPerBlock) {
-    // Check cooperative launch support
+// ============================================================================
+// CLASS-BASED IMPLEMENTATION: Separates setup from execution
+// ============================================================================
+
+// Constructor: Allocate intermediate buffers
+Fused2Softmax::Fused2Softmax(int n, int threadsPerBlock)
+    : n(n), threadsPerBlock(threadsPerBlock) {
+    // Query device
     int device;
     cudaCheckError(cudaGetDevice(&device));
+
+    // Check if device supports cooperative launch
     int supportsCoopLaunch = 0;
     cudaCheckError(cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, device));
+
     if (!supportsCoopLaunch) {
-        printf("ERROR: Device does not support cooperative kernel launch\n");
-        printf("       This implementation requires CUDA compute capability 6.0+\n");
-        printf("       Suggestion: Use 3-kernel fused softmax (softmax_Fused) instead\n");
-        return 0.0f;
+        fprintf(stderr, "ERROR: Device does not support cooperative kernel launch\n");
+        fprintf(stderr, "       This implementation requires CUDA compute capability 6.0+\n");
+        exit(EXIT_FAILURE);
     }
 
     cudaDeviceProp deviceProp;
     cudaCheckError(cudaGetDeviceProperties(&deviceProp, device));
 
     // Kernel 1: Regular launch - use as many blocks as needed (no cooperative constraint!)
-    int numBlocks_K1 = (n + threadsPerBlock - 1) / threadsPerBlock;
+    numBlocks_K1 = (n + threadsPerBlock - 1) / threadsPerBlock;
 
     // Kernel 2: Cooperative launch - limited by hardware
     int maxBlocksPerSM_K2 = 0;
     cudaCheckError(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&maxBlocksPerSM_K2,
         softmaxFused2_ReduceAndNormalize, threadsPerBlock, threadsPerBlock * sizeof(float)));
-    int numBlocks_K2 = maxBlocksPerSM_K2 * deviceProp.multiProcessorCount;
+    numBlocks_K2 = maxBlocksPerSM_K2 * deviceProp.multiProcessorCount;
 
     if (numBlocks_K2 == 0) {
-        printf("ERROR: Cooperative launch not possible (maxBlocks = 0)\n");
-        printf("       Kernel may use too many resources\n");
-        printf("       Suggestion: Use 3-kernel fused softmax (softmax_Fused) instead\n");
-        return 0.0f;
+        fprintf(stderr, "ERROR: Cooperative launch not possible (maxBlocks = 0)\n");
+        fprintf(stderr, "       Kernel may use too many resources\n");
+        exit(EXIT_FAILURE);
     }
 
-    // Allocate intermediate buffers for block statistics (from Kernel 1)
-    float *d_block_maxes, *d_block_sums;
+    // Allocate intermediate buffers (done once, outside timing loop)
     cudaCheckError(cudaMalloc(&d_block_maxes, numBlocks_K1 * sizeof(float)));
     cudaCheckError(cudaMalloc(&d_block_sums, numBlocks_K1 * sizeof(float)));
-
-    // Allocate buffers for global statistics
-    float *d_global_max, *d_global_sum;
     cudaCheckError(cudaMalloc(&d_global_max, sizeof(float)));
     cudaCheckError(cudaMalloc(&d_global_sum, sizeof(float)));
+}
 
+// Execute: Pure kernel execution (ONLY this is timed in benchmarks)
+void Fused2Softmax::execute(const float *d_input, float *d_output) {
     // Initialize global stats (critical for correctness!)
     float init_max = -INFINITY;
     float init_sum = 0.0f;
@@ -334,14 +340,11 @@ float softmax_Fused2(const float *d_input, float *d_output, int n, int threadsPe
     size_t sharedMemSize = threadsPerBlock * sizeof(float);
 
     // Kernel 1: Compute block statistics (REGULAR LAUNCH - full parallelism!)
-    // For 1M elements: 3,907 blocks (not limited by cooperative constraints)
     softmaxFused3_BlockStats<<<numBlocks_K1, threadsPerBlock, sharedMemSize>>>(
         d_input, d_block_maxes, d_block_sums, n);
     cudaCheckError(cudaGetLastError());
 
     // Kernel 2: Cooperative launch for fused reduce + normalize
-    // Limited to numBlocks_K2 (e.g., 1,056 on H100)
-    // Must use grid-stride loop to process all numBlocks_K1 block statistics
     void* kernelArgs[] = {
         (void*)&d_input,
         (void*)&d_block_maxes,
@@ -357,15 +360,22 @@ float softmax_Fused2(const float *d_input, float *d_output, int n, int threadsPe
         (void*)softmaxFused2_ReduceAndNormalize,
         dim3(numBlocks_K2), dim3(threadsPerBlock),
         kernelArgs, sharedMemSize, 0));
+}
 
-    // Synchronize before cleanup
-    cudaDeviceSynchronize();
+// Destructor: Free intermediate buffers
+Fused2Softmax::~Fused2Softmax() {
+    cudaFree(d_block_maxes);
+    cudaFree(d_block_sums);
+    cudaFree(d_global_max);
+    cudaFree(d_global_sum);
+}
 
-    // Cleanup intermediate buffers
-    cudaCheckError(cudaFree(d_block_maxes));
-    cudaCheckError(cudaFree(d_block_sums));
-    cudaCheckError(cudaFree(d_global_max));
-    cudaCheckError(cudaFree(d_global_sum));
+// ============================================================================
+// LEGACY C-STYLE API: Wrapper for backwards compatibility
+// ============================================================================
 
+float softmax_Fused2(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+    Fused2Softmax kernel(n, threadsPerBlock);
+    kernel.execute(d_input, d_output);
     return 0.0f;  // Timing handled by caller
 }

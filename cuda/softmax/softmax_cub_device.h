@@ -1,6 +1,8 @@
 #ifndef SOFTMAX_CUB_DEVICE_H
 #define SOFTMAX_CUB_DEVICE_H
 
+#include "softmax_kernel.h"
+
 // CUB Device-Level softmax implementation
 //
 // Uses NVIDIA's CUB (CUDA Unbound) device-level primitives for single-call reductions.
@@ -29,8 +31,28 @@
 // Requirements:
 // - CUDA 11.0+ (CUB is included in CUDA Toolkit)
 // - C++11 or later
-//
-// Returns execution time in milliseconds (currently 0.0f, timing handled by caller)
+
+// Class-based interface for accurate profiling
+class CubDeviceSoftmax : public SoftmaxKernel {
+private:
+    void *d_temp_storage;
+    size_t temp_storage_bytes;
+    float *d_max_out;
+    float *d_global_sum;
+    int n, threadsPerBlock, numBlocks;
+
+public:
+    // Constructor: Allocate workspace (temp storage, output buffers)
+    CubDeviceSoftmax(int n, int threadsPerBlock);
+
+    // Execute: Pure kernel execution (no setup/teardown overhead)
+    void execute(const float *d_input, float *d_output) override;
+
+    // Destructor: Free workspace
+    ~CubDeviceSoftmax() override;
+};
+
+// Legacy C-style API (for backwards compatibility)
 float softmax_CubDevice(const float *d_input, float *d_output, int n, int threadsPerBlock);
 
 #endif

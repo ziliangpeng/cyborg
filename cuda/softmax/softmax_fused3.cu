@@ -245,21 +245,25 @@ __global__ void softmaxFused3_GlobalReduce(
 // Note: Normalization kernel is now provided by elementwise_kernels.h (softmaxNormalizeKernel)
 // The shared kernel uses scalar parameters instead of device pointers for better efficiency
 
-// Host function: 3-kernel fused softmax
-float softmax_Fused3(const float *d_input, float *d_output, int n, int threadsPerBlock) {
-    // Calculate grid dimensions
-    int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+// ============================================================================
+// CLASS-BASED IMPLEMENTATION: Separates setup from execution
+// ============================================================================
 
-    // Allocate intermediate buffers for block statistics
-    float *d_block_maxes, *d_block_sums;
+// Constructor: Allocate intermediate buffers
+Fused3Softmax::Fused3Softmax(int n, int threadsPerBlock)
+    : n(n), threadsPerBlock(threadsPerBlock) {
+    // Calculate grid dimensions
+    numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Allocate intermediate buffers (done once, outside timing loop)
     cudaCheckError(cudaMalloc(&d_block_maxes, numBlocks * sizeof(float)));
     cudaCheckError(cudaMalloc(&d_block_sums, numBlocks * sizeof(float)));
-
-    // Allocate buffers for global statistics
-    float *d_global_max, *d_global_sum;
     cudaCheckError(cudaMalloc(&d_global_max, sizeof(float)));
     cudaCheckError(cudaMalloc(&d_global_sum, sizeof(float)));
+}
 
+// Execute: Pure kernel execution (ONLY this is timed in benchmarks)
+void Fused3Softmax::execute(const float *d_input, float *d_output) {
     // Calculate shared memory size
     size_t sharedMemSize = threadsPerBlock * sizeof(float);
 
@@ -282,15 +286,22 @@ float softmax_Fused3(const float *d_input, float *d_output, int n, int threadsPe
     softmaxNormalizeKernel<<<numBlocks, threadsPerBlock>>>(
         d_input, max_val, sum_exp, d_output, n);
     cudaCheckError(cudaGetLastError());
+}
 
-    // Synchronize before cleanup
-    cudaDeviceSynchronize();
+// Destructor: Free intermediate buffers
+Fused3Softmax::~Fused3Softmax() {
+    cudaFree(d_block_maxes);
+    cudaFree(d_block_sums);
+    cudaFree(d_global_max);
+    cudaFree(d_global_sum);
+}
 
-    // Cleanup intermediate buffers
-    cudaCheckError(cudaFree(d_block_maxes));
-    cudaCheckError(cudaFree(d_block_sums));
-    cudaCheckError(cudaFree(d_global_max));
-    cudaCheckError(cudaFree(d_global_sum));
+// ============================================================================
+// LEGACY C-STYLE API: Wrapper for backwards compatibility
+// ============================================================================
 
+float softmax_Fused3(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+    Fused3Softmax kernel(n, threadsPerBlock);
+    kernel.execute(d_input, d_output);
     return 0.0f;  // Timing handled by caller
 }

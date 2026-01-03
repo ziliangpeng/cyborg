@@ -126,26 +126,38 @@ __global__ void softmaxCubDevice_Normalize(
     }
 }
 
-// Host function: CUB device-level softmax
-float softmax_CubDevice(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+// ============================================================================
+// CLASS-BASED IMPLEMENTATION: Separates setup from execution
+// ============================================================================
+
+// Constructor: Allocate workspace (temp storage, output buffers)
+CubDeviceSoftmax::CubDeviceSoftmax(int n, int threadsPerBlock)
+    : n(n), threadsPerBlock(threadsPerBlock) {
+    // Calculate grid dimensions
+    numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Allocate output buffers
+    cudaCheckError(cudaMalloc(&d_max_out, sizeof(float)));
+    cudaCheckError(cudaMalloc(&d_global_sum, sizeof(float)));
+
+    // Determine temporary device storage requirements for CUB DeviceReduce
+    d_temp_storage = nullptr;
+    temp_storage_bytes = 0;
+
+    // First call: determine required temp storage size
+    // Note: We use a dummy input pointer here (CUB doesn't dereference it in the sizing call)
+    cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, (const float*)nullptr, d_max_out, n);
+
+    // Allocate temporary storage (done once, outside timing loop)
+    cudaCheckError(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+}
+
+// Execute: Pure kernel execution (ONLY this is timed in benchmarks)
+void CubDeviceSoftmax::execute(const float *d_input, float *d_output) {
     // ========================================================================
     // KERNEL 1: Use CUB DeviceReduce::Max to find global maximum
     // ========================================================================
 
-    float *d_max_out;
-    cudaCheckError(cudaMalloc(&d_max_out, sizeof(float)));
-
-    // Determine temporary device storage requirements
-    void *d_temp_storage = nullptr;
-    size_t temp_storage_bytes = 0;
-
-    // First call: determine required temp storage size
-    cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_input, d_max_out, n);
-
-    // Allocate temporary storage
-    cudaCheckError(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-
-    // Second call: actually perform the reduction
     cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_input, d_max_out, n);
     cudaCheckError(cudaGetLastError());
 
@@ -157,11 +169,7 @@ float softmax_CubDevice(const float *d_input, float *d_output, int n, int thread
     // KERNEL 2: Compute sum(exp(x - global_max))
     // ========================================================================
 
-    int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
     size_t sharedMemSize = threadsPerBlock * sizeof(float);
-
-    float *d_global_sum;
-    cudaCheckError(cudaMalloc(&d_global_sum, sizeof(float)));
 
     // Initialize global sum to 0
     float init_sum = 0.0f;
@@ -186,11 +194,21 @@ float softmax_CubDevice(const float *d_input, float *d_output, int n, int thread
     softmaxCubDevice_Normalize<<<numBlocks, threadsPerBlock>>>(
         d_input, h_global_max, h_global_sum, d_output, n);
     cudaCheckError(cudaGetLastError());
+}
 
-    // Cleanup
-    cudaCheckError(cudaFree(d_temp_storage));
-    cudaCheckError(cudaFree(d_max_out));
-    cudaCheckError(cudaFree(d_global_sum));
+// Destructor: Free workspace
+CubDeviceSoftmax::~CubDeviceSoftmax() {
+    cudaFree(d_temp_storage);
+    cudaFree(d_max_out);
+    cudaFree(d_global_sum);
+}
 
+// ============================================================================
+// LEGACY C-STYLE API: Wrapper for backwards compatibility
+// ============================================================================
+
+float softmax_CubDevice(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+    CubDeviceSoftmax kernel(n, threadsPerBlock);
+    kernel.execute(d_input, d_output);
     return 0.0f;  // Timing handled by caller
 }

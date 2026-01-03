@@ -1,6 +1,8 @@
 #ifndef SOFTMAX_FUSED3_H
 #define SOFTMAX_FUSED3_H
 
+#include "softmax_kernel.h"
+
 // Fused 3-kernel softmax - optimized stable approach
 //
 // Block-level fusion with 3 kernel launches:
@@ -10,8 +12,26 @@
 //
 // 2.15x faster than multi-pass for 1M elements by eliminating
 // recursive kernel launches.
-//
-// Returns execution time in milliseconds
+
+// Class-based interface for accurate profiling
+class Fused3Softmax : public SoftmaxKernel {
+private:
+    float *d_block_maxes, *d_block_sums;
+    float *d_global_max, *d_global_sum;
+    int n, threadsPerBlock, numBlocks;
+
+public:
+    // Constructor: Allocate intermediate buffers
+    Fused3Softmax(int n, int threadsPerBlock);
+
+    // Execute: Pure kernel execution (no setup/teardown overhead)
+    void execute(const float *d_input, float *d_output) override;
+
+    // Destructor: Free intermediate buffers
+    ~Fused3Softmax() override;
+};
+
+// Legacy C-style API (for backwards compatibility)
 float softmax_Fused3(const float *d_input, float *d_output, int n, int threadsPerBlock);
 
 // Kernel 1: Compute block-level statistics (max and exp-sum)

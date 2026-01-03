@@ -34,7 +34,10 @@ cuda_library(
 cuda_library(
     name = "softmax_fused3",
     srcs = ["softmax_fused3.cu"],
-    hdrs = ["softmax_fused3.h"],
+    hdrs = [
+        "softmax_fused3.h",
+        "softmax_kernel.h",  # Base interface
+    ],
     deps = [
         "//cuda:cuda_utils",
         "//cuda:reduce_kernels",
@@ -47,7 +50,10 @@ cuda_library(
 cuda_library(
     name = "softmax_fused2",
     srcs = ["softmax_fused2.cu"],
-    hdrs = ["softmax_fused2.h"],
+    hdrs = [
+        "softmax_fused2.h",
+        "softmax_kernel.h",  # Base interface
+    ],
     deps = [
         ":softmax_fused3",  # Reuse softmaxFused3_BlockStats from 3-kernel version
         "//cuda:cuda_utils",
@@ -83,7 +89,10 @@ cuda_library(
 cuda_library(
     name = "softmax_cub_block",
     srcs = ["softmax_cub_block.cu"],
-    hdrs = ["softmax_cub_block.h"],
+    hdrs = [
+        "softmax_cub_block.h",
+        "softmax_kernel.h",  # Base interface
+    ],
     deps = [
         "//cuda:cuda_utils",
         "//cuda:elementwise_kernels",
@@ -95,7 +104,10 @@ cuda_library(
 cuda_library(
     name = "softmax_cub_device",
     srcs = ["softmax_cub_device.cu"],
-    hdrs = ["softmax_cub_device.h"],
+    hdrs = [
+        "softmax_cub_device.h",
+        "softmax_kernel.h",  # Base interface
+    ],
     deps = [
         "//cuda:cuda_utils",
         "//cuda:elementwise_kernels",

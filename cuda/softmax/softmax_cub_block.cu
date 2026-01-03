@@ -249,20 +249,25 @@ __global__ void softmaxCub_GlobalReduce(
     }
 }
 
-// Host function: CUB block-level softmax
-float softmax_CubBlock(const float *d_input, float *d_output, int n, int threadsPerBlock) {
-    // Calculate grid dimensions
-    int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+// ============================================================================
+// CLASS-BASED IMPLEMENTATION: Separates setup from execution
+// ============================================================================
 
-    // Allocate intermediate buffers
-    float *d_block_maxes, *d_block_sums;
+// Constructor: Allocate intermediate buffers
+CubBlockSoftmax::CubBlockSoftmax(int n, int threadsPerBlock)
+    : n(n), threadsPerBlock(threadsPerBlock) {
+    // Calculate grid dimensions
+    numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Allocate intermediate buffers (done once, outside timing loop)
     cudaCheckError(cudaMalloc(&d_block_maxes, numBlocks * sizeof(float)));
     cudaCheckError(cudaMalloc(&d_block_sums, numBlocks * sizeof(float)));
-
-    float *d_global_max, *d_global_sum;
     cudaCheckError(cudaMalloc(&d_global_max, sizeof(float)));
     cudaCheckError(cudaMalloc(&d_global_sum, sizeof(float)));
+}
 
+// Execute: Pure kernel execution (ONLY this is timed in benchmarks)
+void CubBlockSoftmax::execute(const float *d_input, float *d_output) {
     // Launch Kernel 1: Block statistics with CUB
     // Note: We use template specialization for common block sizes
     if (threadsPerBlock == 256) {
@@ -307,12 +312,22 @@ float softmax_CubBlock(const float *d_input, float *d_output, int n, int threads
     softmaxNormalizeKernel<<<numBlocks, threadsPerBlock>>>(
         d_input, h_global_max, h_global_sum, d_output, n);
     cudaCheckError(cudaGetLastError());
+}
 
-    // Cleanup
-    cudaCheckError(cudaFree(d_block_maxes));
-    cudaCheckError(cudaFree(d_block_sums));
-    cudaCheckError(cudaFree(d_global_max));
-    cudaCheckError(cudaFree(d_global_sum));
+// Destructor: Free intermediate buffers
+CubBlockSoftmax::~CubBlockSoftmax() {
+    cudaFree(d_block_maxes);
+    cudaFree(d_block_sums);
+    cudaFree(d_global_max);
+    cudaFree(d_global_sum);
+}
 
+// ============================================================================
+// LEGACY C-STYLE API: Wrapper for backwards compatibility
+// ============================================================================
+
+float softmax_CubBlock(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+    CubBlockSoftmax kernel(n, threadsPerBlock);
+    kernel.execute(d_input, d_output);
     return 0.0f;  // Timing handled by caller
 }
