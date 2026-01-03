@@ -262,25 +262,48 @@ void print_performance_table(BenchmarkResult results[][NUM_SIZES]) {
         }
     }
 
-    // Find fastest per size (excluding naive method which is numerically unstable)
-    printf("\nFASTEST per size (excluding naive):\n");
+    // Find top 3 fastest per size (excluding naive method which is numerically unstable)
+    printf("\nTOP 3 FASTEST per size (excluding naive):\n");
     for (int s = 0; s < NUM_SIZES; s++) {
-        int fastest_method = -1;
-        float fastest_time = 1e9;
+        // Create array of (method_index, time) pairs
+        struct MethodTime {
+            int method_idx;
+            float time;
+        };
+        MethodTime method_times[NUM_METHODS];
+        int count = 0;
+
+        // Collect valid methods
         for (int m = 0; m < NUM_METHODS; m++) {
-            // Skip naive method (index 0) - it's numerically unstable
+            // Skip naive method - it's numerically unstable
             if (strcmp(BENCHMARK_METHODS[m], "naive") == 0) continue;
 
-            if (!results[m][s].skipped && results[m][s].median_time_ms > 0 &&
-                results[m][s].median_time_ms < fastest_time) {
-                fastest_time = results[m][s].median_time_ms;
-                fastest_method = m;
+            if (!results[m][s].skipped && results[m][s].median_time_ms > 0) {
+                method_times[count].method_idx = m;
+                method_times[count].time = results[m][s].median_time_ms;
+                count++;
             }
         }
-        if (fastest_method >= 0) {
-            printf("- %-5s: %s (%.3f ms)\n", SIZE_LABELS[s],
-                   BENCHMARK_METHODS[fastest_method], fastest_time);
+
+        // Sort by time (simple selection sort for top 3)
+        for (int i = 0; i < count && i < 3; i++) {
+            for (int j = i + 1; j < count; j++) {
+                if (method_times[j].time < method_times[i].time) {
+                    MethodTime temp = method_times[i];
+                    method_times[i] = method_times[j];
+                    method_times[j] = temp;
+                }
+            }
         }
+
+        // Print top 3
+        printf("- %-5s: ", SIZE_LABELS[s]);
+        int print_count = (count < 3) ? count : 3;
+        for (int i = 0; i < print_count; i++) {
+            if (i > 0) printf(", ");
+            printf("%s (%.3f ms)", BENCHMARK_METHODS[method_times[i].method_idx], method_times[i].time);
+        }
+        printf("\n");
     }
     printf("=============================================================================\n");
 }
