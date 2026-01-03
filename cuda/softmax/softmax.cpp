@@ -38,9 +38,9 @@ const char* BENCHMARK_METHODS[] = {
 };
 const int NUM_METHODS = 9;
 
-const int BENCHMARK_SIZES[] = {1<<10, 1<<13, 1<<17, 1<<20, 1<<23};  // 1K, 8K, 131K, 1M, 8M
+const int BENCHMARK_SIZES[] = {1<<10, 1<<13, 1<<16, 1<<18, 1<<20, 1<<23};  // 1K, 8K, 64K, 256K, 1M, 8M
 const int NUM_SIZES = sizeof(BENCHMARK_SIZES) / sizeof(BENCHMARK_SIZES[0]);
-const char* SIZE_LABELS[] = {"1K", "8K", "131K", "1M", "8M"};
+const char* SIZE_LABELS[] = {"1K", "8K", "64K", "256K", "1M", "8M"};
 
 // Result structures
 struct BenchmarkResult {
@@ -79,7 +79,7 @@ void print_usage(const char *program_name) {
     printf("  cudnn:         NVIDIA cuDNN library (industry-standard) [IMPLEMENTED]\n");
     printf("\nSpecial method:\n");
     printf("  all:           Run comprehensive benchmark across all methods and sizes\n");
-    printf("                 Tests sizes: 1K, 8K, 131K, 1M, 8M (powers of 2)\n");
+    printf("                 Tests sizes: 1K, 8K, 64K, 256K, 1M, 8M (powers of 2)\n");
     printf("                 Iterations: 100 per test\n");
     printf("                 Output: Formatted performance table\n");
     printf("\n                 When combined with --verify:\n");
@@ -361,7 +361,7 @@ void benchmark_all_methods(int threadsPerBlock, bool verify) {
     printf("                    RUNNING COMPREHENSIVE BENCHMARK\n");
     printf("=============================================================================\n");
     printf("Methods to test: %d\n", NUM_METHODS);
-    printf("Sizes to test: %d (1K, 8K, 131K, 1M, 8M)\n", NUM_SIZES);
+    printf("Sizes to test: %d (1K, 8K, 64K, 256K, 1M, 8M)\n", NUM_SIZES);
     printf("Iterations per test: 100\n");
     printf("Threads per block: %d\n", threadsPerBlock);
     if (verify) {
