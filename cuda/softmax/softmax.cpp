@@ -38,9 +38,9 @@ const char* BENCHMARK_METHODS[] = {
 };
 const int NUM_METHODS = 9;
 
-const int BENCHMARK_SIZES[] = {1<<17, 1<<20, 1<<23, 1<<26};  // 131K, 1M, 8M, 67M
+const int BENCHMARK_SIZES[] = {1<<10, 1<<13, 1<<17, 1<<20, 1<<23};  // 1K, 8K, 131K, 1M, 8M
 const int NUM_SIZES = sizeof(BENCHMARK_SIZES) / sizeof(BENCHMARK_SIZES[0]);
-const char* SIZE_LABELS[] = {"131K", "1M", "8M", "67M"};
+const char* SIZE_LABELS[] = {"1K", "8K", "131K", "1M", "8M"};
 
 // Result structures
 struct BenchmarkResult {
@@ -62,7 +62,7 @@ void print_usage(const char *program_name) {
     printf("Options:\n");
     printf("  -n, --size N              Set array size (default: 1048576)\n");
     printf("  -b, --block-size N        Set threads per block (default: 256)\n");
-    printf("  -m, --method METHOD       Softmax method: 'naive', 'multi', 'fused3', 'fused2', 'fused1', 'online', 'online_simple', 'online_warp', 'cub_block', 'cub_device', or 'cudnn' (default: multi)\n");
+    printf("  -m, --method METHOD       Softmax method: 'naive', 'multi', 'fused3', 'fused2', 'fused1', 'online', 'online_simple', 'online_warp', 'cub_block', 'cub_device', or 'cudnn' (default: online_warp)\n");
     printf("  -v, --verify              Enable result verification\n");
     printf("  -h, --help                Show this help message\n");
     printf("\nMethods:\n");
@@ -79,7 +79,7 @@ void print_usage(const char *program_name) {
     printf("  cudnn:         NVIDIA cuDNN library (industry-standard) [IMPLEMENTED]\n");
     printf("\nSpecial method:\n");
     printf("  all:           Run comprehensive benchmark across all methods and sizes\n");
-    printf("                 Tests sizes: 131K, 1M, 8M, 67M (powers of 2)\n");
+    printf("                 Tests sizes: 1K, 8K, 131K, 1M, 8M (powers of 2)\n");
     printf("                 Iterations: 100 per test\n");
     printf("                 Output: Formatted performance table\n");
     printf("\n                 When combined with --verify:\n");
@@ -361,7 +361,7 @@ void benchmark_all_methods(int threadsPerBlock, bool verify) {
     printf("                    RUNNING COMPREHENSIVE BENCHMARK\n");
     printf("=============================================================================\n");
     printf("Methods to test: %d\n", NUM_METHODS);
-    printf("Sizes to test: %d (131K, 1M, 8M, 67M)\n", NUM_SIZES);
+    printf("Sizes to test: %d (1K, 8K, 131K, 1M, 8M)\n", NUM_SIZES);
     printf("Iterations per test: 100\n");
     printf("Threads per block: %d\n", threadsPerBlock);
     if (verify) {
@@ -561,7 +561,7 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
     transferToDevice(d_input, h_input, n);
 
     // Configure timing
-    const int num_iterations = 1000;
+    const int num_iterations = 100;
     float *timings = (float*)malloc(num_iterations * sizeof(float));
     if (!timings) {
         fprintf(stderr, "Failed to allocate memory for timings\n");
@@ -735,7 +735,7 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
 int main(int argc, char *argv[]) {
     // Parse command line arguments
     bool verify = false;
-    const char *method = "multi";  // Default method
+    const char *method = "online_warp";  // Default method
     int n = 1 << 20;  // Default: 1 million elements
     int threadsPerBlock = 256;  // Default: 256 threads per block (optimal)
 
