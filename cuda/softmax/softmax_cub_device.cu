@@ -70,20 +70,20 @@
 //
 // ============================================================================
 
-// Kernel 2: Fused exp-sum-normalize
-// This kernel does TWO passes over the data:
-// Pass 1: Each block computes local sum(exp(x - global_max)) and atomically adds to global sum
-// Pass 2: Each thread normalizes its element using the global sum
-__global__ void softmaxCubDevice_ExpSumNormalize(
+// Kernel 2: Compute sum(exp(x - global_max)) using atomic add
+// Each block computes local sum and atomically adds to global sum
+__global__ void softmaxCubDevice_ExpSum(
     const float *input,
-    float global_max,
+    const float *d_global_max,
     float *global_sum,
-    float *output,
     int n
 ) {
     extern __shared__ float sdata[];
     int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Read global max from device memory once per thread
+    float global_max = *d_global_max;
 
     // Phase 1: Compute block-level sum(exp(x - global_max))
     float thread_sum = 0.0f;
@@ -105,23 +105,20 @@ __global__ void softmaxCubDevice_ExpSumNormalize(
     if (tid == 0) {
         atomicAdd(global_sum, sdata[0]);
     }
-
-    // Wait for ALL blocks to finish computing sum
-    // Note: This is a grid-wide barrier, which is problematic
-    // We need cooperative groups for proper grid sync, but that limits parallelism
-    // For now, we'll use a two-kernel approach instead
 }
 
-// Kernel 3: Normalize output
+// Kernel 3: Normalize output using device pointers
 __global__ void softmaxCubDevice_Normalize(
     const float *input,
-    float global_max,
-    float global_sum,
+    const float *d_global_max,
+    const float *d_global_sum,
     float *output,
     int n
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) {
+        float global_max = *d_global_max;
+        float global_sum = *d_global_sum;
         output[idx] = expf(input[idx] - global_max) / global_sum;
     }
 }
@@ -161,38 +158,28 @@ void CubDeviceSoftmax::execute(const float *d_input, float *d_output) {
     cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, d_input, d_max_out, n);
     cudaCheckError(cudaGetLastError());
 
-    // Copy max to host (needed for subsequent kernels)
-    float h_global_max;
-    cudaCheckError(cudaMemcpy(&h_global_max, d_max_out, sizeof(float), cudaMemcpyDeviceToHost));
-
     // ========================================================================
     // KERNEL 2: Compute sum(exp(x - global_max))
     // ========================================================================
 
     size_t sharedMemSize = threadsPerBlock * sizeof(float);
 
-    // Initialize global sum to 0
-    float init_sum = 0.0f;
-    cudaCheckError(cudaMemcpy(d_global_sum, &init_sum, sizeof(float), cudaMemcpyHostToDevice));
+    // Initialize global sum to 0 using cudaMemset (more efficient than cudaMemcpy)
+    cudaCheckError(cudaMemset(d_global_sum, 0, sizeof(float)));
 
-    // Launch kernel to compute exp-sum
-    softmaxCubDevice_ExpSumNormalize<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
-        d_input, h_global_max, d_global_sum, d_output, n);
+    // Launch kernel to compute exp-sum (reads d_max_out directly from device memory)
+    softmaxCubDevice_ExpSum<<<numBlocks, threadsPerBlock, sharedMemSize>>>(
+        d_input, d_max_out, d_global_sum, n);
     cudaCheckError(cudaGetLastError());
-
-    // Wait for sum computation to complete
-    cudaDeviceSynchronize();
-
-    // Copy sum to host
-    float h_global_sum;
-    cudaCheckError(cudaMemcpy(&h_global_sum, d_global_sum, sizeof(float), cudaMemcpyDeviceToHost));
 
     // ========================================================================
     // KERNEL 3: Normalize output
     // ========================================================================
+    // Note: Implicit synchronization happens between kernel launches
+    // No need for explicit cudaDeviceSynchronize()
 
     softmaxCubDevice_Normalize<<<numBlocks, threadsPerBlock>>>(
-        d_input, h_global_max, h_global_sum, d_output, n);
+        d_input, d_max_out, d_global_sum, d_output, n);
     cudaCheckError(cudaGetLastError());
 }
 
