@@ -123,36 +123,39 @@ void softmax_cpu_reference(const float *input, float *output, int n) {
 // BENCHMARK MODE: Helper Functions
 // ============================================================================
 
-// Helper: Get median time for a method (returns -1.0 on failure)
+// Helper: Get batched time for a method (returns -1.0 on failure)
+// This measures throughput by queuing all kernels and timing the batch,
+// which removes per-iteration event overhead and shows pure kernel performance
 float get_median_time(SoftmaxKernel *kernel, const float *d_input, float *d_output,
                       int n, int num_iterations) {
-    float *timings = (float*)malloc(num_iterations * sizeof(float));
-    if (!timings) return -1.0f;
-
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
-    // Run kernel num_iterations times
-    for (int i = 0; i < num_iterations; i++) {
-        cudaEventRecord(start);
+    // Warmup: run a few iterations to ensure kernel is compiled and caches are warm
+    for (int i = 0; i < 10; i++) {
         kernel->execute(d_input, d_output);
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&timings[i], start, stop);
     }
+    cudaDeviceSynchronize();
 
-    // Sort for median using std::sort (C++ standard, more efficient than qsort)
-    std::sort(timings, timings + num_iterations);
+    // Batched timing: queue all iterations, then sync once at the end
+    // This removes per-iteration event recording overhead
+    cudaEventRecord(start);
+    for (int i = 0; i < num_iterations; i++) {
+        kernel->execute(d_input, d_output);
+    }
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
 
-    int median_idx = num_iterations / 2;
-    float median = timings[median_idx];
+    float total_time_ms;
+    cudaEventElapsedTime(&total_time_ms, start, stop);
 
-    free(timings);
+    float avg_time_ms = total_time_ms / num_iterations;
+
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
 
-    return median;
+    return avg_time_ms;
 }
 
 // Helper: Run verification for a method
@@ -223,7 +226,8 @@ void print_performance_table(BenchmarkResult results[][NUM_SIZES]) {
     printf("                    SOFTMAX PERFORMANCE BENCHMARK\n");
     printf("=============================================================================\n");
     printf("Iterations per test: 100\n");
-    printf("Metric: Median execution time (ms)\n\n");
+    printf("Metric: Average execution time per iteration (ms)\n");
+    printf("Method: Batched timing (100 kernels queued, single sync)\n\n");
 
     // Print header
     printf("%-15s", "Method");
@@ -367,7 +371,7 @@ void benchmark_all_methods(int threadsPerBlock, bool verify) {
     printf("                    RUNNING COMPREHENSIVE BENCHMARK\n");
     printf("=============================================================================\n");
     printf("Methods to test: %d\n", NUM_METHODS);
-    printf("Sizes to test: %d (1K, 8K, 64K, 256K, 1M, 8M)\n", NUM_SIZES);
+    printf("Sizes to test: %d (16, 32, 64, 256, 512, 1K, 8K, 64K, 256K, 1M, 8M)\n", NUM_SIZES);
     printf("Iterations per test: 100\n");
     printf("Threads per block: %d\n", threadsPerBlock);
     if (verify) {
