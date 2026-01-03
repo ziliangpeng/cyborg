@@ -290,9 +290,11 @@ void CubBlockSoftmax::execute(const float *d_input, float *d_output) {
     } else {
         // Error out for unsupported block sizes
         // The template parameter MUST match the actual block size for CUB primitives
-        fprintf(stderr, "Error: CUB block softmax only supports block sizes 128, 256, or 512.\n");
-        fprintf(stderr, "       Requested block size: %d\n", threadsPerBlock);
-        exit(EXIT_FAILURE);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+                 "Unsupported block size %d for CUB block softmax (supported: 128, 256, 512)",
+                 threadsPerBlock);
+        throw std::runtime_error(error_msg);
     }
     cudaCheckError(cudaGetLastError());
 
@@ -308,20 +310,17 @@ void CubBlockSoftmax::execute(const float *d_input, float *d_output) {
             d_block_maxes, d_block_sums, d_global_max, d_global_sum, numBlocks);
     } else {
         // Error out for unsupported block sizes (same reason as above)
-        fprintf(stderr, "Error: CUB block softmax only supports block sizes 128, 256, or 512.\n");
-        fprintf(stderr, "       Requested block size: %d\n", threadsPerBlock);
-        exit(EXIT_FAILURE);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+                 "Unsupported block size %d for CUB block softmax (supported: 128, 256, 512)",
+                 threadsPerBlock);
+        throw std::runtime_error(error_msg);
     }
     cudaCheckError(cudaGetLastError());
 
-    // Copy global statistics to host for Kernel 3
-    float h_global_max, h_global_sum;
-    cudaCheckError(cudaMemcpy(&h_global_max, d_global_max, sizeof(float), cudaMemcpyDeviceToHost));
-    cudaCheckError(cudaMemcpy(&h_global_sum, d_global_sum, sizeof(float), cudaMemcpyDeviceToHost));
-
-    // Launch Kernel 3: Normalize (reuse existing kernel)
-    softmaxNormalizeKernel<<<numBlocks, threadsPerBlock>>>(
-        d_input, h_global_max, h_global_sum, d_output, n);
+    // Launch Kernel 3: Normalize using device pointers (avoids D2H transfer)
+    softmaxNormalizeKernel_DevicePtr<<<numBlocks, threadsPerBlock>>>(
+        d_input, d_global_max, d_global_sum, d_output, n);
     cudaCheckError(cudaGetLastError());
 }
 

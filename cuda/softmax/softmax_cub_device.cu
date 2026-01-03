@@ -107,7 +107,7 @@ __global__ void softmaxCubDevice_ExpSum(
     }
 }
 
-// Kernel 3: Normalize output using device pointers
+// Kernel 3: Normalize output using device pointers with shared memory optimization
 __global__ void softmaxCubDevice_Normalize(
     const float *input,
     const float *d_global_max,
@@ -115,11 +115,19 @@ __global__ void softmaxCubDevice_Normalize(
     float *output,
     int n
 ) {
+    // Use shared memory to cache global values (read once per block instead of per thread)
+    __shared__ float s_max_val;
+    __shared__ float s_sum_val;
+
+    if (threadIdx.x == 0) {
+        s_max_val = *d_global_max;
+        s_sum_val = *d_global_sum;
+    }
+    __syncthreads();
+
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) {
-        float global_max = *d_global_max;
-        float global_sum = *d_global_sum;
-        output[idx] = expf(input[idx] - global_max) / global_sum;
+        output[idx] = expf(input[idx] - s_max_val) / s_sum_val;
     }
 }
 
