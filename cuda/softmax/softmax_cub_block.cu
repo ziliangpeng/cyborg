@@ -5,6 +5,7 @@
 #include <cub/cub.cuh>  // CUB library
 #include <stdlib.h>
 #include <math.h>
+#include <stdexcept>
 
 // ============================================================================
 // CUB-BASED SOFTMAX WALKTHROUGH: Industry-Standard Approach
@@ -256,6 +257,13 @@ __global__ void softmaxCub_GlobalReduce(
 // Constructor: Allocate intermediate buffers
 CubBlockSoftmax::CubBlockSoftmax(int n, int threadsPerBlock)
     : n(n), threadsPerBlock(threadsPerBlock) {
+    // Validate block size (CUB requires template parameter to match actual block size)
+    if (threadsPerBlock != 128 && threadsPerBlock != 256 && threadsPerBlock != 512) {
+        fprintf(stderr, "Error: CUB block softmax only supports block sizes 128, 256, or 512.\n");
+        fprintf(stderr, "       Requested block size: %d\n", threadsPerBlock);
+        throw std::invalid_argument("Unsupported block size for CUB block softmax");
+    }
+
     // Calculate grid dimensions
     numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
 
@@ -280,10 +288,11 @@ void CubBlockSoftmax::execute(const float *d_input, float *d_output) {
         softmaxCub_BlockStats<512><<<numBlocks, 512>>>(
             d_input, d_block_maxes, d_block_sums, n);
     } else {
-        // Fallback for other block sizes (will be slower due to dynamic template instantiation)
-        printf("Warning: Block size %d not optimized. Consider using 128, 256, or 512.\n", threadsPerBlock);
-        softmaxCub_BlockStats<256><<<numBlocks, threadsPerBlock>>>(
-            d_input, d_block_maxes, d_block_sums, n);
+        // Error out for unsupported block sizes
+        // The template parameter MUST match the actual block size for CUB primitives
+        fprintf(stderr, "Error: CUB block softmax only supports block sizes 128, 256, or 512.\n");
+        fprintf(stderr, "       Requested block size: %d\n", threadsPerBlock);
+        exit(EXIT_FAILURE);
     }
     cudaCheckError(cudaGetLastError());
 
@@ -298,8 +307,10 @@ void CubBlockSoftmax::execute(const float *d_input, float *d_output) {
         softmaxCub_GlobalReduce<512><<<1, 512>>>(
             d_block_maxes, d_block_sums, d_global_max, d_global_sum, numBlocks);
     } else {
-        softmaxCub_GlobalReduce<256><<<1, threadsPerBlock>>>(
-            d_block_maxes, d_block_sums, d_global_max, d_global_sum, numBlocks);
+        // Error out for unsupported block sizes (same reason as above)
+        fprintf(stderr, "Error: CUB block softmax only supports block sizes 128, 256, or 512.\n");
+        fprintf(stderr, "       Requested block size: %d\n", threadsPerBlock);
+        exit(EXIT_FAILURE);
     }
     cudaCheckError(cudaGetLastError());
 
