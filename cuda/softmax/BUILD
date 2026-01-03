@@ -107,7 +107,10 @@ cuda_library(
 cuda_library(
     name = "softmax_cudnn",
     srcs = ["softmax_cudnn.cu"],
-    hdrs = ["softmax_cudnn.h"],
+    hdrs = [
+        "softmax_cudnn.h",
+        "softmax_kernel.h",  # Base interface
+    ],
     deps = [
         "//cuda:cuda_utils",
     ],

@@ -103,33 +103,48 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
 
     printf("Running softmax %d times to collect statistics...\n", num_iterations);
 
-    // Time the softmax operation (excludes input allocation/transfer)
-    for (int i = 0; i < num_iterations; i++) {
-        cudaEventRecord(start);
+    // Special handling for methods with class-based API (accurate profiling)
+    // These allocate workspace ONCE outside the timing loop
+    if (strcmp(method, "cudnn") == 0) {
+        // Create cuDNN kernel instance (allocates handle/descriptor ONCE)
+        CudnnSoftmax cudnn_kernel(n, threadsPerBlock);
 
-        if (strcmp(method, "naive") == 0) {
-            softmax_Naive(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "multi") == 0) {
-            softmax_MultiPass(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "fused3") == 0) {
-            softmax_Fused3(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "fused2") == 0) {
-            softmax_Fused2(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "fused1") == 0) {
-            softmax_Fused1(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "online") == 0) {
-            softmax_Online(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "cub_block") == 0) {
-            softmax_CubBlock(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "cub_device") == 0) {
-            softmax_CubDevice(d_input, d_output, n, threadsPerBlock);
-        } else if (strcmp(method, "cudnn") == 0) {
-            softmax_Cudnn(d_input, d_output, n, threadsPerBlock);
+        // Time ONLY kernel execution (no setup/teardown overhead)
+        for (int i = 0; i < num_iterations; i++) {
+            cudaEventRecord(start);
+            cudnn_kernel.execute(d_input, d_output);  // Pure kernel execution!
+            cudaEventRecord(stop);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&timings[i], start, stop);
         }
+        // Destructor automatically frees resources after loop
+    } else {
+        // Legacy methods (include allocation overhead - will be refactored next)
+        for (int i = 0; i < num_iterations; i++) {
+            cudaEventRecord(start);
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&timings[i], start, stop);
+            if (strcmp(method, "naive") == 0) {
+                softmax_Naive(d_input, d_output, n, threadsPerBlock);
+            } else if (strcmp(method, "multi") == 0) {
+                softmax_MultiPass(d_input, d_output, n, threadsPerBlock);
+            } else if (strcmp(method, "fused3") == 0) {
+                softmax_Fused3(d_input, d_output, n, threadsPerBlock);
+            } else if (strcmp(method, "fused2") == 0) {
+                softmax_Fused2(d_input, d_output, n, threadsPerBlock);
+            } else if (strcmp(method, "fused1") == 0) {
+                softmax_Fused1(d_input, d_output, n, threadsPerBlock);
+            } else if (strcmp(method, "online") == 0) {
+                softmax_Online(d_input, d_output, n, threadsPerBlock);
+            } else if (strcmp(method, "cub_block") == 0) {
+                softmax_CubBlock(d_input, d_output, n, threadsPerBlock);
+            } else if (strcmp(method, "cub_device") == 0) {
+                softmax_CubDevice(d_input, d_output, n, threadsPerBlock);
+            }
+
+            cudaEventRecord(stop);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&timings[i], start, stop);
+        }
     }
     cudaCheckError(cudaGetLastError());
 
@@ -139,7 +154,11 @@ void softmax_op(int n, int threadsPerBlock, bool verify, const char *method) {
     // Transfer result back for verification
     if (verify) {
         // Run one final time to get a clean result (not timed)
-        if (strcmp(method, "naive") == 0) {
+        if (strcmp(method, "cudnn") == 0) {
+            // Use class-based API
+            CudnnSoftmax cudnn_kernel(n, threadsPerBlock);
+            cudnn_kernel.execute(d_input, d_output);
+        } else if (strcmp(method, "naive") == 0) {
             softmax_Naive(d_input, d_output, n, threadsPerBlock);
         } else if (strcmp(method, "multi") == 0) {
             softmax_MultiPass(d_input, d_output, n, threadsPerBlock);

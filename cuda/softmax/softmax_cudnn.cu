@@ -87,24 +87,21 @@
         } \
     } while(0)
 
-// Host function: cuDNN-based softmax
-float softmax_Cudnn(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+// ============================================================================
+// CLASS-BASED IMPLEMENTATION: Separates setup from execution
+// ============================================================================
+
+// Constructor: Allocate cuDNN handle and configure tensor descriptor
+CudnnSoftmax::CudnnSoftmax(int n, int threadsPerBlock) : n(n) {
     // Note: threadsPerBlock is unused for cuDNN (it decides internally)
     (void)threadsPerBlock;
 
-    // ========================================================================
-    // STEP 1: Create cuDNN handle
-    // ========================================================================
-    cudnnHandle_t cudnn;
+    // Create cuDNN handle
     cudnnCheckError(cudnnCreate(&cudnn));
 
-    // ========================================================================
-    // STEP 2: Create and configure tensor descriptor
-    // ========================================================================
-    // We map our 1D array [n] to 4D tensor (1, 1, 1, n)
-    cudnnTensorDescriptor_t tensor_desc;
+    // Create and configure tensor descriptor
+    // Map 1D array [n] to 4D tensor (1, 1, 1, n)
     cudnnCheckError(cudnnCreateTensorDescriptor(&tensor_desc));
-
     cudnnCheckError(cudnnSetTensor4dDescriptor(
         tensor_desc,
         CUDNN_TENSOR_NCHW,      // Format: N, C, H, W
@@ -114,14 +111,10 @@ float softmax_Cudnn(const float *d_input, float *d_output, int n, int threadsPer
         1,                       // H (height) = 1
         n                        // W (width) = n elements
     ));
+}
 
-    // ========================================================================
-    // STEP 3: Execute softmax
-    // ========================================================================
-    // Algorithm: CUDNN_SOFTMAX_ACCURATE (numerically stable)
-    // Mode: CUDNN_SOFTMAX_MODE_INSTANCE (softmax across all elements)
-    // Scaling: alpha=1.0, beta=0.0 (output = 1.0*softmax(input) + 0.0*output)
-
+// Execute: Pure kernel execution (ONLY this is timed in benchmarks)
+void CudnnSoftmax::execute(const float *d_input, float *d_output) {
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
@@ -136,12 +129,20 @@ float softmax_Cudnn(const float *d_input, float *d_output, int n, int threadsPer
         tensor_desc,
         d_output
     ));
+}
 
-    // ========================================================================
-    // STEP 4: Cleanup
-    // ========================================================================
-    cudnnCheckError(cudnnDestroyTensorDescriptor(tensor_desc));
-    cudnnCheckError(cudnnDestroy(cudnn));
+// Destructor: Free cuDNN resources
+CudnnSoftmax::~CudnnSoftmax() {
+    cudnnDestroyTensorDescriptor(tensor_desc);
+    cudnnDestroy(cudnn);
+}
 
+// ============================================================================
+// LEGACY C-STYLE API: Wrapper for backwards compatibility
+// ============================================================================
+
+float softmax_Cudnn(const float *d_input, float *d_output, int n, int threadsPerBlock) {
+    CudnnSoftmax kernel(n, threadsPerBlock);
+    kernel.execute(d_input, d_output);
     return 0.0f;  // Timing handled by caller
 }

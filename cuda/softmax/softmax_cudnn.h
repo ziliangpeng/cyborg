@@ -1,6 +1,9 @@
 #ifndef SOFTMAX_CUDNN_H
 #define SOFTMAX_CUDNN_H
 
+#include "softmax_kernel.h"
+#include <cudnn.h>
+
 // cuDNN-based softmax implementation
 //
 // Uses NVIDIA's cuDNN (CUDA Deep Neural Network) library for production-grade
@@ -36,7 +39,25 @@
 // - CUDA 11.0+ with cuDNN 8.0+
 // - cuDNN library linked at build time
 //
-// Returns execution time in milliseconds (currently 0.0f, timing handled by caller)
+// Class-based interface for accurate profiling
+class CudnnSoftmax : public SoftmaxKernel {
+private:
+    cudnnHandle_t cudnn;
+    cudnnTensorDescriptor_t tensor_desc;
+    int n;
+
+public:
+    // Constructor: Allocate cuDNN handle and tensor descriptor
+    CudnnSoftmax(int n, int threadsPerBlock);
+
+    // Execute: Pure kernel execution (no setup/teardown overhead)
+    void execute(const float *d_input, float *d_output) override;
+
+    // Destructor: Free cuDNN resources
+    ~CudnnSoftmax() override;
+};
+
+// Legacy C-style API (for backwards compatibility)
 float softmax_Cudnn(const float *d_input, float *d_output, int n, int threadsPerBlock);
 
 #endif
