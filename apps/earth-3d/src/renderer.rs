@@ -303,8 +303,9 @@ impl Renderer {
         let projection_matrix = self.camera.projection_matrix();
         let mvp_matrix = projection_matrix * view_matrix * model_matrix;
 
-        // Define sun light coming from behind the camera (light rays travel in -Z)
-        let light_direction = glam::Vec3::new(-0.5, -0.3, -1.0).normalize();
+        // Define sun light coming from upper-left-front (natural angle)
+        // Light direction points FROM surface TOWARD the light source
+        let light_direction = glam::Vec3::new(-0.6, 0.4, 0.5).normalize();
 
         let uniforms = Uniforms {
             mvp_matrix: mvp_matrix.to_cols_array_2d(),
