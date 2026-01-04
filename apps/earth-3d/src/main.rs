@@ -1,9 +1,13 @@
+#![allow(deprecated)]
+
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
 
+mod camera;
+mod geometry;
 mod renderer;
 
 use renderer::Renderer;
@@ -20,7 +24,6 @@ fn main() {
     let mut renderer = Renderer::new(&window);
     let mut last_frame_time = std::time::Instant::now();
     let mut frame_count = 0;
-    let mut fps = 0.0;
 
     event_loop
         .run(move |event, event_loop_window_target| {
@@ -52,7 +55,7 @@ fn main() {
                     frame_count += 1;
                     let elapsed = last_frame_time.elapsed();
                     if elapsed.as_secs_f32() >= 1.0 {
-                        fps = frame_count as f32 / elapsed.as_secs_f32();
+                        let fps = frame_count as f32 / elapsed.as_secs_f32();
                         frame_count = 0;
                         last_frame_time = std::time::Instant::now();
 
