@@ -1,0 +1,17 @@
+# Custom platform constraints for the project
+
+package(default_visibility = ["//visibility:public"])
+
+# CUDA/GPU constraint
+# Use this for targets that require NVIDIA CUDA GPU
+constraint_setting(name = "gpu")
+
+constraint_value(
+    name = "cuda",
+    constraint_setting = ":gpu",
+)
+
+constraint_value(
+    name = "no_gpu",
+    constraint_setting = ":gpu",
+)
