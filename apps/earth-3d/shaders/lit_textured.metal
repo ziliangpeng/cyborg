@@ -37,12 +37,14 @@ vertex VertexOut vertex_main(
 
 fragment float4 fragment_main(
     VertexOut in [[stage_in]],
-    texture2d<float> colorTexture [[texture(0)]],
+    texture2d<float> dayTexture [[texture(0)]],
+    texture2d<float> nightTexture [[texture(1)]],
     sampler textureSampler [[sampler(0)]],
     constant Uniforms& uniforms [[buffer(0)]]
 ) {
-    // Sample the Earth texture
-    float4 texture_color = colorTexture.sample(textureSampler, in.uv);
+    // Sample both day and night textures
+    float4 day_color = dayTexture.sample(textureSampler, in.uv);
+    float4 night_color = nightTexture.sample(textureSampler, in.uv);
 
     // Normalize the interpolated normal
     float3 normal = normalize(in.world_normal);
@@ -54,11 +56,31 @@ fragment float4 fragment_main(
     // Boost the diffuse component for brighter lit areas
     float boosted_diffuse = diffuse * 1.3;  // 30% brighter on lit side
 
-    // Combine ambient and diffuse
+    // Combine ambient and diffuse for day side
     float light_intensity = uniforms.ambient_strength + (1.0 - uniforms.ambient_strength) * boosted_diffuse;
 
-    // Apply lighting to texture color
-    float3 lit_color = texture_color.rgb * light_intensity;
+    // Apply lighting to day texture
+    float3 lit_day_color = day_color.rgb * light_intensity;
 
-    return float4(lit_color, texture_color.a);
+    // Blend between day and night based on lighting
+    // Smooth transition in the terminator region
+    float night_mix = 1.0 - smoothstep(0.0, 0.2, diffuse);
+
+    // Blend day and night textures
+    float3 blended_color = mix(lit_day_color, night_color.rgb * 1.5, night_mix);
+
+    // Atmospheric glow (Fresnel effect)
+    // Calculate view direction (pointing toward camera)
+    float3 view_dir = normalize(-in.position.xyz);
+    float fresnel = 1.0 - max(dot(normal, view_dir), 0.0);
+    fresnel = pow(fresnel, 3.0); // Sharpen the edge effect
+
+    // Blue atmospheric glow
+    float3 atmosphere_color = float3(0.3, 0.5, 1.0); // Light blue
+    float3 glow = atmosphere_color * fresnel * 0.4; // Subtle intensity
+
+    // Combine blended color with atmospheric glow
+    float3 final_color = blended_color + glow;
+
+    return float4(final_color, 1.0);
 }

@@ -11,6 +11,7 @@ objc = "0.2"
 winit = "0.30"
 glam = "0.29"
 image = "0.25"
+rand = "0.8"
 
 [build-dependencies]
 cc = "1.0"

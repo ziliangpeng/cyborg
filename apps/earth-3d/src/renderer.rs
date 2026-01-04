@@ -6,11 +6,11 @@ use core_graphics_types::geometry::CGSize;
 use glam::Mat4;
 use metal::*;
 use objc::runtime::YES;
-use std::time::Instant;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use crate::camera::Camera;
 use crate::geometry::sphere::SphereMesh;
+use crate::stars::StarField;
 use crate::texture::TextureLoader;
 
 #[repr(C)]
@@ -31,9 +31,16 @@ pub struct Renderer {
     index_buffer: Buffer,
     index_count: usize,
     camera: Camera,
-    start_time: Instant,
     earth_texture: Texture,
+    night_texture: Texture,
     sampler_state: SamplerState,
+    rotation_angle: f32,
+    rotation_speed: f32,
+    paused: bool,
+    // Stars
+    stars_pipeline_state: RenderPipelineState,
+    stars_vertex_buffer: Buffer,
+    stars_count: usize,
 }
 
 impl Renderer {
@@ -60,11 +67,14 @@ impl Renderer {
 
         let index_count = sphere.indices.len();
 
-        // Load Earth texture
+        // Load Earth textures
         let texture_loader = TextureLoader::new(&device);
         let earth_texture = texture_loader
             .load_texture("assets/earth_texture.jpg")
             .expect("Failed to load Earth texture");
+        let night_texture = texture_loader
+            .load_texture("assets/earth_night.jpg")
+            .expect("Failed to load night texture");
 
         // Create sampler state
         let sampler_descriptor = SamplerDescriptor::new();
@@ -130,6 +140,59 @@ impl Renderer {
 
         let depth_stencil_state = device.new_depth_stencil_state(&depth_stencil_descriptor);
 
+        // Create stars
+        let star_field = StarField::new(2000, 50.0);
+        let stars_count = star_field.stars.len();
+
+        let stars_vertex_buffer = device.new_buffer_with_data(
+            star_field.vertex_data().as_ptr() as *const _,
+            star_field.vertex_data().len() as u64,
+            MTLResourceOptions::CPUCacheModeDefaultCache,
+        );
+
+        // Compile stars shader
+        let stars_shader_source = include_str!("../shaders/stars.metal");
+        let stars_library = device
+            .new_library_with_source(stars_shader_source, &CompileOptions::new())
+            .expect("Failed to compile stars shaders");
+
+        let stars_vertex_function = stars_library.get_function("vertex_main", None).unwrap();
+        let stars_fragment_function = stars_library.get_function("fragment_main", None).unwrap();
+
+        // Create stars pipeline
+        let stars_pipeline_descriptor = RenderPipelineDescriptor::new();
+        stars_pipeline_descriptor.set_vertex_function(Some(&stars_vertex_function));
+        stars_pipeline_descriptor.set_fragment_function(Some(&stars_fragment_function));
+
+        // Set up stars vertex descriptor
+        let stars_vertex_descriptor = VertexDescriptor::new();
+
+        let stars_position_attr = stars_vertex_descriptor.attributes().object_at(0).unwrap();
+        stars_position_attr.set_format(MTLVertexFormat::Float3);
+        stars_position_attr.set_offset(0);
+        stars_position_attr.set_buffer_index(0);
+
+        let stars_brightness_attr = stars_vertex_descriptor.attributes().object_at(1).unwrap();
+        stars_brightness_attr.set_format(MTLVertexFormat::Float);
+        stars_brightness_attr.set_offset(12);
+        stars_brightness_attr.set_buffer_index(0);
+
+        let stars_layout = stars_vertex_descriptor.layouts().object_at(0).unwrap();
+        stars_layout.set_stride(16);
+        stars_layout.set_step_function(MTLVertexStepFunction::PerVertex);
+
+        stars_pipeline_descriptor.set_vertex_descriptor(Some(stars_vertex_descriptor));
+
+        let stars_color_attachments = stars_pipeline_descriptor.color_attachments();
+        let stars_color_attachment = stars_color_attachments.object_at(0).unwrap();
+        stars_color_attachment.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
+
+        stars_pipeline_descriptor.set_depth_attachment_pixel_format(MTLPixelFormat::Depth32Float);
+
+        let stars_pipeline_state = device
+            .new_render_pipeline_state(&stars_pipeline_descriptor)
+            .expect("Failed to create stars pipeline state");
+
         let size = window.inner_size();
         let aspect = size.width as f32 / size.height as f32;
         let camera = Camera::new(aspect);
@@ -157,9 +220,15 @@ impl Renderer {
             index_buffer,
             index_count,
             camera,
-            start_time: Instant::now(),
             earth_texture,
+            night_texture,
             sampler_state,
+            rotation_angle: 0.0,
+            rotation_speed: 0.5,
+            paused: false,
+            stars_pipeline_state,
+            stars_vertex_buffer,
+            stars_count,
         }
     }
 
@@ -208,18 +277,28 @@ impl Renderer {
         &mut self.camera
     }
 
+    pub fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
+    }
+
+    pub fn adjust_rotation_speed(&mut self, delta: f32) {
+        self.rotation_speed = (self.rotation_speed + delta).clamp(0.0, 5.0);
+    }
+
+    pub fn update(&mut self, delta_time: f32) {
+        if !self.paused {
+            self.rotation_angle += self.rotation_speed * delta_time;
+        }
+    }
+
     pub fn render(&mut self) {
         let drawable = match self.layer.next_drawable() {
             Some(drawable) => drawable,
             None => return,
         };
 
-        // Calculate rotation
-        let elapsed = self.start_time.elapsed().as_secs_f32();
-        let rotation_angle = elapsed * 0.5;
-
         // Build transformation matrices
-        let model_matrix = Mat4::from_rotation_y(rotation_angle);
+        let model_matrix = Mat4::from_rotation_y(self.rotation_angle);
         let view_matrix = self.camera.view_matrix();
         let projection_matrix = self.camera.projection_matrix();
         let mvp_matrix = projection_matrix * view_matrix * model_matrix;
@@ -266,6 +345,24 @@ impl Renderer {
         let command_buffer = self.command_queue.new_command_buffer();
         let encoder = command_buffer.new_render_command_encoder(render_pass_descriptor);
 
+        // Render stars first (background)
+        encoder.set_render_pipeline_state(&self.stars_pipeline_state);
+        encoder.set_depth_stencil_state(&self.depth_stencil_state);
+
+        let view_projection = projection_matrix * view_matrix;
+        let stars_uniforms = view_projection.to_cols_array_2d();
+        let stars_uniforms_buffer = self.device.new_buffer_with_data(
+            &stars_uniforms as *const [[f32; 4]; 4] as *const _,
+            std::mem::size_of::<[[f32; 4]; 4]>() as u64,
+            MTLResourceOptions::CPUCacheModeDefaultCache,
+        );
+
+        encoder.set_vertex_buffer(0, Some(&self.stars_vertex_buffer), 0);
+        encoder.set_vertex_buffer(1, Some(&stars_uniforms_buffer), 0);
+
+        encoder.draw_primitives(MTLPrimitiveType::Point, 0, self.stars_count as u64);
+
+        // Render Earth
         encoder.set_render_pipeline_state(&self.pipeline_state);
         encoder.set_depth_stencil_state(&self.depth_stencil_state);
 
@@ -274,6 +371,7 @@ impl Renderer {
 
         encoder.set_fragment_buffer(0, Some(&uniforms_buffer), 0);
         encoder.set_fragment_texture(0, Some(&self.earth_texture));
+        encoder.set_fragment_texture(1, Some(&self.night_texture));
         encoder.set_fragment_sampler_state(0, Some(&self.sampler_state));
 
         encoder.set_cull_mode(MTLCullMode::Back);

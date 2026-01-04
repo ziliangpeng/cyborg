@@ -11,6 +11,7 @@ use winit::{
 mod camera;
 mod geometry;
 mod renderer;
+mod stars;
 mod texture;
 
 use renderer::Renderer;
@@ -73,19 +74,49 @@ fn main() {
 
                     let move_speed = 2.0 * delta_time; // 2 units per second
 
-                    let camera = renderer.camera_mut();
-                    if pressed_keys.contains(&Key::Named(NamedKey::ArrowUp)) {
-                        camera.move_forward(move_speed);
+                    // Handle camera movement (scoped to release borrow)
+                    {
+                        let camera = renderer.camera_mut();
+                        if pressed_keys.contains(&Key::Named(NamedKey::ArrowUp)) {
+                            camera.move_forward(move_speed);
+                        }
+                        if pressed_keys.contains(&Key::Named(NamedKey::ArrowDown)) {
+                            camera.move_backward(move_speed);
+                        }
+                        if pressed_keys.contains(&Key::Named(NamedKey::ArrowLeft)) {
+                            camera.strafe_left(move_speed);
+                        }
+                        if pressed_keys.contains(&Key::Named(NamedKey::ArrowRight)) {
+                            camera.strafe_right(move_speed);
+                        }
+
+                        // Handle zoom with +/- keys
+                        if pressed_keys.contains(&Key::Character("=".into()))
+                            || pressed_keys.contains(&Key::Character("+".into()))
+                        {
+                            camera.move_forward(move_speed * 2.0);
+                        }
+                        if pressed_keys.contains(&Key::Character("-".into())) {
+                            camera.move_backward(move_speed * 2.0);
+                        }
                     }
-                    if pressed_keys.contains(&Key::Named(NamedKey::ArrowDown)) {
-                        camera.move_backward(move_speed);
+
+                    // Handle spacebar for pause
+                    if pressed_keys.contains(&Key::Named(NamedKey::Space)) {
+                        renderer.toggle_pause();
+                        pressed_keys.remove(&Key::Named(NamedKey::Space)); // Prevent repeated toggles
                     }
-                    if pressed_keys.contains(&Key::Named(NamedKey::ArrowLeft)) {
-                        camera.strafe_left(move_speed);
+
+                    // Handle rotation speed with [ ] keys
+                    if pressed_keys.contains(&Key::Character("[".into())) {
+                        renderer.adjust_rotation_speed(-0.5 * delta_time);
                     }
-                    if pressed_keys.contains(&Key::Named(NamedKey::ArrowRight)) {
-                        camera.strafe_right(move_speed);
+                    if pressed_keys.contains(&Key::Character("]".into())) {
+                        renderer.adjust_rotation_speed(0.5 * delta_time);
                     }
+
+                    // Update renderer (rotation)
+                    renderer.update(delta_time);
 
                     window.request_redraw();
                 }
