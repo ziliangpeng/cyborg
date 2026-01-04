@@ -10,7 +10,7 @@ core-graphics-types = "0.1"
 objc = "0.2"
 winit = "0.30"
 glam = "0.29"
-image = "0.25"
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
 rand = "0.8"
 
 [build-dependencies]

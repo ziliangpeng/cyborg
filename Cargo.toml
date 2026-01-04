@@ -1,7 +1,5 @@
 [workspace]
 resolver = "2"
 members = [
-    "packages/*",
-    "apps/project-euler",
     "apps/earth-3d",
 ]
