@@ -2,4 +2,7 @@
 resolver = "2"
 members = [
     "apps/earth-3d",
+    "apps/project-euler",
+    "packages/data-structures",
+    "packages/math",
 ]
