@@ -13,6 +13,29 @@ use crate::geometry::sphere::SphereMesh;
 use crate::stars::StarField;
 use crate::texture::TextureLoader;
 
+// =============================================================================
+// Rendering Configuration Constants
+// =============================================================================
+
+// Sphere mesh detail
+const SPHERE_SEGMENTS: u32 = 64; // Longitude divisions
+const SPHERE_RINGS: u32 = 32; // Latitude divisions
+
+// Star field
+const STAR_COUNT: usize = 2000;
+const STAR_FIELD_RADIUS: f32 = 50.0;
+
+// Lighting
+const AMBIENT_LIGHT_STRENGTH: f32 = 0.15; // Low ambient for dark side contrast
+const LIGHT_DIRECTION: [f32; 3] = [-0.6, 0.4, 0.5]; // Sun position (upper-left-front)
+
+// Animation
+const DEFAULT_ROTATION_SPEED: f32 = 0.5; // Radians per second
+const MIN_ROTATION_SPEED: f32 = 0.0;
+const MAX_ROTATION_SPEED: f32 = 5.0;
+
+// =============================================================================
+
 #[repr(C)]
 struct Uniforms {
     mvp_matrix: [[f32; 4]; 4],
@@ -51,7 +74,7 @@ impl Renderer {
         let layer = Self::create_metal_layer(window, &device);
 
         // Create sphere geometry
-        let sphere = SphereMesh::new(1.0, 64, 32);
+        let sphere = SphereMesh::new(1.0, SPHERE_SEGMENTS, SPHERE_RINGS);
 
         let vertex_buffer = device.new_buffer_with_data(
             sphere.vertex_data().as_ptr() as *const _,
@@ -141,7 +164,7 @@ impl Renderer {
         let depth_stencil_state = device.new_depth_stencil_state(&depth_stencil_descriptor);
 
         // Create stars
-        let star_field = StarField::new(2000, 50.0);
+        let star_field = StarField::new(STAR_COUNT, STAR_FIELD_RADIUS);
         let stars_count = star_field.stars.len();
 
         let stars_vertex_buffer = device.new_buffer_with_data(
@@ -224,7 +247,7 @@ impl Renderer {
             night_texture,
             sampler_state,
             rotation_angle: 0.0,
-            rotation_speed: 0.5,
+            rotation_speed: DEFAULT_ROTATION_SPEED,
             paused: false,
             stars_pipeline_state,
             stars_vertex_buffer,
@@ -282,7 +305,8 @@ impl Renderer {
     }
 
     pub fn adjust_rotation_speed(&mut self, delta: f32) {
-        self.rotation_speed = (self.rotation_speed + delta).clamp(0.0, 5.0);
+        self.rotation_speed =
+            (self.rotation_speed + delta).clamp(MIN_ROTATION_SPEED, MAX_ROTATION_SPEED);
     }
 
     pub fn update(&mut self, delta_time: f32) {
@@ -305,13 +329,13 @@ impl Renderer {
 
         // Define sun light coming from upper-left-front (natural angle)
         // Light direction points FROM surface TOWARD the light source
-        let light_direction = glam::Vec3::new(-0.6, 0.4, 0.5).normalize();
+        let light_direction = glam::Vec3::from_array(LIGHT_DIRECTION).normalize();
 
         let uniforms = Uniforms {
             mvp_matrix: mvp_matrix.to_cols_array_2d(),
             model_matrix: model_matrix.to_cols_array_2d(),
             light_direction: light_direction.to_array(),
-            ambient_strength: 0.15, // Low ambient light for the dark side
+            ambient_strength: AMBIENT_LIGHT_STRENGTH,
         };
 
         let uniforms_buffer = self.device.new_buffer_with_data(

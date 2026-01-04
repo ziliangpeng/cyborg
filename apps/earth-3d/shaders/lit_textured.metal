@@ -1,6 +1,28 @@
 #include <metal_stdlib>
 using namespace metal;
 
+// =============================================================================
+// Shader Configuration Constants
+// =============================================================================
+
+// Day/night blending
+constant float NIGHT_MIX_START = 0.0;
+constant float NIGHT_MIX_END = 0.15;
+
+// City lights
+constant float CITY_LIGHTS_FADE_START = 0.1;
+constant float CITY_LIGHTS_FADE_END = 0.0;
+constant float CITY_LIGHTS_BRIGHTNESS = 0.8;
+
+// Atmospheric glow
+constant float ATMOSPHERE_GLOW_POWER = 3.0;
+constant float ATMOSPHERE_GLOW_INTENSITY = 0.25;
+constant float LIT_EDGE_START = 0.0;
+constant float LIT_EDGE_END = 0.3;
+constant float3 ATMOSPHERE_COLOR = float3(0.3, 0.5, 1.0); // Light blue
+
+// =============================================================================
+
 struct Vertex {
     float3 position [[attribute(0)]];
     float3 normal [[attribute(1)]];
@@ -64,26 +86,25 @@ fragment float4 fragment_main(
 
     // Blend between day and night based on lighting (not UV coordinates)
     // This ensures day/night boundary follows the lighting terminator
-    float night_mix = 1.0 - smoothstep(0.0, 0.15, diffuse);
+    float night_mix = 1.0 - smoothstep(NIGHT_MIX_START, NIGHT_MIX_END, diffuse);
 
     // City lights should only appear on the dark side
-    float city_lights_threshold = smoothstep(0.1, 0.0, diffuse);
+    float city_lights_threshold = smoothstep(CITY_LIGHTS_FADE_START, CITY_LIGHTS_FADE_END, diffuse);
 
     // On night side: show city lights (dimmer than before)
     // On day side: show lit day texture
-    float3 night_side = night_color.rgb * 0.8 * city_lights_threshold;
+    float3 night_side = night_color.rgb * CITY_LIGHTS_BRIGHTNESS * city_lights_threshold;
     float3 blended_color = mix(lit_day_color, night_side, night_mix);
 
     // Atmospheric glow (Fresnel effect) - only on the lit side
     // Calculate view direction (pointing toward camera)
     float3 view_dir = normalize(-in.position.xyz);
     float fresnel = 1.0 - max(dot(normal, view_dir), 0.0);
-    fresnel = pow(fresnel, 3.0); // Sharpen the edge effect
+    fresnel = pow(fresnel, ATMOSPHERE_GLOW_POWER); // Sharpen the edge effect
 
     // Blue atmospheric glow - only visible on lit edges
-    float lit_edge = smoothstep(0.0, 0.3, diffuse); // Only on lit side
-    float3 atmosphere_color = float3(0.3, 0.5, 1.0); // Light blue
-    float3 glow = atmosphere_color * fresnel * 0.25 * lit_edge; // Reduced intensity, only on lit side
+    float lit_edge = smoothstep(LIT_EDGE_START, LIT_EDGE_END, diffuse); // Only on lit side
+    float3 glow = ATMOSPHERE_COLOR * fresnel * ATMOSPHERE_GLOW_INTENSITY * lit_edge;
 
     // Combine blended color with atmospheric glow
     float3 final_color = blended_color + glow;
