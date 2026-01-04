@@ -1,0 +1,16 @@
+[package]
+name = "earth-3d"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+metal = "0.28"
+cocoa = "0.26"
+core-graphics-types = "0.1"
+objc = "0.2"
+winit = "0.30"
+glam = "0.29"
+image = "0.25"
+
+[build-dependencies]
+cc = "1.0"
