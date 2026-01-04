@@ -51,5 +51,6 @@ jobs:
       run: cargo fmt --all -- --check
 
     - name: Run Linter
-      # Use explicit Linux target - Cargo will only check packages compatible with this platform
-      run: cargo clippy --workspace --target x86_64-unknown-linux-gnu -- -D warnings
+      # TODO: Find categorical solution to exclude all Darwin-only packages
+      # instead of hardcoding package names
+      run: cargo clippy --workspace --exclude earth-3d -- -D warnings

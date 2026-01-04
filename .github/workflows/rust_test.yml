@@ -23,9 +23,11 @@ jobs:
         toolchain: stable
 
     - name: Build
-      # Use explicit Linux target - Cargo will only build packages compatible with this platform
-      run: cargo build --workspace --target x86_64-unknown-linux-gnu --verbose
+      # TODO: Find categorical solution to exclude all Darwin-only packages
+      # instead of hardcoding package names
+      run: cargo build --workspace --exclude earth-3d --verbose
 
     - name: Run tests
-      # Use explicit Linux target - Cargo will only test packages compatible with this platform
-      run: cargo test --workspace --target x86_64-unknown-linux-gnu --verbose
+      # TODO: Find categorical solution to exclude all Darwin-only packages
+      # instead of hardcoding package names
+      run: cargo test --workspace --exclude earth-3d --verbose
