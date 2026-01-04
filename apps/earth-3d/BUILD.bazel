@@ -1,0 +1,37 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary")
+
+filegroup(
+    name = "shaders",
+    srcs = glob(["shaders/*.metal"]),
+)
+
+filegroup(
+    name = "assets",
+    srcs = glob(["assets/*.jpg"]),
+)
+
+rust_binary(
+    name = "earth-3d",
+    srcs = glob(["src/**/*.rs"]),
+    compile_data = [":shaders"],
+    data = [":assets"],
+    deps = [
+        "@crates//:cocoa",
+        "@crates//:core-graphics-types",
+        "@crates//:glam",
+        "@crates//:image",
+        "@crates//:metal",
+        "@crates//:objc",
+        "@crates//:rand",
+        "@crates//:winit",
+    ],
+    edition = "2021",
+    rustc_flags = [
+        "-C",
+        "opt-level=3",
+    ],
+    # Metal API only available on macOS
+    # Bazel automatically skips this target on non-macOS platforms
+    target_compatible_with = ["@platforms//os:macos"],
+    tags = ["requires-darwin"],
+)

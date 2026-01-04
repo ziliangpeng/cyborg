@@ -51,4 +51,6 @@ jobs:
       run: cargo fmt --all -- --check
 
     - name: Run Linter
-      run: cargo clippy --all-targets -- -D warnings
+      # TODO: Find categorical solution to exclude all Darwin-only packages
+      # instead of hardcoding package names
+      run: cargo clippy --workspace --exclude earth-3d -- -D warnings

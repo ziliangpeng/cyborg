@@ -1,0 +1,33 @@
+# Platform definitions for different build environments
+
+package(default_visibility = ["//visibility:public"])
+
+# CI platform (Linux x86_64, no GPU, no macOS)
+platform(
+    name = "ci",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "//constraints:no_gpu",
+    ],
+)
+
+# CUDA development platform (Linux x86_64 with NVIDIA GPU)
+platform(
+    name = "cuda",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "//constraints:cuda",
+    ],
+)
+
+# macOS development platform (for Metal/Darwin targets)
+platform(
+    name = "macos",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:arm64",
+        "//constraints:no_gpu",
+    ],
+)
