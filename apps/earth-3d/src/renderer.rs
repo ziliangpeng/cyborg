@@ -27,7 +27,7 @@ const STAR_FIELD_RADIUS: f32 = 50.0;
 
 // Lighting
 const AMBIENT_LIGHT_STRENGTH: f32 = 0.15; // Low ambient for dark side contrast
-const LIGHT_DIRECTION: [f32; 3] = [-0.6, 0.4, 0.5]; // Sun position (upper-left-front)
+const LIGHT_DIRECTION: [f32; 3] = [-0.6, 0.4, -0.5]; // Sun position (upper-left-front)
 
 // Animation
 const DEFAULT_ROTATION_SPEED: f32 = 0.5; // Radians per second
@@ -42,6 +42,8 @@ struct Uniforms {
     model_matrix: [[f32; 4]; 4],
     light_direction: [f32; 3],
     ambient_strength: f32,
+    camera_position: [f32; 3],
+    _padding: f32, // Align to 16 bytes
 }
 
 pub struct Renderer {
@@ -64,6 +66,10 @@ pub struct Renderer {
     stars_pipeline_state: RenderPipelineState,
     stars_vertex_buffer: Buffer,
     stars_count: usize,
+    // GPU resources created once
+    depth_texture: Texture,
+    uniforms_buffer: Buffer,
+    stars_uniforms_buffer: Buffer,
 }
 
 impl Renderer {
@@ -220,6 +226,26 @@ impl Renderer {
         let aspect = size.width as f32 / size.height as f32;
         let camera = Camera::new(aspect);
 
+        // Create depth texture once during initialization
+        let depth_texture_descriptor = TextureDescriptor::new();
+        depth_texture_descriptor.set_pixel_format(MTLPixelFormat::Depth32Float);
+        depth_texture_descriptor.set_width(size.width as u64);
+        depth_texture_descriptor.set_height(size.height as u64);
+        depth_texture_descriptor.set_usage(MTLTextureUsage::RenderTarget);
+        depth_texture_descriptor.set_storage_mode(MTLStorageMode::Private);
+        let depth_texture = device.new_texture(&depth_texture_descriptor);
+
+        // Create uniform buffers once during initialization
+        let uniforms_buffer = device.new_buffer(
+            std::mem::size_of::<Uniforms>() as u64,
+            MTLResourceOptions::CPUCacheModeDefaultCache,
+        );
+
+        let stars_uniforms_buffer = device.new_buffer(
+            std::mem::size_of::<[[f32; 4]; 4]>() as u64,
+            MTLResourceOptions::CPUCacheModeDefaultCache,
+        );
+
         println!("Metal renderer initialized");
         println!("  Device: {}", device.name());
         println!(
@@ -252,6 +278,9 @@ impl Renderer {
             stars_pipeline_state,
             stars_vertex_buffer,
             stars_count,
+            depth_texture,
+            uniforms_buffer,
+            stars_uniforms_buffer,
         }
     }
 
@@ -279,21 +308,19 @@ impl Renderer {
         layer
     }
 
-    fn create_depth_texture(&self, width: u64, height: u64) -> Texture {
-        let descriptor = TextureDescriptor::new();
-        descriptor.set_pixel_format(MTLPixelFormat::Depth32Float);
-        descriptor.set_width(width);
-        descriptor.set_height(height);
-        descriptor.set_usage(MTLTextureUsage::RenderTarget);
-        descriptor.set_storage_mode(MTLStorageMode::Private);
-
-        self.device.new_texture(&descriptor)
-    }
-
     pub fn resize(&mut self, width: u32, height: u32) {
         self.layer
             .set_drawable_size(CGSize::new(width as f64, height as f64));
         self.camera.update_aspect(width as f32 / height as f32);
+
+        // Recreate depth texture with new size
+        let depth_texture_descriptor = TextureDescriptor::new();
+        depth_texture_descriptor.set_pixel_format(MTLPixelFormat::Depth32Float);
+        depth_texture_descriptor.set_width(width as u64);
+        depth_texture_descriptor.set_height(height as u64);
+        depth_texture_descriptor.set_usage(MTLTextureUsage::RenderTarget);
+        depth_texture_descriptor.set_storage_mode(MTLStorageMode::Private);
+        self.depth_texture = self.device.new_texture(&depth_texture_descriptor);
     }
 
     pub fn camera_mut(&mut self) -> &mut Camera {
@@ -336,17 +363,15 @@ impl Renderer {
             model_matrix: model_matrix.to_cols_array_2d(),
             light_direction: light_direction.to_array(),
             ambient_strength: AMBIENT_LIGHT_STRENGTH,
+            camera_position: self.camera.position.to_array(),
+            _padding: 0.0,
         };
 
-        let uniforms_buffer = self.device.new_buffer_with_data(
-            &uniforms as *const Uniforms as *const _,
-            std::mem::size_of::<Uniforms>() as u64,
-            MTLResourceOptions::CPUCacheModeDefaultCache,
-        );
-
-        // Create depth texture
-        let texture = drawable.texture();
-        let depth_texture = self.create_depth_texture(texture.width(), texture.height());
+        // Update uniform buffer contents (don't create new buffer)
+        unsafe {
+            let ptr = self.uniforms_buffer.contents() as *mut Uniforms;
+            *ptr = uniforms;
+        }
 
         // Set up render pass
         let render_pass_descriptor = RenderPassDescriptor::new();
@@ -361,7 +386,7 @@ impl Renderer {
         color_attachment.set_store_action(MTLStoreAction::Store);
 
         let depth_attachment = render_pass_descriptor.depth_attachment().unwrap();
-        depth_attachment.set_texture(Some(&depth_texture));
+        depth_attachment.set_texture(Some(&self.depth_texture));
         depth_attachment.set_load_action(MTLLoadAction::Clear);
         depth_attachment.set_clear_depth(1.0);
         depth_attachment.set_store_action(MTLStoreAction::DontCare);
@@ -376,14 +401,15 @@ impl Renderer {
 
         let view_projection = projection_matrix * view_matrix;
         let stars_uniforms = view_projection.to_cols_array_2d();
-        let stars_uniforms_buffer = self.device.new_buffer_with_data(
-            &stars_uniforms as *const [[f32; 4]; 4] as *const _,
-            std::mem::size_of::<[[f32; 4]; 4]>() as u64,
-            MTLResourceOptions::CPUCacheModeDefaultCache,
-        );
+
+        // Update stars uniform buffer contents (don't create new buffer)
+        unsafe {
+            let ptr = self.stars_uniforms_buffer.contents() as *mut [[f32; 4]; 4];
+            *ptr = stars_uniforms;
+        }
 
         encoder.set_vertex_buffer(0, Some(&self.stars_vertex_buffer), 0);
-        encoder.set_vertex_buffer(1, Some(&stars_uniforms_buffer), 0);
+        encoder.set_vertex_buffer(1, Some(&self.stars_uniforms_buffer), 0);
 
         encoder.draw_primitives(MTLPrimitiveType::Point, 0, self.stars_count as u64);
 
@@ -392,9 +418,9 @@ impl Renderer {
         encoder.set_depth_stencil_state(&self.depth_stencil_state);
 
         encoder.set_vertex_buffer(0, Some(&self.vertex_buffer), 0);
-        encoder.set_vertex_buffer(1, Some(&uniforms_buffer), 0);
+        encoder.set_vertex_buffer(1, Some(&self.uniforms_buffer), 0);
 
-        encoder.set_fragment_buffer(0, Some(&uniforms_buffer), 0);
+        encoder.set_fragment_buffer(0, Some(&self.uniforms_buffer), 0);
         encoder.set_fragment_texture(0, Some(&self.earth_texture));
         encoder.set_fragment_texture(1, Some(&self.night_texture));
         encoder.set_fragment_sampler_state(0, Some(&self.sampler_state));

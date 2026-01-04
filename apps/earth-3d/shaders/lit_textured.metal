@@ -34,12 +34,14 @@ struct Uniforms {
     float4x4 model_matrix;
     float3 light_direction;
     float ambient_strength;
+    float3 camera_position;
 };
 
 struct VertexOut {
     float4 position [[position]];
     float3 world_normal;
     float2 uv;
+    float3 world_position;
 };
 
 vertex VertexOut vertex_main(
@@ -52,6 +54,9 @@ vertex VertexOut vertex_main(
     // Transform normal to world space
     out.world_normal = (uniforms.model_matrix * float4(in.normal, 0.0)).xyz;
     out.world_normal = normalize(out.world_normal);
+
+    // Calculate world position for lighting
+    out.world_position = (uniforms.model_matrix * float4(in.position, 1.0)).xyz;
 
     out.uv = in.uv;
     return out;
@@ -97,8 +102,8 @@ fragment float4 fragment_main(
     float3 blended_color = mix(lit_day_color, night_side, night_mix);
 
     // Atmospheric glow (Fresnel effect) - only on the lit side
-    // Calculate view direction (pointing toward camera)
-    float3 view_dir = normalize(-in.position.xyz);
+    // Calculate view direction in world space (pointing toward camera)
+    float3 view_dir = normalize(uniforms.camera_position - in.world_position);
     float fresnel = 1.0 - max(dot(normal, view_dir), 0.0);
     fresnel = pow(fresnel, ATMOSPHERE_GLOW_POWER); // Sharpen the edge effect
 
