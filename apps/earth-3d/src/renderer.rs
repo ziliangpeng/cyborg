@@ -17,6 +17,8 @@ use crate::texture::TextureLoader;
 struct Uniforms {
     mvp_matrix: [[f32; 4]; 4],
     model_matrix: [[f32; 4]; 4],
+    light_direction: [f32; 3],
+    ambient_strength: f32,
 }
 
 pub struct Renderer {
@@ -74,7 +76,7 @@ impl Renderer {
         let sampler_state = device.new_sampler(&sampler_descriptor);
 
         // Compile shaders from source at runtime
-        let shader_source = include_str!("../shaders/textured.metal");
+        let shader_source = include_str!("../shaders/lit_textured.metal");
         let library = device
             .new_library_with_source(shader_source, &CompileOptions::new())
             .expect("Failed to compile Metal shaders");
@@ -218,9 +220,14 @@ impl Renderer {
         let projection_matrix = self.camera.projection_matrix();
         let mvp_matrix = projection_matrix * view_matrix * model_matrix;
 
+        // Define sun light coming from behind the camera (light rays travel in -Z)
+        let light_direction = glam::Vec3::new(-0.5, -0.3, -1.0).normalize();
+
         let uniforms = Uniforms {
             mvp_matrix: mvp_matrix.to_cols_array_2d(),
             model_matrix: model_matrix.to_cols_array_2d(),
+            light_direction: light_direction.to_array(),
+            ambient_strength: 0.15, // Low ambient light for the dark side
         };
 
         let uniforms_buffer = self.device.new_buffer_with_data(
@@ -261,6 +268,7 @@ impl Renderer {
         encoder.set_vertex_buffer(0, Some(&self.vertex_buffer), 0);
         encoder.set_vertex_buffer(1, Some(&uniforms_buffer), 0);
 
+        encoder.set_fragment_buffer(0, Some(&uniforms_buffer), 0);
         encoder.set_fragment_texture(0, Some(&self.earth_texture));
         encoder.set_fragment_sampler_state(0, Some(&self.sampler_state));
 
