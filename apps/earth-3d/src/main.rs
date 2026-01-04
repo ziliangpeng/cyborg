@@ -9,6 +9,7 @@ use winit::{
 mod camera;
 mod geometry;
 mod renderer;
+mod texture;
 
 use renderer::Renderer;
 

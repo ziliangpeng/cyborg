@@ -11,6 +11,7 @@ use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use crate::camera::Camera;
 use crate::geometry::sphere::SphereMesh;
+use crate::texture::TextureLoader;
 
 #[repr(C)]
 struct Uniforms {
@@ -29,6 +30,8 @@ pub struct Renderer {
     index_count: usize,
     camera: Camera,
     start_time: Instant,
+    earth_texture: Texture,
+    sampler_state: SamplerState,
 }
 
 impl Renderer {
@@ -55,8 +58,23 @@ impl Renderer {
 
         let index_count = sphere.indices.len();
 
+        // Load Earth texture
+        let texture_loader = TextureLoader::new(&device);
+        let earth_texture = texture_loader
+            .load_texture("assets/earth_texture.jpg")
+            .expect("Failed to load Earth texture");
+
+        // Create sampler state
+        let sampler_descriptor = SamplerDescriptor::new();
+        sampler_descriptor.set_min_filter(MTLSamplerMinMagFilter::Linear);
+        sampler_descriptor.set_mag_filter(MTLSamplerMinMagFilter::Linear);
+        sampler_descriptor.set_mip_filter(MTLSamplerMipFilter::Linear);
+        sampler_descriptor.set_address_mode_s(MTLSamplerAddressMode::Repeat);
+        sampler_descriptor.set_address_mode_t(MTLSamplerAddressMode::Repeat);
+        let sampler_state = device.new_sampler(&sampler_descriptor);
+
         // Compile shaders from source at runtime
-        let shader_source = include_str!("../shaders/basic.metal");
+        let shader_source = include_str!("../shaders/textured.metal");
         let library = device
             .new_library_with_source(shader_source, &CompileOptions::new())
             .expect("Failed to compile Metal shaders");
@@ -91,7 +109,7 @@ impl Renderer {
         layout.set_stride(32);
         layout.set_step_function(MTLVertexStepFunction::PerVertex);
 
-        pipeline_descriptor.set_vertex_descriptor(Some(&vertex_descriptor));
+        pipeline_descriptor.set_vertex_descriptor(Some(vertex_descriptor));
 
         let color_attachments = pipeline_descriptor.color_attachments();
         let color_attachment = color_attachments.object_at(0).unwrap();
@@ -121,6 +139,11 @@ impl Renderer {
             sphere.vertices.len(),
             index_count
         );
+        println!(
+            "  Earth texture: {}x{}",
+            earth_texture.width(),
+            earth_texture.height()
+        );
 
         Self {
             device,
@@ -133,6 +156,8 @@ impl Renderer {
             index_count,
             camera,
             start_time: Instant::now(),
+            earth_texture,
+            sampler_state,
         }
     }
 
@@ -235,6 +260,9 @@ impl Renderer {
 
         encoder.set_vertex_buffer(0, Some(&self.vertex_buffer), 0);
         encoder.set_vertex_buffer(1, Some(&uniforms_buffer), 0);
+
+        encoder.set_fragment_texture(0, Some(&self.earth_texture));
+        encoder.set_fragment_sampler_state(0, Some(&self.sampler_state));
 
         encoder.set_cull_mode(MTLCullMode::Back);
         encoder.set_front_facing_winding(MTLWinding::CounterClockwise);

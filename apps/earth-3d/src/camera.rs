@@ -16,7 +16,7 @@ impl Camera {
             position: Vec3::new(0.0, 0.0, 5.0),
             target: Vec3::ZERO,
             up: Vec3::Y,
-            fov: 45.0_f32.to_radians(),
+            fov: 35.0_f32.to_radians(), // Balanced FOV - less distortion than 45°
             aspect,
             near: 0.1,
             far: 100.0,
