@@ -51,6 +51,9 @@ jobs:
       run: cargo fmt --all -- --check
 
     - name: Run Linter
-      # Use --target to only check packages compatible with Linux
-      # This automatically excludes Darwin-only packages (like earth-3d)
-      run: cargo clippy --workspace --all-targets --target x86_64-unknown-linux-gnu -- -D warnings
+      # TODO: Find categorical solution to exclude all Darwin-only packages
+      # instead of hardcoding package names. Potential approaches:
+      # - Detect packages with macOS-only dependencies (metal, cocoa, etc.)
+      # - Use Cargo's target-specific dependency resolution
+      # - Check for [target.'cfg(target_os = "macos")'.dependencies] sections
+      run: cargo clippy --workspace --exclude earth-3d --all-targets -- -D warnings
