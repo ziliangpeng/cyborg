@@ -34,4 +34,28 @@ impl Camera {
     pub fn update_aspect(&mut self, aspect: f32) {
         self.aspect = aspect;
     }
+
+    pub fn move_forward(&mut self, delta: f32) {
+        let forward = (self.target - self.position).normalize();
+        self.position += forward * delta;
+    }
+
+    pub fn move_backward(&mut self, delta: f32) {
+        let forward = (self.target - self.position).normalize();
+        self.position -= forward * delta;
+    }
+
+    pub fn strafe_right(&mut self, delta: f32) {
+        let forward = (self.target - self.position).normalize();
+        let right = forward.cross(self.up).normalize();
+        self.position += right * delta;
+        self.target += right * delta; // Move target too for Cartesian movement
+    }
+
+    pub fn strafe_left(&mut self, delta: f32) {
+        let forward = (self.target - self.position).normalize();
+        let right = forward.cross(self.up).normalize();
+        self.position -= right * delta;
+        self.target -= right * delta; // Move target too for Cartesian movement
+    }
 }

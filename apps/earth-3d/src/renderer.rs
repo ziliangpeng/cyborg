@@ -204,6 +204,10 @@ impl Renderer {
         self.camera.update_aspect(width as f32 / height as f32);
     }
 
+    pub fn camera_mut(&mut self) -> &mut Camera {
+        &mut self.camera
+    }
+
     pub fn render(&mut self) {
         let drawable = match self.layer.next_drawable() {
             Some(drawable) => drawable,

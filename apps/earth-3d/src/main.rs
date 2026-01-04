@@ -1,8 +1,10 @@
 #![allow(deprecated)]
 
+use std::collections::HashSet;
 use winit::{
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, KeyEvent, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
+    keyboard::{Key, NamedKey},
     window::Window,
 };
 
@@ -24,7 +26,9 @@ fn main() {
 
     let mut renderer = Renderer::new(&window);
     let mut last_frame_time = std::time::Instant::now();
+    let mut last_update_time = std::time::Instant::now();
     let mut frame_count = 0;
+    let mut pressed_keys = HashSet::new();
 
     event_loop
         .run(move |event, event_loop_window_target| {
@@ -44,7 +48,45 @@ fn main() {
                 } => {
                     renderer.resize(size.width, size.height);
                 }
+                Event::WindowEvent {
+                    event:
+                        WindowEvent::KeyboardInput {
+                            event:
+                                KeyEvent {
+                                    logical_key, state, ..
+                                },
+                            ..
+                        },
+                    ..
+                } => match state {
+                    ElementState::Pressed => {
+                        pressed_keys.insert(logical_key.clone());
+                    }
+                    ElementState::Released => {
+                        pressed_keys.remove(&logical_key);
+                    }
+                },
                 Event::AboutToWait => {
+                    // Update camera based on input
+                    let delta_time = last_update_time.elapsed().as_secs_f32();
+                    last_update_time = std::time::Instant::now();
+
+                    let move_speed = 2.0 * delta_time; // 2 units per second
+
+                    let camera = renderer.camera_mut();
+                    if pressed_keys.contains(&Key::Named(NamedKey::ArrowUp)) {
+                        camera.move_forward(move_speed);
+                    }
+                    if pressed_keys.contains(&Key::Named(NamedKey::ArrowDown)) {
+                        camera.move_backward(move_speed);
+                    }
+                    if pressed_keys.contains(&Key::Named(NamedKey::ArrowLeft)) {
+                        camera.strafe_left(move_speed);
+                    }
+                    if pressed_keys.contains(&Key::Named(NamedKey::ArrowRight)) {
+                        camera.strafe_right(move_speed);
+                    }
+
                     window.request_redraw();
                 }
                 Event::WindowEvent {
