@@ -20,8 +20,8 @@ __global__ void matmulWMMAKernel(const half* A, const half* B, float* C, int N) 
     const int WMMA_K = 16;
 
     // Calculate warp position
-    int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
-    int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
+    int warpM = (blockIdx.y * blockDim.y + threadIdx.y);
+    int warpN = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
 
     // Bounds check
     if (warpM * WMMA_M >= N || warpN * WMMA_N >= N) return;
