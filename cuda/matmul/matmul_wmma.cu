@@ -66,6 +66,13 @@ MatmulWMMA::MatmulWMMA(int N, int blockDim) : N(N) {
         throw std::runtime_error("WMMA requires compute capability 7.0+ (Volta or newer)");
     }
 
+    // Check matrix dimension compatibility
+    if (N % 16 != 0) {
+        std::cerr << "WMMA kernel requires matrix dimension N to be a multiple of 16" << std::endl;
+        std::cerr << "Current N: " << N << std::endl;
+        throw std::runtime_error("WMMA kernel requires matrix dimension N to be a multiple of 16");
+    }
+
     // Allocate FP16 buffers for input matrices
     cudaCheckError(cudaMalloc(&d_A_fp16, N * N * sizeof(half)));
     cudaCheckError(cudaMalloc(&d_B_fp16, N * N * sizeof(half)));
