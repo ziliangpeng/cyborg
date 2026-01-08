@@ -1,4 +1,5 @@
 #include "matrix_init.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -7,6 +8,17 @@ void allocateAndInitMatrices(float **h_A, float **h_B, int N) {
     // Allocate host memory for both matrices
     *h_A = (float*)malloc(N * N * sizeof(float));
     *h_B = (float*)malloc(N * N * sizeof(float));
+
+    // Check for allocation failure
+    if (!*h_A || !*h_B) {
+        // Clean up partial allocations
+        if (*h_A) free(*h_A);
+        if (*h_B) free(*h_B);
+        *h_A = *h_B = nullptr;
+        fprintf(stderr, "Failed to allocate %dx%d matrices (%zu bytes each)\n",
+                N, N, N * N * sizeof(float));
+        return;
+    }
 
     // Initialize random seed (use static variable to only seed once)
     static bool seeded = false;
