@@ -34,3 +34,9 @@ test:ci --test_tag_filters=-gpu,-cuda
 # Usage: bazel test --config=local //...  (or just: bazel test //...)
 build:local --build_tag_filters=
 test:local --test_tag_filters=
+
+# CUDA architecture settings for WMMA support (Volta+ / SM 7.0+)
+
+# CUDA architecture settings for WMMA support (Volta+ / SM 7.0+)
+build --@rules_cuda//cuda:archs=sm_70,sm_75,sm_80,sm_86,sm_89,sm_90
+
