@@ -155,7 +155,7 @@
     "@@rules_cuda+//cuda:extensions.bzl%toolchain": {
       "general": {
         "bzlTransitiveDigest": "Rni/kG2Z3L2J0Q9BbSEuxEFk49DxGmSID4p9OcKn0A4=",
-        "usagesDigest": "HWpd/kmY6W0fjdZBOtYbu2P6ZXlZecPpgLCQfCv4dsA=",
+        "usagesDigest": "gT25uJQFAYciDCElz+6EOf82kHHGMhI3c1eVL1ZF4zs=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -163,7 +163,7 @@
           "local_cuda": {
             "repoRuleId": "@@rules_cuda+//cuda/private:repositories.bzl%local_cuda",
             "attributes": {
-              "toolkit_path": "/usr/local/cuda"
+              "toolkit_path": ""
             }
           }
         },

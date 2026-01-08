@@ -2,6 +2,7 @@
 #include "cuda_utils.h"
 #include <mma.h>
 #include <iostream>
+#include <stdexcept>
 
 // FP32 to FP16 conversion kernel
 __global__ void convertFP32ToFP16(const float* input, half* output, int size) {
@@ -62,7 +63,7 @@ MatmulWMMA::MatmulWMMA(int N, int blockDim) : N(N) {
     if (prop.major < 7) {
         std::cerr << "WMMA requires compute capability 7.0+ (Volta or newer)" << std::endl;
         std::cerr << "Current GPU: " << prop.name << " (SM " << prop.major << "." << prop.minor << ")" << std::endl;
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("WMMA requires compute capability 7.0+ (Volta or newer)");
     }
 
     // Allocate FP16 buffers for input matrices
@@ -80,10 +81,14 @@ void MatmulWMMA::execute(const float *d_A, const float *d_B, float *d_C) {
     convertFP32ToFP16<<<blocks, threads>>>(d_B, d_B_fp16, N * N);
     cudaCheckError(cudaGetLastError());
 
+    // Zero output buffer to avoid garbage in uncomputed tiles
+    cudaCheckError(cudaMemset(d_C_fp32, 0, N * N * sizeof(float)));
+
     // Configure WMMA kernel
     // Each warp handles one 16×16 output tile
+    // Each block has 16 warps arranged as 4×4, handling a 64×64 output region
     dim3 blockDim(128, 4);  // 512 threads = 16 warps per block
-    dim3 gridDim((N + 15) / 16, (N + 15) / 16);
+    dim3 gridDim((N + 63) / 64, (N + 63) / 64);  // Grid based on 64×64 tiles per block
 
     matmulWMMAKernel<<<gridDim, blockDim>>>(d_A_fp16, d_B_fp16, d_C_fp32, N);
     cudaCheckError(cudaGetLastError());

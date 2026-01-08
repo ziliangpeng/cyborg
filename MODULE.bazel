@@ -17,10 +17,7 @@ bazel_dep(name = "rules_cuda", version = "0.2.5")
 
 # Register CUDA toolchains (auto-detect CUDA installation)
 cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
-cuda.local_toolchain(
-    # Specify compute capabilities for WMMA support (Volta+ / SM 7.0+)
-    toolkit_path = "/usr/local/cuda",
-)
+cuda.local_toolchain()
 
 # ============================================================================
 # Rust Rules
