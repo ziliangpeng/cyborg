@@ -1,6 +1,7 @@
 """Image grid layout library for arranging multiple images with labels."""
 
 from dataclasses import dataclass
+
 from PIL import Image, ImageDraw, ImageFont
 
 

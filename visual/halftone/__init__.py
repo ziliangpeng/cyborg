@@ -1,28 +1,27 @@
 """Halftone image processing library."""
 
-from PIL import Image
 from typing import Any
 
-from .types import (
-    StyleType,
-    CmykParams,
-    GrayscaleParams,
-    DitherParams,
-    StipplingParams,
-    LineScreenParams,
-    CrosshatchParams,
-    ProcessParams,
-    get_style_name,
-    parse_style_name,
-    all_style_names,
-)
+from PIL import Image
 
 from .cmyk import process_cmyk
-from .grayscale import process_linear, process_sqrt
 from .dither import process_floyd_steinberg, process_ordered_dither
+from .grayscale import process_linear, process_sqrt
+from .line_screen import process_crosshatch, process_line_screen
 from .stipple import process_stippling
-from .line_screen import process_line_screen, process_crosshatch
-
+from .types import (
+    CmykParams,
+    CrosshatchParams,
+    DitherParams,
+    GrayscaleParams,
+    LineScreenParams,
+    ProcessParams,
+    StipplingParams,
+    StyleType,
+    all_style_names,
+    get_style_name,
+    parse_style_name,
+)
 
 # Re-export types for convenience
 __all__ = [

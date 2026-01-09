@@ -1,8 +1,9 @@
 """Line screen and crosshatch implementations."""
 
-from PIL import Image, ImageDraw
 import numpy as np
-from .types import LineScreenParams, CrosshatchParams, ProcessParams
+from PIL import Image, ImageDraw
+
+from .types import CrosshatchParams, LineScreenParams, ProcessParams
 
 # Sample every N pixels along line for performance (instead of every pixel)
 LINE_SAMPLE_STEP = 10

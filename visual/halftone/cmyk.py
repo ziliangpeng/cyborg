@@ -1,7 +1,8 @@
 """CMYK halftone implementation."""
 
-from PIL import Image, ImageDraw, ImageStat
-from .common import sample_region, rotate_image, crop_to_size
+from PIL import Image, ImageDraw
+
+from .common import crop_to_size, rotate_image, sample_region
 from .types import CmykParams, ProcessParams
 
 
@@ -49,7 +50,7 @@ def process_cmyk(image: Image.Image, params: CmykParams, process_params: Process
 
     # Process each channel
     processed_channels = []
-    for channel, angle in zip(channels, angles):
+    for channel, angle in zip(channels, angles, strict=False):
         processed = _process_channel(channel, sample, scale, angle, original_size)
         processed_channels.append(processed)
 

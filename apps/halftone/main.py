@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 """Halftone image processor CLI."""
 
-import click
+import sys
 from pathlib import Path
+
+import click
 from PIL import Image
 
 from visual.halftone import (
-    StyleType,
-    ProcessParams,
     CmykParams,
-    GrayscaleParams,
-    DitherParams,
-    StipplingParams,
-    LineScreenParams,
     CrosshatchParams,
+    DitherParams,
+    GrayscaleParams,
+    LineScreenParams,
+    ProcessParams,
+    StipplingParams,
+    StyleType,
+    all_style_names,
+    parse_style_name,
     process,
     process_multiple,
-    parse_style_name,
-    all_style_names,
 )
 from visual.halftone.image_grid import GridLayout, LabeledImage, create_grid
 
@@ -106,10 +108,7 @@ def main(
             sys.exit(1)
 
         # Determine output path
-        if output:
-            output_path = Path(output)
-        else:
-            output_path = input_path.parent / f"{base_name}_{style}{ext}"
+        output_path = Path(output) if output else input_path.parent / f"{base_name}_{style}{ext}"
 
         # Save result
         try:
@@ -122,10 +121,7 @@ def main(
     # Multiple styles mode
     elif styles:
         # Parse style list
-        if styles.lower() == "all":
-            style_names = all_style_names()
-        else:
-            style_names = [s.strip() for s in styles.split(",")]
+        style_names = all_style_names() if styles.lower() == "all" else [s.strip() for s in styles.split(",")]
 
         # Parse style types and create params
         style_list = []

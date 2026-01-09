@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional
 
 
 class StyleType(Enum):
@@ -24,7 +23,7 @@ class CmykParams:
 
     sample: int = 8
     scale: int = 1
-    angles: Optional[tuple[float, float, float, float]] = None  # C, M, Y, K angles
+    angles: tuple[float, float, float, float] | None = None  # C, M, Y, K angles
 
     def get_angles(self) -> tuple[float, float, float, float]:
         """Get angles with defaults if not specified."""

@@ -1,8 +1,8 @@
 """Grayscale halftone implementations."""
 
 from PIL import Image, ImageDraw
-import numpy as np
-from .common import sample_region, draw_circle, rotate_image, crop_to_size
+
+from .common import crop_to_size, draw_circle, rotate_image, sample_region
 from .types import GrayscaleParams, ProcessParams
 
 

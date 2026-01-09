@@ -1,9 +1,11 @@
 """Stippling implementation."""
 
-from PIL import Image, ImageDraw
 import random
+
+from PIL import Image, ImageDraw
+
 from .common import sample_region
-from .types import StipplingParams, ProcessParams
+from .types import ProcessParams, StipplingParams
 
 
 def process_stippling(image: Image.Image, params: StipplingParams, process_params: ProcessParams) -> Image.Image:
