@@ -28,42 +28,41 @@ def process_line_screen(image: Image.Image, params: LineScreenParams, process_pa
     angle = params.angle
     frequency = params.frequency
 
-    # Create larger output for rotation
-    diagonal = int(np.sqrt(width**2 + height**2))
-    output = Image.new("L", (diagonal, diagonal), 255)
+    # Simpler approach: rotate image, draw horizontal lines based on column averages, rotate back
+    # Rotate image by angle
+    rotated = gray.rotate(angle, expand=True, fillcolor=255)
+    rot_width, rot_height = rotated.size
+
+    # Create output
+    output = Image.new("L", (rot_width, rot_height), 255)
     draw = ImageDraw.Draw(output)
 
-    # Draw lines
-    angle_rad = np.radians(angle)
-
+    # Draw horizontal lines (will be at angle after rotation back)
     y_pos = 0
-    while y_pos < diagonal:
-        # Sample line position to get average brightness
+    while y_pos < rot_height:
+        # Sample this horizontal line
         line_samples = []
-        for sample_x in range(0, width, LINE_SAMPLE_STEP):
-            # Transform coordinates
-            rot_x = int(sample_x * np.cos(angle_rad) + y_pos * np.sin(angle_rad))
-            rot_y = int(-sample_x * np.sin(angle_rad) + y_pos * np.cos(angle_rad))
-
-            if 0 <= rot_x < width and 0 <= rot_y < height:
-                line_samples.append(gray.getpixel((rot_x, rot_y)))
+        for x in range(0, rot_width, LINE_SAMPLE_STEP):
+            if x < rot_width and y_pos < rot_height:
+                line_samples.append(rotated.getpixel((x, y_pos)))
 
         if line_samples:
             avg_brightness = sum(line_samples) / len(line_samples)
             darkness = 1 - (avg_brightness / 255)
-            line_thickness = int(darkness * frequency * 0.8)
+            line_thickness = max(1, int(darkness * frequency * 1.2))
 
             if line_thickness > 0:
-                draw.line([(0, y_pos), (diagonal, y_pos)], fill=0, width=line_thickness)
+                draw.line([(0, y_pos), (rot_width, y_pos)], fill=0, width=line_thickness)
 
         y_pos += frequency
 
     # Rotate back
-    output = output.rotate(-angle, expand=False, fillcolor=255)
+    output = output.rotate(-angle, expand=True, fillcolor=255)
 
     # Crop to original size
-    left = (diagonal - width) // 2
-    top = (diagonal - height) // 2
+    out_width, out_height = output.size
+    left = (out_width - width) // 2
+    top = (out_height - height) // 2
     output = output.crop((left, top, left + width, top + height))
 
     return output
