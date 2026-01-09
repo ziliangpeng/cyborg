@@ -94,6 +94,7 @@ bazel run //apps/halftone:halftone -- input.jpg --style cmyk --no-antialias
 ### Global Parameters
 
 - `--no-antialias` - Disable antialiasing (4x faster, jagged edges)
+- `--no-labels` - Disable labels in comparison grid (images only)
 
 ### Dot-Based Styles (cmyk, grayscale-*)
 

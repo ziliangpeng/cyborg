@@ -33,8 +33,9 @@ from image_grid import GridLayout, LabeledImage, create_grid
 @click.option('--matrix-size', type=int, default=4, help='Matrix size (Bayer: 2, 4, 8)')
 @click.option('--cell-size', type=int, default=8, help='Cell size (stippling)')
 @click.option('--list-styles', is_flag=True, help='List available styles')
+@click.option('--no-labels', is_flag=True, help='Disable labels in comparison grid')
 def main(input, style, styles, output, no_antialias, sample, scale, angle,
-         density, frequency, matrix_size, cell_size, list_styles):
+         density, frequency, matrix_size, cell_size, list_styles, no_labels):
     """Halftone image processor."""
 
     if list_styles:
@@ -146,10 +147,13 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
         # Create comparison grid
         try:
             labeled_images = [
-                LabeledImage(image=img, label=name)
+                LabeledImage(image=img, label=name if not no_labels else "")
                 for name, img in results.items()
             ]
             layout = GridLayout.auto(len(labeled_images))
+            # Disable label height if no labels
+            if no_labels:
+                layout.label_height = 0
             grid_img = create_grid(labeled_images, layout)
 
             comparison_path = input_path.parent / f"{base_name}_comparison{ext}"
