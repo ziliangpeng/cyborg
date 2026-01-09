@@ -1,0 +1,12 @@
+py_binary(
+    name = "halftone",
+    srcs = ["main.py"],
+    main = "main.py",
+    deps = [
+        "//python/halftone",
+        "//python/image_grid",
+        "@pip//click",
+        "@pip//pillow",
+        "@pip//numpy",
+    ],
+)
