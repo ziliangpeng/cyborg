@@ -1,0 +1,10 @@
+py_library(
+    name = "halftone",
+    srcs = glob(["*.py"]),
+    data = glob(["docs/*.md"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@pip//pillow",
+        "@pip//numpy",
+    ],
+)
