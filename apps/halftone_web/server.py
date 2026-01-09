@@ -50,25 +50,21 @@ class Defaults:
 
 
 def _create_style_params(style_type: StyleType, defaults: Defaults) -> Any:
-    if style_type == StyleType.CMYK:
-        return CmykParams(sample=defaults.sample, scale=defaults.scale)
-
-    if style_type in (StyleType.GRAYSCALE_SQRT, StyleType.GRAYSCALE_LINEAR):
-        return GrayscaleParams(sample=defaults.sample, scale=defaults.scale, angle=defaults.angle)
-
-    if style_type in (StyleType.FLOYD_STEINBERG, StyleType.ORDERED_DITHER):
-        return DitherParams(matrix_size=defaults.matrix_size)
-
-    if style_type == StyleType.STIPPLING:
-        return StipplingParams(cell_size=defaults.cell_size, density=defaults.density)
-
-    if style_type == StyleType.LINE_SCREEN:
-        return LineScreenParams(angle=defaults.angle, frequency=defaults.frequency)
-
-    if style_type == StyleType.CROSSHATCH:
-        return CrosshatchParams(angle1=defaults.angle, angle2=-defaults.angle, frequency=defaults.frequency)
-
-    raise ValueError(f"Unknown style type: {style_type}")
+    match style_type:
+        case StyleType.CMYK:
+            return CmykParams(sample=defaults.sample, scale=defaults.scale)
+        case StyleType.GRAYSCALE_SQRT | StyleType.GRAYSCALE_LINEAR:
+            return GrayscaleParams(sample=defaults.sample, scale=defaults.scale, angle=defaults.angle)
+        case StyleType.FLOYD_STEINBERG | StyleType.ORDERED_DITHER:
+            return DitherParams(matrix_size=defaults.matrix_size)
+        case StyleType.STIPPLING:
+            return StipplingParams(cell_size=defaults.cell_size, density=defaults.density)
+        case StyleType.LINE_SCREEN:
+            return LineScreenParams(angle=defaults.angle, frequency=defaults.frequency)
+        case StyleType.CROSSHATCH:
+            return CrosshatchParams(angle1=defaults.angle, angle2=-defaults.angle, frequency=defaults.frequency)
+        case _:
+            raise ValueError(f"Unknown style type: {style_type}")
 
 
 def _read_exact(handler: BaseHTTPRequestHandler, length: int) -> bytes:
