@@ -235,9 +235,29 @@ def count_lines(file_path: Path) -> int:
         return 0
 
 
-def scan_directory(root_path: Path) -> Stats:
-    """Scan directory and count lines by category"""
+def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
+    """
+    Scan directory and count lines by category.
+
+    Args:
+        root_path: Directory to scan
+        collect_files: If True, also collect file paths by category
+
+    Returns:
+        Tuple of (Stats, dict[str, list[Path]]) where dict maps category names to file paths
+    """
     stats = Stats()
+    file_dict = {
+        'bazel': [],
+        'python': [],
+        'python_test': [],
+        'rust': [],
+        'rust_test': [],
+        'cuda': [],
+        'cpp': [],
+        'text': [],
+        'misc': [],
+    } if collect_files else {}
 
     # Build set of gitignored files once upfront
     print("Checking for gitignored files...")
@@ -277,22 +297,42 @@ def scan_directory(root_path: Path) -> Stats:
                 code_lines, test_lines = count
                 stats.rust += code_lines
                 stats.rust_test += test_lines
+                if collect_files:
+                    # For Rust, we need to track if file has more code or test lines
+                    if code_lines >= test_lines:
+                        file_dict['rust'].append(file_path)
+                    else:
+                        file_dict['rust_test'].append(file_path)
             elif category == 'bazel':
                 stats.bazel += count
+                if collect_files:
+                    file_dict['bazel'].append(file_path)
             elif category == 'python':
                 stats.python += count
+                if collect_files:
+                    file_dict['python'].append(file_path)
             elif category == 'python_test':
                 stats.python_test += count
+                if collect_files:
+                    file_dict['python_test'].append(file_path)
             elif category == 'cuda':
                 stats.cuda += count
+                if collect_files:
+                    file_dict['cuda'].append(file_path)
             elif category == 'cpp':
                 stats.cpp += count
+                if collect_files:
+                    file_dict['cpp'].append(file_path)
             elif category == 'text':
                 stats.text += count
+                if collect_files:
+                    file_dict['text'].append(file_path)
             elif category == 'misc':
                 stats.misc += count
+                if collect_files:
+                    file_dict['misc'].append(file_path)
 
-    return stats
+    return stats, file_dict
 
 
 def format_number(n: int) -> str:
@@ -331,14 +371,53 @@ def print_stats(stats: Stats):
     print()
 
 
+def cmd_stat(root_path: Path):
+    """Show statistics by category (default command)"""
+    print(f"Scanning directory: {root_path}")
+    print("This may take a moment...")
+
+    stats, _ = scan_directory(root_path, collect_files=False)
+    print_stats(stats)
+
+
+def cmd_find_misc(root_path: Path):
+    """Find and list all files categorized as misc"""
+    print(f"Scanning directory: {root_path}")
+    print("This may take a moment...")
+
+    _, file_dict = scan_directory(root_path, collect_files=True)
+    misc_files = file_dict.get('misc', [])
+
+    print(f"\nFound {len(misc_files)} misc files:")
+    print("=" * 50)
+    for file_path in sorted(misc_files):
+        # Print relative path for readability
+        try:
+            rel_path = file_path.relative_to(root_path)
+        except ValueError:
+            rel_path = file_path
+        print(rel_path)
+    print()
+
+
 def main():
     """Main entry point"""
-    # Get path from command line or use current directory
-    if len(sys.argv) > 1:
-        root_path = Path(sys.argv[1])
-    else:
-        root_path = Path.cwd()
+    # Parse command and path
+    command = 'stat'  # default
+    root_path = Path.cwd()
 
+    if len(sys.argv) > 1:
+        # Check if first arg is a command or path
+        first_arg = sys.argv[1].lower()
+        if first_arg in ['stat', 'find_misc']:
+            command = first_arg
+            if len(sys.argv) > 2:
+                root_path = Path(sys.argv[2])
+        else:
+            # Backward compatibility: treat as path
+            root_path = Path(sys.argv[1])
+
+    # Validate path
     if not root_path.exists():
         print(f"Error: Path '{root_path}' does not exist")
         sys.exit(1)
@@ -347,11 +426,15 @@ def main():
         print(f"Error: Path '{root_path}' is not a directory")
         sys.exit(1)
 
-    print(f"Scanning directory: {root_path}")
-    print("This may take a moment...")
-
-    stats = scan_directory(root_path)
-    print_stats(stats)
+    # Execute command
+    if command == 'stat':
+        cmd_stat(root_path)
+    elif command == 'find_misc':
+        cmd_find_misc(root_path)
+    else:
+        print(f"Error: Unknown command '{command}'")
+        print("Available commands: stat, find_misc")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
