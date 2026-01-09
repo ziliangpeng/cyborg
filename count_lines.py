@@ -99,14 +99,23 @@ SKIP_DIRS = {
     '.cache',
 }
 
+# Binary file extensions
+BINARY_EXTENSIONS = {
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.webp', '.svg',
+    '.pdf', '.zip', '.tar', '.gz', '.tgz', '.bz2', '.xz',
+    '.bin', '.exe', '.dll', '.so', '.dylib',
+    '.ttf', '.otf', '.woff', '.woff2',
+    '.mp4', '.mov', '.avi', '.mkv', '.mp3', '.wav', '.ogg'
+}
+
+# Maximum file size to process (10 MB)
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
+
 
 def should_skip_path(path: Path) -> bool:
     """Check if path should be skipped"""
     # Skip if any parent directory is in SKIP_DIRS
-    for parent in path.parts:
-        if parent in SKIP_DIRS:
-            return True
-    return False
+    return any(parent in SKIP_DIRS for parent in path.parts)
 
 
 def get_gitignored_files(repo_root: Path) -> set:
@@ -178,7 +187,7 @@ def count_rust_lines(file_path: Path) -> Tuple[int, int]:
     test_start_depth = 0
     in_cfg_test = False
 
-    for i, line in enumerate(lines):
+    for _, line in enumerate(lines):
         stripped = line.strip()
 
         # Check if we're seeing #[cfg(test)]
@@ -267,14 +276,7 @@ def categorize_and_count(file_path: Path) -> Tuple[str, Union[int, Tuple[int, in
 
     # Binary files (do NOT count lines)
     # First check by extension for performance, then use content detection
-    binary_extensions = {
-        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.webp', '.svg',
-        '.pdf', '.zip', '.tar', '.gz', '.tgz', '.bz2', '.xz',
-        '.bin', '.exe', '.dll', '.so', '.dylib',
-        '.ttf', '.otf', '.woff', '.woff2',
-        '.mp4', '.mov', '.avi', '.mkv', '.mp3', '.wav', '.ogg'
-    }
-    if suffix in binary_extensions or is_binary_file(file_path):
+    if suffix in BINARY_EXTENSIONS or is_binary_file(file_path):
         return 'binary', 0  # Don't count lines for binary files
 
     # Text/config files
@@ -348,9 +350,9 @@ def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
             if file_path.resolve() in gitignored_files:
                 continue
 
-            # Skip files larger than 10MB (likely binary/data files)
+            # Skip files larger than MAX_FILE_SIZE_BYTES (likely binary/data files)
             try:
-                if file_path.stat().st_size > 10 * 1024 * 1024:
+                if file_path.stat().st_size > MAX_FILE_SIZE_BYTES:
                     continue
             except (OSError, PermissionError):
                 continue
