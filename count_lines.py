@@ -7,11 +7,10 @@ Usage: ./count_lines.py [path]
 """
 
 import os
-import sys
 import subprocess
-from pathlib import Path
+import sys
 from dataclasses import dataclass
-from typing import Dict, Tuple, Union
+from pathlib import Path
 
 
 @dataclass
@@ -146,13 +145,8 @@ def get_gitignored_files(repo_root: Path) -> set:
 
 def is_python_test(path: Path) -> bool:
     """Check if Python file is a test file"""
-    # Check if in tests/ directory
-    if 'tests' in path.parts:
-        return True
-    # Check if filename matches test_*.py pattern
-    if path.name.startswith('test_') and path.suffix == '.py':
-        return True
-    return False
+    # Check if in tests/ directory or filename matches test_*.py pattern
+    return 'tests' in path.parts or (path.name.startswith('test_') and path.suffix == '.py')
 
 
 def is_binary_file(file_path: Path) -> bool:
@@ -168,13 +162,13 @@ def is_binary_file(file_path: Path) -> bool:
         return False
 
 
-def count_rust_lines(file_path: Path) -> Tuple[int, int]:
+def count_rust_lines(file_path: Path) -> tuple[int, int]:
     """
     Count Rust code lines separately from test lines.
     Returns (code_lines, test_lines)
     """
     try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(file_path, encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
     except Exception:
         return 0, 0
@@ -229,7 +223,7 @@ def count_rust_lines(file_path: Path) -> Tuple[int, int]:
     return code_lines, test_lines
 
 
-def categorize_and_count(file_path: Path) -> Tuple[str, Union[int, Tuple[int, int]]]:
+def categorize_and_count(file_path: Path) -> tuple[str, int | tuple[int, int]]:
     """
     Categorize file and count lines.
     Returns (category, line_count) where line_count is either int or Tuple[int, int] for Rust files
@@ -292,7 +286,7 @@ def categorize_and_count(file_path: Path) -> Tuple[str, Union[int, Tuple[int, in
 def count_lines(file_path: Path) -> int:
     """Count total lines in a file"""
     try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(file_path, encoding='utf-8', errors='ignore') as f:
             return sum(1 for _ in f)
     except Exception:
         return 0
