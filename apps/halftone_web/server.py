@@ -220,7 +220,9 @@ class HalftoneHandler(BaseHTTPRequestHandler):
                 out_img = process(img, style_type, style_params, process_params)
             except Exception as e:
                 logging.exception("Halftone processing failed for style=%s", style_name)
-                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": f"Processing failed for {style_name}."})
+                self._send_json(
+                    HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": f"Processing failed for {style_name}."}
+                )
                 return
 
             buf = io.BytesIO()
