@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Halftone · Upload</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <h1>Halftone</h1>
+        <p class="muted">Choose, drag & drop, or paste an image — then submit to generate all styles.</p>
+      </header>
+
+      <section class="panel">
+        <div id="dropZone" class="dropzone" tabindex="0" aria-label="Drop image here">
+          <div class="dropzone-inner">
+            <div class="dropzone-title">Drop image here</div>
+            <div class="muted">or paste (Ctrl/⌘+V) or</div>
+            <label class="button secondary">
+              Select image
+              <input id="fileInput" type="file" accept="image/*" hidden />
+            </label>
+          </div>
+        </div>
+
+        <div class="row gap">
+          <button id="submitBtn" class="button" disabled>Submit</button>
+          <div id="fileMeta" class="muted"></div>
+        </div>
+        <div id="status" class="status muted" role="status"></div>
+      </section>
+
+      <section class="results">
+        <div id="resultsGrid" class="grid"></div>
+      </section>
+
+      <div id="lightbox" class="lightbox" aria-hidden="true">
+        <div class="lightbox-backdrop" data-close="true"></div>
+        <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Image preview">
+          <div class="lightbox-header">
+            <div id="lightboxTitle" class="lightbox-title"></div>
+            <button id="lightboxClose" class="button secondary" type="button">Close</button>
+          </div>
+          <img id="lightboxImg" class="lightbox-img" alt="" />
+          <div class="lightbox-footer">
+            <a id="lightboxOpen" class="link" href="#" target="_blank" rel="noopener noreferrer">Open in new tab</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
