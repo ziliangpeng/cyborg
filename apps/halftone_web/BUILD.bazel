@@ -1,0 +1,16 @@
+py_binary(
+    name = "halftone_web",
+    srcs = [
+        "__init__.py",
+        "main.py",
+        "server.py",
+    ],
+    main = "main.py",
+    data = glob(["webroot/**"]),
+    deps = [
+        "//visual/halftone",
+        "@pip//pillow",
+        "@pip//numpy",
+    ],
+)
+
