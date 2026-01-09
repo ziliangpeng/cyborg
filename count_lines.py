@@ -7,13 +7,11 @@ Usage: ./count_lines.py [path]
 """
 
 import os
-import re
 import sys
 import subprocess
 from pathlib import Path
-from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 
 @dataclass
@@ -114,41 +112,25 @@ def should_skip_path(path: Path) -> bool:
 def get_gitignored_files(repo_root: Path) -> set:
     """Get set of all gitignored files in the repository"""
     try:
-        # First, get all files in the repo
+        # Use 'git ls-files' to get all ignored files. The -z flag ensures that
+        # filenames with special characters are handled correctly.
         result = subprocess.run(
-            ['find', '.', '-type', 'f', '!', '-path', './.git/*'],
+            ['git', 'ls-files', '-o', '-i', '--exclude-standard', '-z'],
             cwd=repo_root,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=30,
-            text=True
+            text=True,
+            check=True  # Raise CalledProcessError on non-zero exit codes
         )
 
-        if result.returncode != 0:
+        if not result.stdout:
             return set()
 
-        all_files = result.stdout.strip().split('\n')
+        ignored_files = result.stdout.strip('\0').split('\0')
+        # Convert to absolute paths
+        return {(repo_root / f).resolve() for f in ignored_files if f}
 
-        # Now batch check which ones are ignored
-        # Use stdin to pass all files at once
-        check_result = subprocess.run(
-            ['git', 'check-ignore', '--stdin'],
-            cwd=repo_root,
-            input='\n'.join(all_files),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30,
-            text=True
-        )
-
-        # Git check-ignore outputs the ignored files
-        if check_result.stdout:
-            ignored_files = set(check_result.stdout.strip().split('\n'))
-            # Convert to absolute paths
-            return {(repo_root / f.lstrip('./')).resolve() for f in ignored_files if f}
-
-        return set()
-    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.CalledProcessError):
         # If git is not available or command fails, return empty set
         return set()
 
@@ -206,7 +188,8 @@ def count_rust_lines(file_path: Path) -> Tuple[int, int]:
             continue
 
         # Check if we're entering a test module (after #[cfg(test)])
-        if in_cfg_test and stripped.startswith('mod ') and '{' in stripped:
+        if in_cfg_test and stripped.startswith('mod '):
+            # Found mod declaration - test module starts here
             in_test_module = True
             test_start_depth = brace_depth
             in_cfg_test = False
@@ -237,10 +220,10 @@ def count_rust_lines(file_path: Path) -> Tuple[int, int]:
     return code_lines, test_lines
 
 
-def categorize_and_count(file_path: Path) -> Tuple[str, int]:
+def categorize_and_count(file_path: Path) -> Tuple[str, Union[int, Tuple[int, int]]]:
     """
     Categorize file and count lines.
-    Returns (category, line_count)
+    Returns (category, line_count) where line_count is either int or Tuple[int, int] for Rust files
     """
     filename = file_path.name
     suffix = file_path.suffix.lower()
