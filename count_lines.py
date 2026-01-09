@@ -16,6 +16,7 @@ from pathlib import Path
 @dataclass
 class Stats:
     """Statistics for lines of code and file counts"""
+
     # Line counts
     bazel: int = 0
     python: int = 0
@@ -47,64 +48,94 @@ class Stats:
     misc_files: int = 0
 
     def total_lines(self) -> int:
-        return sum([
-            self.bazel,
-            self.python,
-            self.python_test,
-            self.rust,
-            self.rust_test,
-            self.cuda,
-            self.cpp,
-            self.metal,
-            self.shell,
-            self.lock,
-            # Note: binary is NOT included as binary files have no meaningful line count
-            self.text,
-            self.misc,
-        ])
+        return sum(
+            [
+                self.bazel,
+                self.python,
+                self.python_test,
+                self.rust,
+                self.rust_test,
+                self.cuda,
+                self.cpp,
+                self.metal,
+                self.shell,
+                self.lock,
+                # Note: binary is NOT included as binary files have no meaningful line count
+                self.text,
+                self.misc,
+            ]
+        )
 
     def total_files(self) -> int:
-        return sum([
-            self.bazel_files,
-            self.python_files,
-            self.python_test_files,
-            self.rust_files,
-            self.rust_test_files,
-            self.cuda_files,
-            self.cpp_files,
-            self.metal_files,
-            self.shell_files,
-            self.lock_files,
-            self.binary_files,
-            self.text_files,
-            self.misc_files,
-        ])
+        return sum(
+            [
+                self.bazel_files,
+                self.python_files,
+                self.python_test_files,
+                self.rust_files,
+                self.rust_test_files,
+                self.cuda_files,
+                self.cpp_files,
+                self.metal_files,
+                self.shell_files,
+                self.lock_files,
+                self.binary_files,
+                self.text_files,
+                self.misc_files,
+            ]
+        )
 
 
 # Directories to skip during scanning
 SKIP_DIRS = {
-    '.git',
-    'target',
-    'node_modules',
-    '.venv',
-    'venv',
-    '__pycache__',
-    '.pytest_cache',
-    '.mypy_cache',
-    'build',
-    'dist',
-    'data',  # Skip data directories with large binary files
-    '.cargo',
-    '.cache',
+    ".git",
+    "target",
+    "node_modules",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    "build",
+    "dist",
+    "data",  # Skip data directories with large binary files
+    ".cargo",
+    ".cache",
 }
 
 # Binary file extensions
 BINARY_EXTENSIONS = {
-    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.webp', '.svg',
-    '.pdf', '.zip', '.tar', '.gz', '.tgz', '.bz2', '.xz',
-    '.bin', '.exe', '.dll', '.so', '.dylib',
-    '.ttf', '.otf', '.woff', '.woff2',
-    '.mp4', '.mov', '.avi', '.mkv', '.mp3', '.wav', '.ogg'
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".ico",
+    ".webp",
+    ".svg",
+    ".pdf",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".tgz",
+    ".bz2",
+    ".xz",
+    ".bin",
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".ttf",
+    ".otf",
+    ".woff",
+    ".woff2",
+    ".mp4",
+    ".mov",
+    ".avi",
+    ".mkv",
+    ".mp3",
+    ".wav",
+    ".ogg",
 }
 
 # Maximum file size to process (10 MB)
@@ -123,18 +154,18 @@ def get_gitignored_files(repo_root: Path) -> set:
         # Use 'git ls-files' to get all ignored files. The -z flag ensures that
         # filenames with special characters are handled correctly.
         result = subprocess.run(
-            ['git', 'ls-files', '-o', '-i', '--exclude-standard', '-z'],
+            ["git", "ls-files", "-o", "-i", "--exclude-standard", "-z"],
             cwd=repo_root,
             capture_output=True,
             timeout=30,
             text=True,
-            check=True  # Raise CalledProcessError on non-zero exit codes
+            check=True,  # Raise CalledProcessError on non-zero exit codes
         )
 
         if not result.stdout:
             return set()
 
-        ignored_files = result.stdout.strip('\0').split('\0')
+        ignored_files = result.stdout.strip("\0").split("\0")
         # Convert to absolute paths
         return {(repo_root / f).resolve() for f in ignored_files if f}
 
@@ -146,7 +177,7 @@ def get_gitignored_files(repo_root: Path) -> set:
 def is_python_test(path: Path) -> bool:
     """Check if Python file is a test file"""
     # Check if in tests/ directory or filename matches test_*.py pattern
-    return 'tests' in path.parts or (path.name.startswith('test_') and path.suffix == '.py')
+    return "tests" in path.parts or (path.name.startswith("test_") and path.suffix == ".py")
 
 
 def is_binary_file(file_path: Path) -> bool:
@@ -155,9 +186,9 @@ def is_binary_file(file_path: Path) -> bool:
     Binary files typically contain null bytes.
     """
     try:
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             chunk = f.read(1024)
-            return b'\x00' in chunk
+            return b"\x00" in chunk
     except Exception:
         return False
 
@@ -168,7 +199,7 @@ def count_rust_lines(file_path: Path) -> tuple[int, int]:
     Returns (code_lines, test_lines)
     """
     try:
-        with open(file_path, encoding='utf-8', errors='ignore') as f:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
     except Exception:
         return 0, 0
@@ -185,23 +216,23 @@ def count_rust_lines(file_path: Path) -> tuple[int, int]:
         stripped = line.strip()
 
         # Check if we're seeing #[cfg(test)]
-        if stripped == '#[cfg(test)]':
+        if stripped == "#[cfg(test)]":
             in_cfg_test = True
             test_lines += 1
             continue
 
         # Check if we're entering a test module (after #[cfg(test)])
-        if in_cfg_test and stripped.startswith('mod '):
+        if in_cfg_test and stripped.startswith("mod "):
             # Found mod declaration - test module starts here
             in_test_module = True
             test_start_depth = brace_depth
             in_cfg_test = False
             test_lines += 1
-            brace_depth += stripped.count('{') - stripped.count('}')
+            brace_depth += stripped.count("{") - stripped.count("}")
             continue
 
         # Check for standalone #[test] functions
-        if stripped == '#[test]':
+        if stripped == "#[test]":
             in_test_module = True
             test_start_depth = brace_depth
             test_lines += 1
@@ -214,7 +245,7 @@ def count_rust_lines(file_path: Path) -> tuple[int, int]:
             code_lines += 1
 
         # Update brace depth
-        brace_depth += stripped.count('{') - stripped.count('}')
+        brace_depth += stripped.count("{") - stripped.count("}")
 
         # Check if we're exiting test module
         if in_test_module and brace_depth <= test_start_depth:
@@ -232,61 +263,63 @@ def categorize_and_count(file_path: Path) -> tuple[str, int | tuple[int, int]]:
     suffix = file_path.suffix.lower()
 
     # Bazel files
-    if filename in ('BUILD', 'BUILD.bazel', 'MODULE.bazel', '.bazelrc') or suffix == '.bzl':
-        return 'bazel', count_lines(file_path)
+    if filename in ("BUILD", "BUILD.bazel", "MODULE.bazel", ".bazelrc") or suffix == ".bzl":
+        return "bazel", count_lines(file_path)
 
     # Python files
-    if suffix == '.py':
+    if suffix == ".py":
         if is_python_test(file_path):
-            return 'python_test', count_lines(file_path)
+            return "python_test", count_lines(file_path)
         else:
-            return 'python', count_lines(file_path)
+            return "python", count_lines(file_path)
 
     # Rust files (special handling for tests)
-    if suffix == '.rs':
+    if suffix == ".rs":
         code_lines, test_lines = count_rust_lines(file_path)
         # Return both counts; we'll handle this specially
-        return 'rust', (code_lines, test_lines)
+        return "rust", (code_lines, test_lines)
 
     # CUDA files
-    if suffix in ('.cu', '.cuh'):
-        return 'cuda', count_lines(file_path)
+    if suffix in (".cu", ".cuh"):
+        return "cuda", count_lines(file_path)
 
     # C++ files
-    if suffix in ('.cpp', '.cc', '.c', '.h', '.hpp', '.hh', '.cxx', '.hxx'):
-        return 'cpp', count_lines(file_path)
+    if suffix in (".cpp", ".cc", ".c", ".h", ".hpp", ".hh", ".cxx", ".hxx"):
+        return "cpp", count_lines(file_path)
 
     # Metal shader files
-    if suffix == '.metal':
-        return 'metal', count_lines(file_path)
+    if suffix == ".metal":
+        return "metal", count_lines(file_path)
 
     # Shell scripts
-    if suffix in ('.sh', '.bash', '.zsh'):
-        return 'shell', count_lines(file_path)
+    if suffix in (".sh", ".bash", ".zsh"):
+        return "shell", count_lines(file_path)
 
     # Lock files
-    if suffix == '.lock' or filename in ('yarn.lock', 'package-lock.json'):
-        return 'lock', count_lines(file_path)
+    if suffix == ".lock" or filename in ("yarn.lock", "package-lock.json"):
+        return "lock", count_lines(file_path)
 
     # Binary files (do NOT count lines)
     # First check by extension for performance, then use content detection
     if suffix in BINARY_EXTENSIONS or is_binary_file(file_path):
-        return 'binary', 0  # Don't count lines for binary files
+        return "binary", 0  # Don't count lines for binary files
 
     # Text/config files
-    if (suffix in ('.md', '.txt', '.rst', '.toml', '.yaml', '.yml', '.json') or
-        filename.startswith('README') or
-        filename.startswith('LICENSE')):
-        return 'text', count_lines(file_path)
+    if (
+        suffix in (".md", ".txt", ".rst", ".toml", ".yaml", ".yml", ".json")
+        or filename.startswith("README")
+        or filename.startswith("LICENSE")
+    ):
+        return "text", count_lines(file_path)
 
     # Everything else
-    return 'misc', count_lines(file_path)
+    return "misc", count_lines(file_path)
 
 
 def count_lines(file_path: Path) -> int:
     """Count total lines in a file"""
     try:
-        with open(file_path, encoding='utf-8', errors='ignore') as f:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
             return sum(1 for _ in f)
     except Exception:
         return 0
@@ -304,21 +337,25 @@ def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
         Tuple of (Stats, dict[str, list[Path]]) where dict maps category names to file paths
     """
     stats = Stats()
-    file_dict = {
-        'bazel': [],
-        'python': [],
-        'python_test': [],
-        'rust': [],
-        'rust_test': [],
-        'cuda': [],
-        'cpp': [],
-        'metal': [],
-        'shell': [],
-        'lock': [],
-        'binary': [],
-        'text': [],
-        'misc': [],
-    } if collect_files else {}
+    file_dict = (
+        {
+            "bazel": [],
+            "python": [],
+            "python_test": [],
+            "rust": [],
+            "rust_test": [],
+            "cuda": [],
+            "cpp": [],
+            "metal": [],
+            "shell": [],
+            "lock": [],
+            "binary": [],
+            "text": [],
+            "misc": [],
+        }
+        if collect_files
+        else {}
+    )
 
     # Build set of gitignored files once upfront
     print("Checking for gitignored files...")
@@ -354,7 +391,7 @@ def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
             category, count = categorize_and_count(file_path)
 
             # Special handling for Rust files (returns tuple)
-            if category == 'rust' and isinstance(count, tuple):
+            if category == "rust" and isinstance(count, tuple):
                 code_lines, test_lines = count
                 stats.rust += code_lines
                 stats.rust_test += test_lines
@@ -362,66 +399,66 @@ def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
                 if code_lines >= test_lines:
                     stats.rust_files += 1
                     if collect_files:
-                        file_dict['rust'].append(file_path)
+                        file_dict["rust"].append(file_path)
                 else:
                     stats.rust_test_files += 1
                     if collect_files:
-                        file_dict['rust_test'].append(file_path)
-            elif category == 'bazel':
+                        file_dict["rust_test"].append(file_path)
+            elif category == "bazel":
                 stats.bazel += count
                 stats.bazel_files += 1
                 if collect_files:
-                    file_dict['bazel'].append(file_path)
-            elif category == 'python':
+                    file_dict["bazel"].append(file_path)
+            elif category == "python":
                 stats.python += count
                 stats.python_files += 1
                 if collect_files:
-                    file_dict['python'].append(file_path)
-            elif category == 'python_test':
+                    file_dict["python"].append(file_path)
+            elif category == "python_test":
                 stats.python_test += count
                 stats.python_test_files += 1
                 if collect_files:
-                    file_dict['python_test'].append(file_path)
-            elif category == 'cuda':
+                    file_dict["python_test"].append(file_path)
+            elif category == "cuda":
                 stats.cuda += count
                 stats.cuda_files += 1
                 if collect_files:
-                    file_dict['cuda'].append(file_path)
-            elif category == 'cpp':
+                    file_dict["cuda"].append(file_path)
+            elif category == "cpp":
                 stats.cpp += count
                 stats.cpp_files += 1
                 if collect_files:
-                    file_dict['cpp'].append(file_path)
-            elif category == 'metal':
+                    file_dict["cpp"].append(file_path)
+            elif category == "metal":
                 stats.metal += count
                 stats.metal_files += 1
                 if collect_files:
-                    file_dict['metal'].append(file_path)
-            elif category == 'shell':
+                    file_dict["metal"].append(file_path)
+            elif category == "shell":
                 stats.shell += count
                 stats.shell_files += 1
                 if collect_files:
-                    file_dict['shell'].append(file_path)
-            elif category == 'lock':
+                    file_dict["shell"].append(file_path)
+            elif category == "lock":
                 stats.lock += count
                 stats.lock_files += 1
                 if collect_files:
-                    file_dict['lock'].append(file_path)
-            elif category == 'binary':
+                    file_dict["lock"].append(file_path)
+            elif category == "binary":
                 # count is 0 for binary files
                 stats.binary_files += 1
                 if collect_files:
-                    file_dict['binary'].append(file_path)
-            elif category == 'text':
+                    file_dict["binary"].append(file_path)
+            elif category == "text":
                 stats.text += count
                 stats.text_files += 1
                 if collect_files:
-                    file_dict['text'].append(file_path)
-            elif category == 'misc':
+                    file_dict["text"].append(file_path)
+            elif category == "misc":
                 stats.misc += count
                 stats.misc_files += 1
                 if collect_files:
-                    file_dict['misc'].append(file_path)
+                    file_dict["misc"].append(file_path)
 
     return stats, file_dict
 
@@ -482,7 +519,7 @@ def cmd_find_misc(root_path: Path):
     print("This may take a moment...")
 
     _, file_dict = scan_directory(root_path, collect_files=True)
-    misc_files = file_dict.get('misc', [])
+    misc_files = file_dict.get("misc", [])
 
     print(f"\nFound {len(misc_files)} misc files:")
     print("=" * 50)
@@ -499,13 +536,13 @@ def cmd_find_misc(root_path: Path):
 def main():
     """Main entry point"""
     # Parse command and path
-    command = 'stat'  # default
+    command = "stat"  # default
     root_path = Path.cwd()
 
     if len(sys.argv) > 1:
         # Check if first arg is a command or path
         first_arg = sys.argv[1].lower()
-        if first_arg in ['stat', 'find_misc']:
+        if first_arg in ["stat", "find_misc"]:
             command = first_arg
             if len(sys.argv) > 2:
                 root_path = Path(sys.argv[2])
@@ -523,9 +560,9 @@ def main():
         sys.exit(1)
 
     # Execute command
-    if command == 'stat':
+    if command == "stat":
         cmd_stat(root_path)
-    elif command == 'find_misc':
+    elif command == "find_misc":
         cmd_find_misc(root_path)
     else:
         print(f"Error: Unknown command '{command}'")
