@@ -7,6 +7,7 @@ from typing import Optional
 
 class StyleType(Enum):
     """Halftone style types."""
+
     CMYK = auto()
     GRAYSCALE_SQRT = auto()
     GRAYSCALE_LINEAR = auto()
@@ -20,6 +21,7 @@ class StyleType(Enum):
 @dataclass
 class CmykParams:
     """Parameters for CMYK halftone."""
+
     sample: int = 8
     scale: int = 1
     angles: Optional[tuple[float, float, float, float]] = None  # C, M, Y, K angles
@@ -32,6 +34,7 @@ class CmykParams:
 @dataclass
 class GrayscaleParams:
     """Parameters for grayscale halftone."""
+
     sample: int = 8
     scale: int = 1
     angle: float = 0.0
@@ -40,12 +43,14 @@ class GrayscaleParams:
 @dataclass
 class DitherParams:
     """Parameters for dithering."""
+
     matrix_size: int = 4  # 2, 4, or 8 for Bayer
 
 
 @dataclass
 class StipplingParams:
     """Parameters for stippling."""
+
     cell_size: int = 8
     density: float = 0.015  # Adjusted for cell_size² formula
     randomness: float = 0.3
@@ -54,6 +59,7 @@ class StipplingParams:
 @dataclass
 class LineScreenParams:
     """Parameters for line screen."""
+
     angle: float = 45.0
     frequency: int = 8
 
@@ -61,6 +67,7 @@ class LineScreenParams:
 @dataclass
 class CrosshatchParams:
     """Parameters for crosshatch."""
+
     angle1: float = 45.0
     angle2: float = -45.0
     frequency: int = 8
@@ -69,6 +76,7 @@ class CrosshatchParams:
 @dataclass
 class ProcessParams:
     """Global processing parameters."""
+
     antialias: bool = True
 
 

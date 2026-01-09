@@ -8,11 +8,7 @@ from .types import LineScreenParams, CrosshatchParams, ProcessParams
 LINE_SAMPLE_STEP = 10
 
 
-def process_line_screen(
-    image: Image.Image,
-    params: LineScreenParams,
-    process_params: ProcessParams
-) -> Image.Image:
+def process_line_screen(image: Image.Image, params: LineScreenParams, process_params: ProcessParams) -> Image.Image:
     """
     Line screen halftone - parallel lines with varying thickness.
     Creates engraving-style effects.
@@ -25,7 +21,7 @@ def process_line_screen(
     Returns:
         Line screen PIL Image
     """
-    gray = image.convert('L')
+    gray = image.convert("L")
     width, height = gray.size
 
     angle = params.angle
@@ -33,7 +29,7 @@ def process_line_screen(
 
     # Create larger output for rotation
     diagonal = int(np.sqrt(width**2 + height**2))
-    output = Image.new('L', (diagonal, diagonal), 255)
+    output = Image.new("L", (diagonal, diagonal), 255)
     draw = ImageDraw.Draw(output)
 
     # Draw lines
@@ -72,11 +68,7 @@ def process_line_screen(
     return output
 
 
-def process_crosshatch(
-    image: Image.Image,
-    params: CrosshatchParams,
-    process_params: ProcessParams
-) -> Image.Image:
+def process_crosshatch(image: Image.Image, params: CrosshatchParams, process_params: ProcessParams) -> Image.Image:
     """
     Crosshatch - intersecting line screens.
     Creates technical drawing effects.
@@ -102,5 +94,5 @@ def process_crosshatch(
 
     combined = np.minimum(arr1, arr2)
 
-    result = Image.fromarray(combined.astype(np.uint8), 'L')
+    result = Image.fromarray(combined.astype(np.uint8), "L")
     return result

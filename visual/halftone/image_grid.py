@@ -7,13 +7,14 @@ from PIL import Image, ImageDraw, ImageFont
 @dataclass
 class GridLayout:
     """Grid layout configuration."""
+
     cols: int
     padding: int = 20
     label_height: int = 60
     background_color: tuple[int, int, int] = (255, 255, 255)
 
     @classmethod
-    def auto(cls, num_images: int) -> 'GridLayout':
+    def auto(cls, num_images: int) -> "GridLayout":
         """Auto-determine optimal grid layout for N images."""
         cols = cls._optimal_columns(num_images)
         return cls(cols=cols)
@@ -43,15 +44,12 @@ class GridLayout:
 @dataclass
 class LabeledImage:
     """Image with a text label."""
+
     image: Image.Image
     label: str
 
 
-def resize_to_fit(
-    image: Image.Image,
-    max_width: int,
-    max_height: int
-) -> Image.Image:
+def resize_to_fit(image: Image.Image, max_width: int, max_height: int) -> Image.Image:
     """
     Resize image to fit within dimensions while preserving aspect ratio.
 
@@ -75,10 +73,7 @@ def resize_to_fit(
     return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
 
-def create_grid(
-    images: list[LabeledImage],
-    layout: GridLayout
-) -> Image.Image:
+def create_grid(images: list[LabeledImage], layout: GridLayout) -> Image.Image:
     """
     Create a grid of labeled images.
 
@@ -108,7 +103,7 @@ def create_grid(
     grid_height = rows * cell_height + (rows + 1) * layout.padding
 
     # Create canvas
-    grid = Image.new('RGB', (grid_width, grid_height), layout.background_color)
+    grid = Image.new("RGB", (grid_width, grid_height), layout.background_color)
     draw = ImageDraw.Draw(grid)
 
     # Load font (portable - works on all platforms with Pillow 10+)

@@ -26,27 +26,24 @@ from .line_screen import process_line_screen, process_crosshatch
 
 # Re-export types for convenience
 __all__ = [
-    'StyleType',
-    'CmykParams',
-    'GrayscaleParams',
-    'DitherParams',
-    'StipplingParams',
-    'LineScreenParams',
-    'CrosshatchParams',
-    'ProcessParams',
-    'process',
-    'process_multiple',
-    'get_style_name',
-    'parse_style_name',
-    'all_style_names',
+    "StyleType",
+    "CmykParams",
+    "GrayscaleParams",
+    "DitherParams",
+    "StipplingParams",
+    "LineScreenParams",
+    "CrosshatchParams",
+    "ProcessParams",
+    "process",
+    "process_multiple",
+    "get_style_name",
+    "parse_style_name",
+    "all_style_names",
 ]
 
 
 def process(
-    image: Image.Image,
-    style_type: StyleType,
-    style_params: Any,
-    params: ProcessParams = ProcessParams()
+    image: Image.Image, style_type: StyleType, style_params: Any, params: ProcessParams = ProcessParams()
 ) -> Image.Image:
     """
     Process image with specified halftone style.
@@ -108,9 +105,7 @@ def process(
 
 
 def process_multiple(
-    image: Image.Image,
-    styles: list[tuple[StyleType, Any]],
-    params: ProcessParams = ProcessParams()
+    image: Image.Image, styles: list[tuple[StyleType, Any]], params: ProcessParams = ProcessParams()
 ) -> dict[str, Image.Image]:
     """
     Process image with multiple styles.

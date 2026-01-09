@@ -15,14 +15,10 @@ def rgb_to_cmyk(image: Image.Image) -> Image.Image:
     Returns:
         CMYK PIL Image
     """
-    return image.convert('CMYK')
+    return image.convert("CMYK")
 
 
-def process_cmyk(
-    image: Image.Image,
-    params: CmykParams,
-    process_params: ProcessParams
-) -> Image.Image:
+def process_cmyk(image: Image.Image, params: CmykParams, process_params: ProcessParams) -> Image.Image:
     """
     CMYK 4-color halftone (printing press simulation).
     Separates image into CMYK channels, processes each with rotated screen.
@@ -58,7 +54,7 @@ def process_cmyk(
         processed_channels.append(processed)
 
     # Merge back to CMYK
-    result = Image.merge('CMYK', processed_channels)
+    result = Image.merge("CMYK", processed_channels)
 
     # Scale back down if antialiasing
     if process_params.antialias:
@@ -67,15 +63,11 @@ def process_cmyk(
         result = result.resize((final_width, final_height), Image.Resampling.LANCZOS)
 
     # Convert to RGB for display
-    return result.convert('RGB')
+    return result.convert("RGB")
 
 
 def _process_channel(
-    channel: Image.Image,
-    sample: int,
-    scale: int,
-    angle: float,
-    original_size: tuple[int, int]
+    channel: Image.Image, sample: int, scale: int, angle: float, original_size: tuple[int, int]
 ) -> Image.Image:
     """
     Process a single CMYK channel with halftone.
@@ -97,7 +89,7 @@ def _process_channel(
     # Create output
     output_width = width * scale
     output_height = height * scale
-    output = Image.new('L', (output_width, output_height), 0)  # Black background
+    output = Image.new("L", (output_width, output_height), 0)  # Black background
     draw = ImageDraw.Draw(output)
 
     # Draw dots

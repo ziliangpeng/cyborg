@@ -6,11 +6,7 @@ from .common import sample_region
 from .types import StipplingParams, ProcessParams
 
 
-def process_stippling(
-    image: Image.Image,
-    params: StipplingParams,
-    process_params: ProcessParams
-) -> Image.Image:
+def process_stippling(image: Image.Image, params: StipplingParams, process_params: ProcessParams) -> Image.Image:
     """
     Stochastic stippling - random dot placement.
     Creates hand-drawn/artistic effects.
@@ -23,7 +19,7 @@ def process_stippling(
     Returns:
         Stippled PIL Image
     """
-    gray = image.convert('L')
+    gray = image.convert("L")
     width, height = gray.size
 
     cell_size = params.cell_size
@@ -31,7 +27,7 @@ def process_stippling(
     randomness = params.randomness
 
     # Create output
-    output = Image.new('L', (width, height), 255)
+    output = Image.new("L", (width, height), 255)
     draw = ImageDraw.Draw(output)
 
     # Sample and place dots
@@ -43,7 +39,7 @@ def process_stippling(
             # Calculate number of dots based on darkness
             # Use cell area (cell_size²) to maintain consistent density
             darkness = 1 - (avg_brightness / 255)
-            num_dots = int(darkness * (cell_size ** 2) * density)
+            num_dots = int(darkness * (cell_size**2) * density)
 
             # Place random dots in cell
             for _ in range(num_dots):
@@ -57,10 +53,6 @@ def process_stippling(
                 # Random dot size (small variation)
                 dot_radius = random.uniform(0.8, 1.5)
 
-                draw.ellipse(
-                    [dot_x - dot_radius, dot_y - dot_radius,
-                     dot_x + dot_radius, dot_y + dot_radius],
-                    fill=0
-                )
+                draw.ellipse([dot_x - dot_radius, dot_y - dot_radius, dot_x + dot_radius, dot_y + dot_radius], fill=0)
 
     return output

@@ -6,11 +6,7 @@ from .common import sample_region, draw_circle, rotate_image, crop_to_size
 from .types import GrayscaleParams, ProcessParams
 
 
-def process_linear(
-    image: Image.Image,
-    params: GrayscaleParams,
-    process_params: ProcessParams
-) -> Image.Image:
+def process_linear(image: Image.Image, params: GrayscaleParams, process_params: ProcessParams) -> Image.Image:
     """
     Linear grayscale halftone (stylistic version).
     Black dots on white background, linear tone curve.
@@ -24,7 +20,7 @@ def process_linear(
     Returns:
         Halftoned PIL Image
     """
-    gray = image.convert('L')
+    gray = image.convert("L")
     width, height = gray.size
 
     dot_size = params.sample
@@ -32,7 +28,7 @@ def process_linear(
 
     output_width = width * scale
     output_height = height * scale
-    output = Image.new('L', (output_width, output_height), 255)
+    output = Image.new("L", (output_width, output_height), 255)
     draw = ImageDraw.Draw(output)
 
     for y in range(0, height, dot_size):
@@ -51,11 +47,7 @@ def process_linear(
     return output
 
 
-def process_sqrt(
-    image: Image.Image,
-    params: GrayscaleParams,
-    process_params: ProcessParams
-) -> Image.Image:
+def process_sqrt(image: Image.Image, params: GrayscaleParams, process_params: ProcessParams) -> Image.Image:
     """
     Square root grayscale halftone (accurate reproduction).
     White dots on black background, sqrt tone curve.
@@ -69,7 +61,7 @@ def process_sqrt(
     Returns:
         Halftoned PIL Image
     """
-    gray = image.convert('L')
+    gray = image.convert("L")
     original_size = gray.size
 
     sample = params.sample
@@ -88,7 +80,7 @@ def process_sqrt(
     # Create output
     output_width = width * scale
     output_height = height * scale
-    output = Image.new('L', (output_width, output_height), 0)  # Black background
+    output = Image.new("L", (output_width, output_height), 0)  # Black background
     draw = ImageDraw.Draw(output)
 
     # Draw dots

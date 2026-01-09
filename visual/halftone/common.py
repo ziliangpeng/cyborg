@@ -34,11 +34,7 @@ def draw_circle(draw: ImageDraw.Draw, center_x: float, center_y: float, radius: 
         fill: Fill color (0-255)
     """
     if radius > 0:
-        draw.ellipse(
-            [center_x - radius, center_y - radius,
-             center_x + radius, center_y + radius],
-            fill=fill
-        )
+        draw.ellipse([center_x - radius, center_y - radius, center_x + radius, center_y + radius], fill=fill)
 
 
 def rotate_image(image: Image.Image, angle: float) -> Image.Image:

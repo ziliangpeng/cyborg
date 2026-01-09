@@ -6,32 +6,53 @@ from pathlib import Path
 from PIL import Image
 
 from visual.halftone import (
-    StyleType, ProcessParams,
-    CmykParams, GrayscaleParams, DitherParams,
-    StipplingParams, LineScreenParams, CrosshatchParams,
-    process, process_multiple,
-    parse_style_name, all_style_names
+    StyleType,
+    ProcessParams,
+    CmykParams,
+    GrayscaleParams,
+    DitherParams,
+    StipplingParams,
+    LineScreenParams,
+    CrosshatchParams,
+    process,
+    process_multiple,
+    parse_style_name,
+    all_style_names,
 )
 from visual.halftone.image_grid import GridLayout, LabeledImage, create_grid
 
 
 @click.command()
-@click.argument('input', type=click.Path(exists=True), required=False)
-@click.option('--style', type=str, help='Single style to apply')
-@click.option('--styles', type=str, help='Comma-separated styles or "all"')
-@click.option('-o', '--output', type=click.Path(), help='Output path (single style only)')
-@click.option('--no-antialias', is_flag=True, help='Disable antialiasing')
-@click.option('--sample', type=int, default=8, help='Sample size (dot-based styles)')
-@click.option('--scale', type=int, default=1, help='Output scale multiplier')
-@click.option('--angle', type=float, default=45.0, help='Angle (line/screen styles)')
-@click.option('--density', type=float, default=1.0, help='Density (stippling)')
-@click.option('--frequency', type=int, default=8, help='Frequency (line styles)')
-@click.option('--matrix-size', type=int, default=4, help='Matrix size (Bayer: 2, 4, 8)')
-@click.option('--cell-size', type=int, default=8, help='Cell size (stippling)')
-@click.option('--list-styles', is_flag=True, help='List available styles')
-@click.option('--no-labels', is_flag=True, help='Disable labels in comparison grid')
-def main(input, style, styles, output, no_antialias, sample, scale, angle,
-         density, frequency, matrix_size, cell_size, list_styles, no_labels):
+@click.argument("input", type=click.Path(exists=True), required=False)
+@click.option("--style", type=str, help="Single style to apply")
+@click.option("--styles", type=str, help='Comma-separated styles or "all"')
+@click.option("-o", "--output", type=click.Path(), help="Output path (single style only)")
+@click.option("--no-antialias", is_flag=True, help="Disable antialiasing")
+@click.option("--sample", type=int, default=8, help="Sample size (dot-based styles)")
+@click.option("--scale", type=int, default=1, help="Output scale multiplier")
+@click.option("--angle", type=float, default=45.0, help="Angle (line/screen styles)")
+@click.option("--density", type=float, default=1.0, help="Density (stippling)")
+@click.option("--frequency", type=int, default=8, help="Frequency (line styles)")
+@click.option("--matrix-size", type=int, default=4, help="Matrix size (Bayer: 2, 4, 8)")
+@click.option("--cell-size", type=int, default=8, help="Cell size (stippling)")
+@click.option("--list-styles", is_flag=True, help="List available styles")
+@click.option("--no-labels", is_flag=True, help="Disable labels in comparison grid")
+def main(
+    input,
+    style,
+    styles,
+    output,
+    no_antialias,
+    sample,
+    scale,
+    angle,
+    density,
+    frequency,
+    matrix_size,
+    cell_size,
+    list_styles,
+    no_labels,
+):
     """Halftone image processor."""
 
     if list_styles:
@@ -74,8 +95,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
 
         # Create appropriate params for style
         style_params = _create_style_params(
-            style_type, sample, scale, angle, density,
-            frequency, matrix_size, cell_size
+            style_type, sample, scale, angle, density, frequency, matrix_size, cell_size
         )
 
         # Process image
@@ -105,7 +125,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
         if styles.lower() == "all":
             style_names = all_style_names()
         else:
-            style_names = [s.strip() for s in styles.split(',')]
+            style_names = [s.strip() for s in styles.split(",")]
 
         # Parse style types and create params
         style_list = []
@@ -113,8 +133,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
             try:
                 style_type = parse_style_name(style_name)
                 style_params = _create_style_params(
-                    style_type, sample, scale, angle, density,
-                    frequency, matrix_size, cell_size
+                    style_type, sample, scale, angle, density, frequency, matrix_size, cell_size
                 )
                 style_list.append((style_type, style_params))
             except ValueError as e:
@@ -143,8 +162,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
         # Create comparison grid
         try:
             labeled_images = [
-                LabeledImage(image=img, label=name if not no_labels else "")
-                for name, img in results.items()
+                LabeledImage(image=img, label=name if not no_labels else "") for name, img in results.items()
             ]
             layout = GridLayout.auto(len(labeled_images))
             # Disable label height if no labels
@@ -167,7 +185,7 @@ def _create_style_params(
     density: float,
     frequency: int,
     matrix_size: int,
-    cell_size: int
+    cell_size: int,
 ):
     """Create appropriate parameter object for style type."""
     if style_type == StyleType.CMYK:
@@ -192,5 +210,5 @@ def _create_style_params(
         raise ValueError(f"Unknown style type: {style_type}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
