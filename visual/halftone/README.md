@@ -237,12 +237,9 @@ The current implementation prioritizes **readability and correctness** over perf
   - Trade-off: Memory overhead, process spawning cost
   - Best for: Very large images or batch processing
 
-- **scipy.ndimage**: Use scipy for image rotation in line_screen.py
-  - Expected speedup: 150ms → 50ms for line screens
-  - Trade-off: Adds scipy dependency
-  - Current performance is acceptable
+Current performance is sufficient for interactive CLI use.
 
-Current performance is sufficient for interactive CLI use. Optimize only when needed.
+**Philosophy**: This library implements algorithms from first principles without heavy dependencies. Optimizations will be done by improving our own implementations (e.g., NumPy vectorization) rather than adding external libraries.
 
 ## See Also
 
