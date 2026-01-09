@@ -9,6 +9,7 @@ Usage: ./count_lines.py [path]
 import os
 import re
 import sys
+import subprocess
 from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass
@@ -67,6 +68,48 @@ def should_skip_path(path: Path) -> bool:
         if parent in SKIP_DIRS:
             return True
     return False
+
+
+def get_gitignored_files(repo_root: Path) -> set:
+    """Get set of all gitignored files in the repository"""
+    try:
+        # First, get all files in the repo
+        result = subprocess.run(
+            ['find', '.', '-type', 'f', '!', '-path', './.git/*'],
+            cwd=repo_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+            text=True
+        )
+
+        if result.returncode != 0:
+            return set()
+
+        all_files = result.stdout.strip().split('\n')
+
+        # Now batch check which ones are ignored
+        # Use stdin to pass all files at once
+        check_result = subprocess.run(
+            ['git', 'check-ignore', '--stdin'],
+            cwd=repo_root,
+            input='\n'.join(all_files),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+            text=True
+        )
+
+        # Git check-ignore outputs the ignored files
+        if check_result.stdout:
+            ignored_files = set(check_result.stdout.strip().split('\n'))
+            # Convert to absolute paths
+            return {(repo_root / f.lstrip('./')).resolve() for f in ignored_files if f}
+
+        return set()
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        # If git is not available or command fails, return empty set
+        return set()
 
 
 def is_python_test(path: Path) -> bool:
@@ -196,6 +239,11 @@ def scan_directory(root_path: Path) -> Stats:
     """Scan directory and count lines by category"""
     stats = Stats()
 
+    # Build set of gitignored files once upfront
+    print("Checking for gitignored files...")
+    gitignored_files = get_gitignored_files(root_path)
+    print(f"Found {len(gitignored_files)} gitignored files to skip")
+
     for root, dirs, files in os.walk(root_path):
         # Remove skip directories from dirs list (modifies in-place)
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
@@ -209,6 +257,10 @@ def scan_directory(root_path: Path) -> Stats:
 
             # Skip symlinks
             if file_path.is_symlink():
+                continue
+
+            # Skip gitignored files
+            if file_path.resolve() in gitignored_files:
                 continue
 
             # Skip files larger than 10MB (likely binary/data files)
