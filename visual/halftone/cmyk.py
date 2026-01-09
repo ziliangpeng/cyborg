@@ -101,6 +101,7 @@ def _process_channel(
     draw = ImageDraw.Draw(output)
 
     # Draw dots
+    # TODO: Optimize with NumPy vectorization (arr.reshape + mean) for 2-3x speedup
     for y in range(0, height, sample):
         for x in range(0, width, sample):
             avg_intensity = sample_region(rotated, x, y, sample)

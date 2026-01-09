@@ -223,6 +223,27 @@ See individual module documentation for details on stippling, line screens, and 
   - Stippling: ~500ms
   - CMYK: ~1-2s
 
+### Future Optimizations
+
+The current implementation prioritizes **readability and correctness** over performance. For production use cases requiring higher throughput, consider:
+
+- **NumPy vectorization**: Replace loop-based sampling with array reshape + mean operations
+  - Expected speedup: 2-3x for CMYK (1-2s → 0.4-0.7s)
+  - Trade-off: More complex code, harder to maintain
+  - Best for: Batch processing, web services, large images (12MP+)
+
+- **Parallel processing**: Process CMYK channels in parallel using multiprocessing
+  - Expected speedup: 2-3x on multi-core systems
+  - Trade-off: Memory overhead, process spawning cost
+  - Best for: Very large images or batch processing
+
+- **scipy.ndimage**: Use scipy for image rotation in line_screen.py
+  - Expected speedup: 150ms → 50ms for line screens
+  - Trade-off: Adds scipy dependency
+  - Current performance is acceptable
+
+Current performance is sufficient for interactive CLI use. Optimize only when needed.
+
 ## See Also
 
 - `docs/HALFTONE_STYLES.md` - Detailed style descriptions
