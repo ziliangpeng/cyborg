@@ -80,7 +80,7 @@ def _read_exact(handler: BaseHTTPRequestHandler, length: int) -> bytes:
 
 
 def _extract_multipart_field(body: bytes, content_type: str, field_name: str) -> bytes | None:
-    header = f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8")
+    header = f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode()
     msg = BytesParser(policy=default).parsebytes(header + body)
 
     if not msg.is_multipart():
@@ -218,7 +218,7 @@ class HalftoneHandler(BaseHTTPRequestHandler):
             style_params = _create_style_params(style_type, defaults)
             try:
                 out_img = process(img, style_type, style_params, process_params)
-            except Exception as e:
+            except Exception:
                 logging.exception("Halftone processing failed for style=%s", style_name)
                 self._send_json(
                     HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": f"Processing failed for {style_name}."}
