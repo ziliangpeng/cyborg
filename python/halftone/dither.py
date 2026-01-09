@@ -88,7 +88,7 @@ def process_ordered_dither(
     # Select matrix
     matrix_map = {2: bayer_2x2, 4: bayer_4x4, 8: bayer_8x8}
     if params.matrix_size not in matrix_map:
-        params.matrix_size = 4  # Default to 4x4
+        raise ValueError(f"Invalid matrix_size: {params.matrix_size}. Must be 2, 4, or 8")
 
     threshold_matrix = matrix_map[params.matrix_size]
 

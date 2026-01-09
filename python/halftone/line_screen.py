@@ -4,6 +4,9 @@ from PIL import Image, ImageDraw
 import numpy as np
 from .types import LineScreenParams, CrosshatchParams, ProcessParams
 
+# Sample every N pixels along line for performance (instead of every pixel)
+LINE_SAMPLE_STEP = 10
+
 
 def process_line_screen(
     image: Image.Image,
@@ -40,7 +43,7 @@ def process_line_screen(
     while y_pos < diagonal:
         # Sample line position to get average brightness
         line_samples = []
-        for sample_x in range(0, width, 10):
+        for sample_x in range(0, width, LINE_SAMPLE_STEP):
             # Transform coordinates
             rot_x = int(sample_x * np.cos(angle_rad) + y_pos * np.sin(angle_rad))
             rot_y = int(-sample_x * np.sin(angle_rad) + y_pos * np.cos(angle_rad))

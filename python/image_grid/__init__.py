@@ -111,11 +111,8 @@ def create_grid(
     grid = Image.new('RGB', (grid_width, grid_height), layout.background_color)
     draw = ImageDraw.Draw(grid)
 
-    # Load font
-    try:
-        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
-    except:
-        font = ImageFont.load_default()
+    # Load font (portable - works on all platforms with Pillow 10+)
+    font = ImageFont.load_default(size=24)
 
     # Place images and labels
     for idx, labeled_img in enumerate(images):

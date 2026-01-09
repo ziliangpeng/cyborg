@@ -1,7 +1,6 @@
 """Common utilities for halftone processing."""
 
 from PIL import Image, ImageDraw, ImageStat
-import numpy as np
 
 
 def sample_region(image: Image.Image, x: int, y: int, size: int) -> float:

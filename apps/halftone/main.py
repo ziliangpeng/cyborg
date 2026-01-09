@@ -57,7 +57,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
     # Load image
     try:
         img = Image.open(input)
-    except Exception as e:
+    except (FileNotFoundError, OSError, Image.UnidentifiedImageError) as e:
         click.echo(f"Error loading image: {e}", err=True)
         sys.exit(1)
 
@@ -84,7 +84,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
         # Process image
         try:
             result = process(img, style_type, style_params, params)
-        except Exception as e:
+        except (ValueError, OSError) as e:
             click.echo(f"Error processing image: {e}", err=True)
             sys.exit(1)
 
@@ -98,7 +98,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
         try:
             result.save(output_path)
             click.echo(f"Saved: {output_path}")
-        except Exception as e:
+        except (OSError, ValueError) as e:
             click.echo(f"Error saving image: {e}", err=True)
             sys.exit(1)
 
@@ -130,7 +130,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
         # Process all styles
         try:
             results = process_multiple(img, style_list, params)
-        except Exception as e:
+        except (ValueError, OSError) as e:
             click.echo(f"Error processing images: {e}", err=True)
             sys.exit(1)
 
@@ -140,7 +140,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
             try:
                 result_img.save(output_path)
                 click.echo(f"Saved: {output_path}")
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 click.echo(f"Error saving {style_name}: {e}", err=True)
 
         # Create comparison grid
@@ -155,7 +155,7 @@ def main(input, style, styles, output, no_antialias, sample, scale, angle,
             comparison_path = input_path.parent / f"{base_name}_comparison{ext}"
             grid_img.save(comparison_path)
             click.echo(f"Saved comparison: {comparison_path}")
-        except Exception as e:
+        except (ValueError, OSError) as e:
             click.echo(f"Error creating comparison grid: {e}", err=True)
 
 

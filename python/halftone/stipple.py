@@ -41,8 +41,9 @@ def process_stippling(
             avg_brightness = sample_region(gray, x, y, cell_size)
 
             # Calculate number of dots based on darkness
+            # Use cell area (cell_size²) to maintain consistent density
             darkness = 1 - (avg_brightness / 255)
-            num_dots = int(darkness * cell_size * density)
+            num_dots = int(darkness * (cell_size ** 2) * density)
 
             # Place random dots in cell
             for _ in range(num_dots):

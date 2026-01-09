@@ -7,14 +7,15 @@ Command-line tool for applying halftone effects to images with 8 different style
 ### Using Bazel
 
 ```bash
-cd /Users/victor.peng/code/cyborg
+# From repository root
 bazel build //apps/halftone:halftone
 ```
 
 ### Using Python venv (Development)
 
 ```bash
-cd /Users/victor.peng/code/cyborg/apps/halftone
+# From repository root
+cd apps/halftone
 python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

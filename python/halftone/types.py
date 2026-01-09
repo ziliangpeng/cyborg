@@ -47,7 +47,7 @@ class DitherParams:
 class StipplingParams:
     """Parameters for stippling."""
     cell_size: int = 8
-    density: float = 1.0
+    density: float = 0.015  # Adjusted for cell_size² formula
     randomness: float = 0.3
 
 
