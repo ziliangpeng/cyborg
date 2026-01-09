@@ -29,6 +29,8 @@ class Stats:
     cpp: int = 0
     metal: int = 0
     shell: int = 0
+    lock: int = 0
+    binary: int = 0
     text: int = 0
     misc: int = 0
 
@@ -42,6 +44,8 @@ class Stats:
     cpp_files: int = 0
     metal_files: int = 0
     shell_files: int = 0
+    lock_files: int = 0
+    binary_files: int = 0
     text_files: int = 0
     misc_files: int = 0
 
@@ -56,6 +60,8 @@ class Stats:
             self.cpp,
             self.metal,
             self.shell,
+            self.lock,
+            # Note: binary is NOT included as binary files have no meaningful line count
             self.text,
             self.misc,
         ])
@@ -71,6 +77,8 @@ class Stats:
             self.cpp_files,
             self.metal_files,
             self.shell_files,
+            self.lock_files,
+            self.binary_files,
             self.text_files,
             self.misc_files,
         ])
@@ -154,6 +162,19 @@ def is_python_test(path: Path) -> bool:
     if path.name.startswith('test_') and path.suffix == '.py':
         return True
     return False
+
+
+def is_binary_file(file_path: Path) -> bool:
+    """
+    Check if file is binary by reading first chunk.
+    Binary files typically contain null bytes.
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            chunk = f.read(1024)
+            return b'\x00' in chunk
+    except Exception:
+        return False
 
 
 def count_rust_lines(file_path: Path) -> Tuple[int, int]:
@@ -257,6 +278,22 @@ def categorize_and_count(file_path: Path) -> Tuple[str, int]:
     if suffix in ('.sh', '.bash', '.zsh'):
         return 'shell', count_lines(file_path)
 
+    # Lock files
+    if suffix == '.lock' or filename in ('yarn.lock', 'package-lock.json'):
+        return 'lock', count_lines(file_path)
+
+    # Binary files (do NOT count lines)
+    # First check by extension for performance, then use content detection
+    binary_extensions = {
+        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.webp', '.svg',
+        '.pdf', '.zip', '.tar', '.gz', '.tgz', '.bz2', '.xz',
+        '.bin', '.exe', '.dll', '.so', '.dylib',
+        '.ttf', '.otf', '.woff', '.woff2',
+        '.mp4', '.mov', '.avi', '.mkv', '.mp3', '.wav', '.ogg'
+    }
+    if suffix in binary_extensions or is_binary_file(file_path):
+        return 'binary', 0  # Don't count lines for binary files
+
     # Text/config files
     if (suffix in ('.md', '.txt', '.rst', '.toml', '.yaml', '.yml', '.json') or
         filename.startswith('README') or
@@ -298,6 +335,8 @@ def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
         'cpp': [],
         'metal': [],
         'shell': [],
+        'lock': [],
+        'binary': [],
         'text': [],
         'misc': [],
     } if collect_files else {}
@@ -384,6 +423,16 @@ def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
                 stats.shell_files += 1
                 if collect_files:
                     file_dict['shell'].append(file_path)
+            elif category == 'lock':
+                stats.lock += count
+                stats.lock_files += 1
+                if collect_files:
+                    file_dict['lock'].append(file_path)
+            elif category == 'binary':
+                # count is 0 for binary files
+                stats.binary_files += 1
+                if collect_files:
+                    file_dict['binary'].append(file_path)
             elif category == 'text':
                 stats.text += count
                 stats.text_files += 1
@@ -421,6 +470,8 @@ def print_stats(stats: Stats):
         ("C++ code", stats.cpp, stats.cpp_files),
         ("Metal shaders", stats.metal, stats.metal_files),
         ("Shell scripts", stats.shell, stats.shell_files),
+        ("Lock files", stats.lock, stats.lock_files),
+        ("Binary files", stats.binary, stats.binary_files),
         ("Text files", stats.text, stats.text_files),
         ("Misc", stats.misc, stats.misc_files),
     ]
