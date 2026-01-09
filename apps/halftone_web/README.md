@@ -17,8 +17,7 @@ PYTHONPATH=. python -m apps.halftone_web.main --port 8080
 
 Then open:
 
-- `http://127.0.0.1:8080/` (home)
-- `http://127.0.0.1:8080/halftone` (upload)
+- `http://127.0.0.1:8080/`
 
 ## Notes
 
