@@ -205,7 +205,8 @@ class HalftoneHandler(BaseHTTPRequestHandler):
             img.load()
             img = ImageOps.exif_transpose(img)
         except (UnidentifiedImageError, OSError) as e:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": f"Invalid image: {e}"})
+            logging.warning("Invalid image upload: %s", e)
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Invalid or unsupported image format."})
             return
 
         defaults = Defaults()
