@@ -3,8 +3,7 @@ py_binary(
     srcs = ["main.py"],
     main = "main.py",
     deps = [
-        "//python/halftone",
-        "//python/image_grid",
+        "//visual/halftone",
         "@pip//click",
         "@pip//pillow",
         "@pip//numpy",

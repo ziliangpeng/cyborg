@@ -1,8 +1,0 @@
-py_library(
-    name = "image_grid",
-    srcs = ["__init__.py"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "@pip//pillow",
-    ],
-)

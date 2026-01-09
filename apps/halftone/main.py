@@ -4,19 +4,15 @@
 import click
 from pathlib import Path
 from PIL import Image
-import sys
 
-# Add python directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
-
-from halftone import (
+from visual.halftone import (
     StyleType, ProcessParams,
     CmykParams, GrayscaleParams, DitherParams,
     StipplingParams, LineScreenParams, CrosshatchParams,
     process, process_multiple,
     parse_style_name, all_style_names
 )
-from image_grid import GridLayout, LabeledImage, create_grid
+from visual.halftone.image_grid import GridLayout, LabeledImage, create_grid
 
 
 @click.command()
