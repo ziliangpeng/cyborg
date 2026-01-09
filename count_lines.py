@@ -18,7 +18,8 @@ from typing import Dict, Tuple
 
 @dataclass
 class Stats:
-    """Statistics for lines of code"""
+    """Statistics for lines of code and file counts"""
+    # Line counts
     bazel: int = 0
     python: int = 0
     python_test: int = 0
@@ -26,10 +27,25 @@ class Stats:
     rust_test: int = 0
     cuda: int = 0
     cpp: int = 0
+    metal: int = 0
+    shell: int = 0
     text: int = 0
     misc: int = 0
 
-    def total(self) -> int:
+    # File counts
+    bazel_files: int = 0
+    python_files: int = 0
+    python_test_files: int = 0
+    rust_files: int = 0
+    rust_test_files: int = 0
+    cuda_files: int = 0
+    cpp_files: int = 0
+    metal_files: int = 0
+    shell_files: int = 0
+    text_files: int = 0
+    misc_files: int = 0
+
+    def total_lines(self) -> int:
         return sum([
             self.bazel,
             self.python,
@@ -38,8 +54,25 @@ class Stats:
             self.rust_test,
             self.cuda,
             self.cpp,
+            self.metal,
+            self.shell,
             self.text,
             self.misc,
+        ])
+
+    def total_files(self) -> int:
+        return sum([
+            self.bazel_files,
+            self.python_files,
+            self.python_test_files,
+            self.rust_files,
+            self.rust_test_files,
+            self.cuda_files,
+            self.cpp_files,
+            self.metal_files,
+            self.shell_files,
+            self.text_files,
+            self.misc_files,
         ])
 
 
@@ -216,6 +249,14 @@ def categorize_and_count(file_path: Path) -> Tuple[str, int]:
     if suffix in ('.cpp', '.cc', '.c', '.h', '.hpp', '.hh', '.cxx', '.hxx'):
         return 'cpp', count_lines(file_path)
 
+    # Metal shader files
+    if suffix == '.metal':
+        return 'metal', count_lines(file_path)
+
+    # Shell scripts
+    if suffix in ('.sh', '.bash', '.zsh'):
+        return 'shell', count_lines(file_path)
+
     # Text/config files
     if (suffix in ('.md', '.txt', '.rst', '.toml', '.yaml', '.yml', '.json') or
         filename.startswith('README') or
@@ -255,6 +296,8 @@ def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
         'rust_test': [],
         'cuda': [],
         'cpp': [],
+        'metal': [],
+        'shell': [],
         'text': [],
         'misc': [],
     } if collect_files else {}
@@ -297,38 +340,58 @@ def scan_directory(root_path: Path, collect_files: bool = False) -> tuple:
                 code_lines, test_lines = count
                 stats.rust += code_lines
                 stats.rust_test += test_lines
-                if collect_files:
-                    # For Rust, we need to track if file has more code or test lines
-                    if code_lines >= test_lines:
+                # For Rust, we need to track if file has more code or test lines
+                if code_lines >= test_lines:
+                    stats.rust_files += 1
+                    if collect_files:
                         file_dict['rust'].append(file_path)
-                    else:
+                else:
+                    stats.rust_test_files += 1
+                    if collect_files:
                         file_dict['rust_test'].append(file_path)
             elif category == 'bazel':
                 stats.bazel += count
+                stats.bazel_files += 1
                 if collect_files:
                     file_dict['bazel'].append(file_path)
             elif category == 'python':
                 stats.python += count
+                stats.python_files += 1
                 if collect_files:
                     file_dict['python'].append(file_path)
             elif category == 'python_test':
                 stats.python_test += count
+                stats.python_test_files += 1
                 if collect_files:
                     file_dict['python_test'].append(file_path)
             elif category == 'cuda':
                 stats.cuda += count
+                stats.cuda_files += 1
                 if collect_files:
                     file_dict['cuda'].append(file_path)
             elif category == 'cpp':
                 stats.cpp += count
+                stats.cpp_files += 1
                 if collect_files:
                     file_dict['cpp'].append(file_path)
+            elif category == 'metal':
+                stats.metal += count
+                stats.metal_files += 1
+                if collect_files:
+                    file_dict['metal'].append(file_path)
+            elif category == 'shell':
+                stats.shell += count
+                stats.shell_files += 1
+                if collect_files:
+                    file_dict['shell'].append(file_path)
             elif category == 'text':
                 stats.text += count
+                stats.text_files += 1
                 if collect_files:
                     file_dict['text'].append(file_path)
             elif category == 'misc':
                 stats.misc += count
+                stats.misc_files += 1
                 if collect_files:
                     file_dict['misc'].append(file_path)
 
@@ -342,32 +405,35 @@ def format_number(n: int) -> str:
 
 def print_stats(stats: Stats):
     """Print statistics in a formatted table"""
-    total = stats.total()
+    total_lines = stats.total_lines()
+    total_files = stats.total_files()
 
     print("\nLines of Code by Category:")
-    print("=" * 50)
+    print("=" * 70)
 
     categories = [
-        ("Bazel build files", stats.bazel),
-        ("Python code", stats.python),
-        ("Python test code", stats.python_test),
-        ("Rust code", stats.rust),
-        ("Rust test code", stats.rust_test),
-        ("CUDA code", stats.cuda),
-        ("C++ code", stats.cpp),
-        ("Text files", stats.text),
-        ("Misc", stats.misc),
+        ("Bazel build files", stats.bazel, stats.bazel_files),
+        ("Python code", stats.python, stats.python_files),
+        ("Python test code", stats.python_test, stats.python_test_files),
+        ("Rust code", stats.rust, stats.rust_files),
+        ("Rust test code", stats.rust_test, stats.rust_test_files),
+        ("CUDA code", stats.cuda, stats.cuda_files),
+        ("C++ code", stats.cpp, stats.cpp_files),
+        ("Metal shaders", stats.metal, stats.metal_files),
+        ("Shell scripts", stats.shell, stats.shell_files),
+        ("Text files", stats.text, stats.text_files),
+        ("Misc", stats.misc, stats.misc_files),
     ]
 
-    for name, count in categories:
-        if total > 0:
-            percentage = (count / total) * 100
-            print(f"{name:20} {format_number(count):>10} lines ({percentage:5.1f}%)")
+    for name, line_count, file_count in categories:
+        if total_lines > 0:
+            percentage = (line_count / total_lines) * 100
+            print(f"{name:20} {format_number(line_count):>10} lines ({percentage:5.1f}%)  {file_count:>4} files")
         else:
-            print(f"{name:20} {format_number(count):>10} lines")
+            print(f"{name:20} {format_number(line_count):>10} lines  {file_count:>4} files")
 
-    print("=" * 50)
-    print(f"{'Total':20} {format_number(total):>10} lines")
+    print("=" * 70)
+    print(f"{'Total':20} {format_number(total_lines):>10} lines {format_number(total_files):>10} files")
     print()
 
 
