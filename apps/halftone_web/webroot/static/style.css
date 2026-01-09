@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   --bg: #0b0d12;
   --panel: #111827;
   --text: #e5e7eb;
@@ -118,7 +118,7 @@ body {
 }
 
 .dropzone-title {
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .status {

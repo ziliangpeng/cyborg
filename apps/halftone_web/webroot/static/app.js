@@ -157,7 +157,14 @@ document.addEventListener("paste", (e) => {
     const blob = item.getAsFile();
     if (!blob) continue;
 
-    const ext = blob.type === "image/jpeg" ? "jpg" : blob.type.split("/")[1] || "png";
+    const mimeToExt = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/gif": "gif",
+      "image/webp": "webp",
+      "image/bmp": "bmp",
+    };
+    const ext = mimeToExt[blob.type] || blob.type.split("/")[1] || "png";
     const file = new File([blob], `pasted.${ext}`, { type: blob.type });
     setSelectedFile(file);
     setStatus("Pasted image.");

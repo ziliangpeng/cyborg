@@ -98,7 +98,7 @@ def _extract_multipart_field(body: bytes, content_type: str, field_name: str) ->
         if name != field_name:
             continue
         payload = part.get_payload(decode=True)
-        return payload if payload is not None else None
+        return payload
 
     return None
 
@@ -223,7 +223,7 @@ class HalftoneHandler(BaseHTTPRequestHandler):
                 out_img = process(img, style_type, style_params, process_params)
             except Exception as e:
                 logging.exception("Halftone processing failed for style=%s", style_name)
-                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": f"{style_name}: {e}"})
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": f"Processing failed for {style_name}."})
                 return
 
             buf = io.BytesIO()
