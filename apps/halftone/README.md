@@ -20,6 +20,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Working Directory
+
+The `apps/halftone/img/` directory is used for test images and outputs:
+- Place your input images here
+- Processed images will be saved here
+- This directory is gitignored (not committed to repo)
+
 ## Usage
 
 ### List Available Styles
@@ -111,20 +118,23 @@ bazel run //apps/halftone:halftone -- input.jpg --style cmyk --no-antialias
 ## Examples
 
 ```bash
+# Place your images in apps/halftone/img/
+# Outputs will be saved in the same directory
+
 # Classic newspaper look
-bazel run //apps/halftone:halftone -- portrait.jpg --style grayscale-sqrt --sample 8
+bazel run //apps/halftone:halftone -- apps/halftone/img/portrait.jpg --style grayscale-sqrt --sample 8
 
 # Fine CMYK halftone
-bazel run //apps/halftone:halftone -- photo.jpg --style cmyk --sample 4 --scale 2
+bazel run //apps/halftone:halftone -- apps/halftone/img/photo.jpg --style cmyk --sample 4 --scale 2
 
 # Artistic stippling
-bazel run //apps/halftone:halftone -- landscape.jpg --style stippling --density 1.2
+bazel run //apps/halftone:halftone -- apps/halftone/img/landscape.jpg --style stippling --density 1.2
 
 # Engraving effect
-bazel run //apps/halftone:halftone -- drawing.jpg --style line-screen --angle 30
+bazel run //apps/halftone:halftone -- apps/halftone/img/drawing.jpg --style line-screen --angle 30
 
 # Compare all styles
-bazel run //apps/halftone:halftone -- test.jpg --styles all
+bazel run //apps/halftone:halftone -- apps/halftone/img/test.jpg --styles all
 ```
 
 ## Output
