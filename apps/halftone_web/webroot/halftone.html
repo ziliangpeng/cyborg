@@ -35,6 +35,20 @@
       <section class="results">
         <div id="resultsGrid" class="grid"></div>
       </section>
+
+      <div id="lightbox" class="lightbox" aria-hidden="true">
+        <div class="lightbox-backdrop" data-close="true"></div>
+        <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Image preview">
+          <div class="lightbox-header">
+            <div id="lightboxTitle" class="lightbox-title"></div>
+            <button id="lightboxClose" class="button secondary" type="button">Close</button>
+          </div>
+          <img id="lightboxImg" class="lightbox-img" alt="" />
+          <div class="lightbox-footer">
+            <a id="lightboxOpen" class="link" href="#" target="_blank" rel="noreferrer">Open in new tab</a>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script src="/static/app.js"></script>

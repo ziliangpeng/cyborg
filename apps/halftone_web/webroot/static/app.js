@@ -6,6 +6,11 @@ const submitBtn = document.getElementById("submitBtn");
 const fileMeta = document.getElementById("fileMeta");
 const statusEl = document.getElementById("status");
 const resultsGrid = document.getElementById("resultsGrid");
+const lightbox = document.getElementById("lightbox");
+const lightboxImg = document.getElementById("lightboxImg");
+const lightboxTitle = document.getElementById("lightboxTitle");
+const lightboxClose = document.getElementById("lightboxClose");
+const lightboxOpen = document.getElementById("lightboxOpen");
 
 let selectedFile = null;
 
@@ -27,6 +32,38 @@ function setStatus(text) {
 function clearResults() {
   resultsGrid.innerHTML = "";
 }
+
+function openLightbox({ title, src }) {
+  lightboxTitle.textContent = title || "";
+  lightboxImg.src = src;
+  lightboxImg.alt = title || "Preview";
+  lightboxOpen.href = src;
+
+  lightbox.classList.add("open");
+  lightbox.setAttribute("aria-hidden", "false");
+}
+
+function closeLightbox() {
+  lightbox.classList.remove("open");
+  lightbox.setAttribute("aria-hidden", "true");
+  lightboxImg.src = "";
+}
+
+lightbox.addEventListener("click", (e) => {
+  const target = e.target;
+  if (target && target.dataset && target.dataset.close === "true") {
+    closeLightbox();
+  }
+});
+
+lightboxClose.addEventListener("click", () => closeLightbox());
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && lightbox.classList.contains("open")) {
+    e.preventDefault();
+    closeLightbox();
+  }
+});
 
 function setSelectedFile(file) {
   selectedFile = file;
@@ -159,6 +196,7 @@ submitBtn.addEventListener("click", async () => {
       img.alt = item.style;
       img.loading = "lazy";
       img.src = item.dataUrl;
+      img.addEventListener("click", () => openLightbox({ title: item.style, src: item.dataUrl }));
 
       card.appendChild(label);
       card.appendChild(img);
