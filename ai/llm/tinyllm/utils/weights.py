@@ -3,8 +3,8 @@
 from pathlib import Path
 from typing import Dict
 from tinygrad import Tensor
-from safetensors import safe_open
 from huggingface_hub import snapshot_download
+from .safetensors_loader import SafetensorsLoader
 
 
 def load_weights(model_name: str) -> Dict[str, Tensor]:
@@ -25,7 +25,7 @@ def load_weights(model_name: str) -> Dict[str, Tensor]:
     # Download/get cached model (HuggingFace manages cache automatically at ~/.cache/huggingface/)
     cache_dir = _download_from_hf(model_name)
 
-    # Load safetensors files from cache
+    # Load safetensors files from cache using our custom loader
     weights = _load_safetensors(cache_dir)
 
     # Convert to TinyGrad tensors
@@ -55,6 +55,8 @@ def _load_safetensors(cache_dir: Path) -> Dict[str, any]:
     """
     Load all safetensors files in directory and return as numpy arrays.
 
+    Uses our custom safetensors loader implementation.
+
     Args:
         cache_dir: Directory containing .safetensors files
 
@@ -75,10 +77,10 @@ def _load_safetensors(cache_dir: Path) -> Dict[str, any]:
             f"Model may not have safetensors format available."
         )
 
-    # Load each file
+    # Load each file with our custom loader
     for file in safetensors_files:
-        with safe_open(file, framework="numpy") as f:
-            for key in f.keys():
-                weights[key] = f.get_tensor(key)
+        loader = SafetensorsLoader(file)
+        file_weights = loader.load_all()
+        weights.update(file_weights)
 
     return weights
