@@ -118,6 +118,9 @@ def _load_pytorch_bin(cache_dir: Path) -> dict[str, Any]:
     Returns:
         Dict mapping weight names to numpy arrays
     """
+    # TODO: Remove torch dependency by implementing custom pickle-based loader.
+    # PyTorch .bin files are ZIP archives with pickle metadata + raw tensor data.
+    # We can parse them without torch using zipfile + pickle + numpy.
     import torch
 
     weights = {}
