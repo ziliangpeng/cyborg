@@ -48,7 +48,7 @@ class Tokenizer:
             Tokenizer configured for the model
         """
         # GPT-2 models use tiktoken
-        if model_name in ("gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl"):
+        if model_name.startswith("gpt2"):
             return cls("gpt2", "tiktoken")
 
         # OPT models use HuggingFace tokenizer

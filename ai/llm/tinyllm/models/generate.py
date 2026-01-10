@@ -2,8 +2,6 @@
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from tinygrad import Tensor
 
 if TYPE_CHECKING:
@@ -74,15 +72,14 @@ def _top_k_filtering(logits: Tensor, k: int) -> Tensor:
         k: Number of top tokens to keep
 
     Returns:
-        Filtered logits with non-top-k set to -inf
+        Filtered logits with non-top-k set to large negative value
     """
-    values = logits.numpy()
-    # Get k-th largest value for each batch
-    kth_values = np.partition(values, -k, axis=-1)[:, -k : -k + 1]
+    # Get top-k values on-device to avoid CPU sync
+    top_vals, _ = logits.topk(k)
+    kth_val = top_vals[:, -1:]
 
     # Create mask: True where logits are below threshold
-    threshold = Tensor(kth_values)
-    mask = logits < threshold
+    mask = logits < kth_val
 
     # Set masked values to large negative value
     return logits * (1 - mask.float()) + mask.float() * -1e9
@@ -98,13 +95,4 @@ def _multinomial_sample(probs: Tensor) -> Tensor:
     Returns:
         (batch_size, 1) sampled token indices
     """
-    probs_np = probs.numpy()
-
-    samples = []
-    for p in probs_np:
-        # Normalize to handle any numerical issues
-        p = p / p.sum()
-        idx = np.random.choice(len(p), p=p)
-        samples.append(idx)
-
-    return Tensor(np.array(samples).reshape(-1, 1))
+    return probs.multinomial(num_samples=1)
