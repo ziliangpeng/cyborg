@@ -1,3 +1,0 @@
-tinygrad
-huggingface_hub
-numpy
