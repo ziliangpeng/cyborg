@@ -78,7 +78,7 @@ def _load_safetensors(cache_dir: Path) -> dict[str, Any]:
     # Load each file with safetensors library
     for file in safetensors_files:
         with safe_open(file, framework="numpy") as f:
-            for key in f:
+            for key in f.keys():
                 weights[key] = f.get_tensor(key)
 
     return weights

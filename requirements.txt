@@ -9,3 +9,4 @@ click>=8.1.0
 # TinyLLM dependencies
 tinygrad
 huggingface_hub
+safetensors

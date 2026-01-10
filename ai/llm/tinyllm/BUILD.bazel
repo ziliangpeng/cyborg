@@ -5,10 +5,33 @@ py_library(
     name = "utils",
     srcs = glob(["utils/*.py"]),
     deps = [
-        "@pip//tinygrad",
-        "@pip//huggingface_hub",
-        "@pip//numpy",
-        "@pip//safetensors",
+        "@pip//huggingface_hub:huggingface_hub",
+        "@pip//numpy:numpy",
+        "@pip//safetensors:safetensors",
+        "@pip//tinygrad:tinygrad",
+    ],
+    visibility = ["//ai/llm/tinyllm:__subpackages__"],
+)
+
+# Building block operations
+py_library(
+    name = "ops",
+    srcs = glob(["ops/*.py"]),
+    deps = [
+        "@pip//tinygrad:tinygrad",
+    ],
+    visibility = ["//ai/llm/tinyllm:__subpackages__"],
+)
+
+# Model implementations
+py_library(
+    name = "models",
+    srcs = glob(["models/*.py"]),
+    deps = [
+        ":ops",
+        ":utils",
+        "@pip//numpy:numpy",
+        "@pip//tinygrad:tinygrad",
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
 )
@@ -18,6 +41,7 @@ py_library(
     name = "tinyllm",
     srcs = ["__init__.py"],
     deps = [
+        ":models",
         ":utils",
     ],
     visibility = ["//visibility:public"],
@@ -27,6 +51,15 @@ py_library(
 py_test(
     name = "test_weight_loader",
     srcs = ["test_weight_loader.py"],
+    deps = [":tinyllm"],
+    size = "large",  # May download weights
+    timeout = "long",  # Allow time for download
+)
+
+# GPT-2 model test
+py_test(
+    name = "test_gpt2",
+    srcs = ["test_gpt2.py"],
     deps = [":tinyllm"],
     size = "large",  # May download weights
     timeout = "long",  # Allow time for download
