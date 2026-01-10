@@ -1,25 +1,28 @@
 """Text generation utilities for TinyLLM."""
 
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from tinygrad import Tensor
 
+if TYPE_CHECKING:
+    from .base import BaseModel
+
 
 def generate(
-    model,
+    model: "BaseModel",
     input_ids: Tensor,
     max_new_tokens: int = 50,
     temperature: float = 1.0,
-    top_k: Optional[int] = None,
+    top_k: int | None = None,
     do_sample: bool = False,
 ) -> Tensor:
     """
     Generate text tokens autoregressively.
 
     Args:
-        model: GPT2 model instance
+        model: Model instance
         input_ids: (batch_size, seq_len) initial token IDs
         max_new_tokens: Maximum number of tokens to generate
         temperature: Sampling temperature (1.0 = neutral, <1.0 = sharper, >1.0 = flatter)
@@ -81,8 +84,8 @@ def _top_k_filtering(logits: Tensor, k: int) -> Tensor:
     threshold = Tensor(kth_values)
     mask = logits < threshold
 
-    # Set masked values to -inf
-    return logits * (1 - mask.float()) + mask.float() * (-1e10)
+    # Set masked values to large negative value
+    return logits * (1 - mask.float()) + mask.float() * -1e9
 
 
 def _multinomial_sample(probs: Tensor) -> Tensor:

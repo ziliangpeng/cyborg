@@ -6,21 +6,16 @@ import click
 from tinygrad import Tensor
 
 from ai.llm.tinyllm import GPT2, OPT, generate
-from ai.llm.tinyllm.utils import Tokenizer, load_weights
+from ai.llm.tinyllm.models import BaseModel
+from ai.llm.tinyllm.utils import Tokenizer
 
 
-def load_model(model_name: str) -> tuple:
-    """Load model by name. Returns (model, param_count)."""
-    weights = load_weights(model_name)
-    param_count = sum(t.numpy().size for t in weights.values())
-
-    # Select model class based on model name
+def load_model(model_name: str) -> BaseModel:
+    """Load model by name."""
     if model_name.startswith("facebook/opt-"):
-        model = OPT.from_pretrained(model_name)
+        return OPT.from_pretrained(model_name)
     else:
-        model = GPT2.from_pretrained(model_name)
-
-    return model, param_count
+        return GPT2.from_pretrained(model_name)
 
 
 def format_param_count(count: int) -> str:
@@ -83,10 +78,10 @@ def main(model: str, max_tokens: int, temperature: float, top_k: int | None, sam
     """Interactive CLI for TinyLLM inference."""
     click.echo(f"Loading model: {model}")
     load_start = time.perf_counter()
-    llm, param_count = load_model(model)
+    llm = load_model(model)
     tokenizer = Tokenizer.for_model(model)
     load_time = time.perf_counter() - load_start
-    click.echo(f"Model loaded in {load_time:.2f}s ({format_param_count(param_count)} params)")
+    click.echo(f"Model loaded in {load_time:.2f}s ({format_param_count(llm.param_count())} params)")
 
     # Non-interactive mode: run single prompt and exit
     if prompt is not None:

@@ -6,6 +6,7 @@ from tinygrad.nn import LayerNorm
 from ..ops.attention import CausalSelfAttention
 from ..ops.embeddings import TokenPositionEmbedding
 from ..ops.ffn import FeedForward
+from .base import BaseModel
 from .config import GPT2Config
 
 
@@ -39,7 +40,7 @@ class TransformerBlock:
         return x
 
 
-class GPT2:
+class GPT2(BaseModel):
     """GPT-2 Language Model."""
 
     def __init__(self, config: GPT2Config):

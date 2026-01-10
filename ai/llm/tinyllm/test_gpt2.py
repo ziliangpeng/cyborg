@@ -2,6 +2,7 @@
 
 import time
 
+import numpy as np
 from tinygrad import Tensor
 
 from ai.llm.tinyllm import GPT2, GPT2Config, generate
@@ -54,7 +55,7 @@ def test_pretrained_loading():
     # Check that logits are reasonable (not all zeros or NaN)
     logits_np = logits.numpy()
     assert not (logits_np == 0).all(), "Logits are all zeros"
-    assert not any(map(lambda x: x != x, logits_np.flatten())), "Logits contain NaN"
+    assert not np.isnan(logits_np).any(), "Logits contain NaN"
     print("Logits sanity check passed")
 
 

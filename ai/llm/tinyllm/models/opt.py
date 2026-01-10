@@ -8,6 +8,7 @@ from tinygrad.nn import LayerNorm, Linear
 from ..ops.activations import relu
 from ..ops.attention_opt import OPTAttention
 from ..ops.embeddings import OPTEmbedding
+from .base import BaseModel
 
 
 @dataclass
@@ -135,7 +136,7 @@ class OPTTransformerBlock:
         return x
 
 
-class OPT:
+class OPT(BaseModel):
     """OPT Language Model."""
 
     def __init__(self, config: OPTConfig):

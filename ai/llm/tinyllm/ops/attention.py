@@ -54,7 +54,8 @@ class CausalSelfAttention:
         attn_weights = (q @ k.transpose(-2, -1)) * scale  # (batch, num_heads, seq, seq)
 
         # Causal mask: prevent attending to future tokens
-        causal_mask = Tensor.ones(seq_len, seq_len).triu(1) * -1e10
+        # Use large negative value instead of -inf to avoid NaN in softmax
+        causal_mask = Tensor.ones(seq_len, seq_len).triu(1) * -1e9
         attn_weights = attn_weights + causal_mask
 
         # Softmax and attend
