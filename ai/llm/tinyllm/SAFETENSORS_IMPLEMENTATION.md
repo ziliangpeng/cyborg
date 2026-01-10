@@ -65,12 +65,13 @@ We used `hf-internal-testing/tiny-random-bert-sharded-safetensors/model-00001-of
 ✓ Same values: exact match
 ```
 
-**Performance (GPT-2 loading):**
+**Performance:**
 ```
-Custom loader:   0.74s (first load)
-Official loader: 15.12s (first load)
-Speedup: 20.4x faster!
+Custom loader: ~0.7s to load GPT-2 (160 tensors) from cached files
 ```
+
+Note: Performance is comparable to the official safetensors library.
+The main benefits are reduced dependencies and educational value.
 
 ## Benefits
 
