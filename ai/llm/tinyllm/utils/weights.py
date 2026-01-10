@@ -1,13 +1,14 @@
 """Weight loading utilities for TinyLLM."""
 
 from pathlib import Path
-from typing import Any, Dict
-from tinygrad import Tensor
+from typing import Any
+
 from huggingface_hub import snapshot_download
 from safetensors import safe_open
+from tinygrad import Tensor
 
 
-def load_weights(model_name: str) -> Dict[str, Tensor]:
+def load_weights(model_name: str) -> dict[str, Tensor]:
     """
     Load model weights from HuggingFace (auto-cached).
 
@@ -51,7 +52,7 @@ def _download_from_hf(model_name: str) -> Path:
     return Path(cache_dir)
 
 
-def _load_safetensors(cache_dir: Path) -> Dict[str, Any]:
+def _load_safetensors(cache_dir: Path) -> dict[str, Any]:
     """
     Load all safetensors files in directory and return as numpy arrays.
 
@@ -77,7 +78,7 @@ def _load_safetensors(cache_dir: Path) -> Dict[str, Any]:
     # Load each file with safetensors library
     for file in safetensors_files:
         with safe_open(file, framework="numpy") as f:
-            for key in f.keys():
+            for key in f:
                 weights[key] = f.get_tensor(key)
 
     return weights
