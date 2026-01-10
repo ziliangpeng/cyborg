@@ -10,6 +10,8 @@ py_library(
         "@pip//safetensors:safetensors",
         "@pip//tiktoken:tiktoken",
         "@pip//tinygrad:tinygrad",
+        "@pip//torch:torch",  # For loading PyTorch bin format (some models don't have safetensors)
+        "@pip//transformers:transformers",  # For OPT tokenizer
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
 )
@@ -61,6 +63,15 @@ py_test(
 py_test(
     name = "test_gpt2",
     srcs = ["test_gpt2.py"],
+    deps = [":tinyllm"],
+    size = "large",  # May download weights
+    timeout = "long",  # Allow time for download
+)
+
+# OPT model test
+py_test(
+    name = "test_opt",
+    srcs = ["test_opt.py"],
     deps = [":tinyllm"],
     size = "large",  # May download weights
     timeout = "long",  # Allow time for download
