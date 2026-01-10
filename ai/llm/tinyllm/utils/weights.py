@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict
 from tinygrad import Tensor
 from huggingface_hub import snapshot_download
-from .safetensors_loader import SafetensorsLoader
+from safetensors import safe_open
 
 
 def load_weights(model_name: str) -> Dict[str, Tensor]:
@@ -55,8 +55,6 @@ def _load_safetensors(cache_dir: Path) -> Dict[str, any]:
     """
     Load all safetensors files in directory and return as numpy arrays.
 
-    Uses our custom safetensors loader implementation.
-
     Args:
         cache_dir: Directory containing .safetensors files
 
@@ -77,10 +75,10 @@ def _load_safetensors(cache_dir: Path) -> Dict[str, any]:
             f"Model may not have safetensors format available."
         )
 
-    # Load each file with our custom loader
+    # Load each file with safetensors library
     for file in safetensors_files:
-        loader = SafetensorsLoader(file)
-        file_weights = loader.load_all()
-        weights.update(file_weights)
+        with safe_open(file, framework="numpy") as f:
+            for key in f.keys():
+                weights[key] = f.get_tensor(key)
 
     return weights

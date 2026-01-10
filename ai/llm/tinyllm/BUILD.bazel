@@ -8,6 +8,7 @@ py_library(
         "@pip//tinygrad",
         "@pip//huggingface_hub",
         "@pip//numpy",
+        "@pip//safetensors",
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
 )
