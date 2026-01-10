@@ -1,0 +1,33 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# Utilities library
+py_library(
+    name = "utils",
+    srcs = glob(["utils/*.py"]),
+    deps = [
+        "@pip//tinygrad",
+        "@pip//safetensors",
+        "@pip//huggingface_hub",
+        "@pip//numpy",
+    ],
+    visibility = ["//ai/llm/tinyllm:__subpackages__"],
+)
+
+# Main tinyllm library (public API)
+py_library(
+    name = "tinyllm",
+    srcs = ["__init__.py"],
+    deps = [
+        ":utils",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# Weight loader test
+py_test(
+    name = "test_weight_loader",
+    srcs = ["test_weight_loader.py"],
+    deps = [":tinyllm"],
+    size = "large",  # May download weights
+    timeout = "long",  # Allow time for download
+)

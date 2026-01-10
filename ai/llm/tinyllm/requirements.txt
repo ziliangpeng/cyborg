@@ -1,0 +1,4 @@
+tinygrad
+safetensors
+huggingface_hub
+numpy
