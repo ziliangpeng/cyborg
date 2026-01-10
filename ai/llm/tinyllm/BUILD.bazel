@@ -6,7 +6,6 @@ py_library(
     srcs = glob(["utils/*.py"]),
     deps = [
         "@pip//tinygrad",
-        "@pip//safetensors",
         "@pip//huggingface_hub",
         "@pip//numpy",
     ],

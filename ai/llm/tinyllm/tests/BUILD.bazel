@@ -1,0 +1,13 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+py_test(
+    name = "test_safetensors_loader",
+    srcs = ["test_safetensors_loader.py"],
+    deps = [
+        "//ai/llm/tinyllm:utils",
+        "@pip//numpy",
+        "@pip//huggingface_hub",
+    ],
+    size = "medium",
+    timeout = "moderate",
+)
