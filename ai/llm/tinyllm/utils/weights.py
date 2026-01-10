@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 from huggingface_hub import snapshot_download
 from safetensors import safe_open
 from tinygrad import Tensor
@@ -100,7 +99,7 @@ def _load_safetensors(cache_dir: Path) -> dict[str, Any]:
     # Load each file with safetensors library
     for file in safetensors_files:
         with safe_open(file, framework="numpy") as f:
-            for key in f.keys():
+            for key in f:
                 weights[key] = f.get_tensor(key)
 
     return weights
