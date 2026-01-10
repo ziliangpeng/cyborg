@@ -1,12 +1,6 @@
 """Quick test script for the weight loader."""
 
 import time
-import sys
-from pathlib import Path
-
-# Add cyborg root to path
-cyborg_root = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(cyborg_root))
 
 from ai.llm.tinyllm import load_weights
 

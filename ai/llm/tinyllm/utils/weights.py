@@ -1,7 +1,7 @@
 """Weight loading utilities for TinyLLM."""
 
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 from tinygrad import Tensor
 from huggingface_hub import snapshot_download
 from safetensors import safe_open
@@ -51,7 +51,7 @@ def _download_from_hf(model_name: str) -> Path:
     return Path(cache_dir)
 
 
-def _load_safetensors(cache_dir: Path) -> Dict[str, any]:
+def _load_safetensors(cache_dir: Path) -> Dict[str, Any]:
     """
     Load all safetensors files in directory and return as numpy arrays.
 
