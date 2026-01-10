@@ -59,9 +59,12 @@ python.toolchain(
 )
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+# Consolidated Python dependencies
 pip.parse(
     hub_name = "pip",
     python_version = "3.13",
-    requirements_lock = "//apps/halftone:requirements.txt",
+    requirements_lock = "//:requirements.txt",  # Use a consolidated requirements file
 )
+
 use_repo(pip, "pip")

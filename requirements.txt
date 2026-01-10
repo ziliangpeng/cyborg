@@ -1,0 +1,11 @@
+# Python dependencies for Bazel build
+# Used by MODULE.bazel pip.parse()
+
+# Halftone app dependencies
+pillow>=10.0.0
+numpy>=1.24.0
+click>=8.1.0
+
+# TinyLLM dependencies
+tinygrad
+huggingface_hub
