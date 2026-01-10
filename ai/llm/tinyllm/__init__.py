@@ -6,6 +6,6 @@ Provides clean implementations of LLM building blocks for multiple model familie
 
 from .utils import load_weights
 
-__all__ = ['load_weights']
+__all__ = ["load_weights"]
 
-__version__ = '0.1.0'
+__version__ = "0.1.0"

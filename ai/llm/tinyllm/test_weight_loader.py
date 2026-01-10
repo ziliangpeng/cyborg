@@ -4,6 +4,7 @@ import time
 
 from ai.llm.tinyllm import load_weights
 
+
 def main():
     print("Testing weight loader with GPT-2...")
     print()
@@ -46,8 +47,9 @@ def main():
     print("Weight loader is working correctly:")
     print(f"  - Downloaded/loaded {len(weights)} tensors")
     print(f"  - First load: {load_time:.2f}s")
-    print(f"  - Cached load: {cache_time:.2f}s ({load_time/cache_time:.1f}x faster)")
+    print(f"  - Cached load: {cache_time:.2f}s ({load_time / cache_time:.1f}x faster)")
     print(f"  - Cache location: ~/.cache/huggingface/hub/")
+
 
 if __name__ == "__main__":
     main()

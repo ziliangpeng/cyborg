@@ -2,4 +2,4 @@
 
 from .weights import load_weights
 
-__all__ = ['load_weights']
+__all__ = ["load_weights"]

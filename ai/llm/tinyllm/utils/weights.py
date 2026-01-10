@@ -71,8 +71,7 @@ def _load_safetensors(cache_dir: Path) -> Dict[str, Any]:
 
     if not safetensors_files:
         raise FileNotFoundError(
-            f"No safetensors files found in {cache_dir}. "
-            f"Model may not have safetensors format available."
+            f"No safetensors files found in {cache_dir}. Model may not have safetensors format available."
         )
 
     # Load each file with safetensors library
