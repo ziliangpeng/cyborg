@@ -79,9 +79,7 @@ def _load_weights_from_dir(cache_dir: Path) -> dict[str, Any]:
     if bin_files:
         return _load_pytorch_bin(cache_dir)
 
-    raise FileNotFoundError(
-        f"No weight files found in {cache_dir}. Expected .safetensors or .bin files."
-    )
+    raise FileNotFoundError(f"No weight files found in {cache_dir}. Expected .safetensors or .bin files.")
 
 
 def _load_safetensors(cache_dir: Path) -> dict[str, Any]:

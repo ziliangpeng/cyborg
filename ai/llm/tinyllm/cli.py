@@ -29,7 +29,15 @@ def format_param_count(count: int) -> str:
     return str(count)
 
 
-def run_prompt(llm: BaseModel, tokenizer: Tokenizer, prompt: str, max_tokens: int, temperature: float, top_k: int | None, sample: bool) -> None:
+def run_prompt(
+    llm: BaseModel,
+    tokenizer: Tokenizer,
+    prompt: str,
+    max_tokens: int,
+    temperature: float,
+    top_k: int | None,
+    sample: bool,
+) -> None:
     """Run a single prompt through the model and print results."""
     # Encode prompt
     input_tokens = tokenizer.encode(prompt)
