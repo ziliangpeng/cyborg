@@ -13,55 +13,69 @@
         <p class="muted">Real-time GPU-accelerated computer vision effects</p>
       </header>
 
-      <section class="panel">
-        <div class="video-container">
-          <video id="video" autoplay playsinline hidden></video>
-          <canvas id="canvas" class="video-output"></canvas>
-        </div>
-
-        <div class="controls">
-          <button id="startBtn" class="button">Start Camera</button>
-          <button id="stopBtn" class="button secondary" disabled>Stop Camera</button>
-        </div>
-
-        <div id="status" class="status muted" role="status"></div>
-      </section>
-
-      <section class="panel">
-        <div class="control-group">
-          <label for="effectSelect">Effect</label>
-          <select id="effectSelect" class="select">
-            <option value="halftone">Halftone</option>
-            <option value="passthrough">Passthrough (Original)</option>
-          </select>
-        </div>
-
-        <div class="control-group">
-          <label for="dotSizeSlider">
-            Dot Size: <span id="dotSizeValue">8</span>px
-          </label>
-          <input
-            id="dotSizeSlider"
-            type="range"
-            min="4"
-            max="32"
-            value="8"
-            step="2"
-            class="slider"
-          />
-        </div>
-
-        <div class="stats">
-          <div class="stat-item">
-            <span class="stat-label">FPS:</span>
-            <span id="fpsValue" class="stat-value">0</span>
+      <div class="main-content">
+        <section class="video-panel panel">
+          <div class="video-container">
+            <video id="video" autoplay playsinline hidden></video>
+            <canvas id="canvas" class="video-output"></canvas>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Renderer:</span>
-            <span id="gpuStatus" class="stat-value">Checking...</span>
+
+          <div class="controls">
+            <button id="startBtn" class="button">Start Camera</button>
+            <button id="stopBtn" class="button secondary" disabled>Stop Camera</button>
           </div>
-        </div>
-      </section>
+
+          <div id="status" class="status muted" role="status"></div>
+        </section>
+
+        <aside class="side-panel panel">
+          <section class="effect-section">
+            <h3>Effect</h3>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="effect" value="halftone" checked />
+                <span>Halftone</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="effect" value="passthrough" />
+                <span>Passthrough</span>
+              </label>
+            </div>
+
+            <div class="effect-controls">
+              <div class="control-group">
+                <label for="dotSizeSlider">
+                  Dot Size: <span id="dotSizeValue">8</span>px
+                </label>
+                <input
+                  id="dotSizeSlider"
+                  type="range"
+                  min="4"
+                  max="32"
+                  value="8"
+                  step="2"
+                  class="slider"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section class="info-section">
+            <h3>Info</h3>
+            <div class="stats">
+              <div class="stat-item">
+                <span class="stat-label">FPS:</span>
+                <span id="fpsValue" class="stat-value">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Renderer:</span>
+                <span id="gpuStatus" class="stat-value">Checking...</span>
+              </div>
+            </div>
+            <div class="effect-info"></div>
+          </section>
+        </aside>
+      </div>
     </main>
 
     <script type="module" src="/static/app.js"></script>

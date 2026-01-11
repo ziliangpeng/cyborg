@@ -189,3 +189,102 @@ body {
   font-weight: 600;
   font-size: 14px;
 }
+
+/* Main content layout */
+.main-content {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.video-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.side-panel {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.side-panel h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Effect section */
+.effect-section {
+  margin-bottom: 20px;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.radio-label:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.radio-label input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.radio-label span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.effect-controls {
+  margin-top: 12px;
+}
+
+/* Info section */
+.info-section {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.info-section .stats {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.effect-info {
+  margin-top: 16px;
+  min-height: 40px;
+}
+
+/* Responsive: stack vertically on smaller screens */
+@media (max-width: 1024px) {
+  .main-content {
+    flex-direction: column;
+  }
+
+  .side-panel {
+    width: 100%;
+  }
+}

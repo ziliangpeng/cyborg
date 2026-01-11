@@ -11,7 +11,7 @@ class CyberVision {
     this.startBtn = document.getElementById("startBtn");
     this.stopBtn = document.getElementById("stopBtn");
     this.statusEl = document.getElementById("status");
-    this.effectSelect = document.getElementById("effectSelect");
+    this.effectRadios = document.querySelectorAll('input[name="effect"]');
     this.dotSizeSlider = document.getElementById("dotSizeSlider");
     this.dotSizeValue = document.getElementById("dotSizeValue");
     this.fpsValue = document.getElementById("fpsValue");
@@ -81,9 +81,16 @@ class CyberVision {
     // Event listeners
     this.startBtn.addEventListener("click", () => this.startCamera());
     this.stopBtn.addEventListener("click", () => this.stopCamera());
-    this.effectSelect.addEventListener("change", (e) => {
-      this.currentEffect = e.target.value;
+
+    // Radio button event listeners
+    this.effectRadios.forEach((radio) => {
+      radio.addEventListener("change", (e) => {
+        if (e.target.checked) {
+          this.currentEffect = e.target.value;
+        }
+      });
     });
+
     this.dotSizeSlider.addEventListener("input", (e) => {
       this.dotSize = parseInt(e.target.value);
       this.dotSizeValue.textContent = this.dotSize;
