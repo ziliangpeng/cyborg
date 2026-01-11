@@ -12,7 +12,6 @@ class CyberVision {
     this.stopBtn = document.getElementById("stopBtn");
     this.statusEl = document.getElementById("status");
     this.effectRadios = document.querySelectorAll('input[name="effect"]');
-    this.resolutionRadios = document.querySelectorAll('input[name="resolution"]');
     this.dotSizeSlider = document.getElementById("dotSizeSlider");
     this.dotSizeValue = document.getElementById("dotSizeValue");
     this.fpsValue = document.getElementById("fpsValue");
@@ -29,7 +28,6 @@ class CyberVision {
     // Effect state
     this.currentEffect = "halftone";
     this.dotSize = 8;
-    this.selectedResolution = "1080p"; // Default resolution
 
     // FPS tracking
     this.frameCount = 0;
@@ -54,7 +52,8 @@ class CyberVision {
       console.log("✓ WebGPU initialized successfully");
       console.log("✓ Using compute shaders");
     } catch (err) {
-      console.log("✗ WebGPU failed:", err.message);
+      console.log("✗ WebGPU failed:", err);
+      console.log("WebGPU error details:", err.message, err.stack);
 
       if (disableWebGL) {
         this.gpuStatus.textContent = "WebGL disabled";
@@ -73,6 +72,8 @@ class CyberVision {
         console.log("✓ WebGL initialized successfully");
         console.log("✓ Using fragment shaders");
       } catch (err2) {
+        console.log("✗ WebGL also failed:", err2);
+        console.log("WebGL error details:", err2.message, err2.stack);
         this.gpuStatus.textContent = "Not supported";
         this.gpuStatus.style.color = "#f87171";
         this.setStatus(`Error: Neither WebGPU nor WebGL2 are supported. ${err2.message}`);
@@ -90,19 +91,6 @@ class CyberVision {
       radio.addEventListener("change", (e) => {
         if (e.target.checked) {
           this.currentEffect = e.target.value;
-        }
-      });
-    });
-
-    this.resolutionRadios.forEach((radio) => {
-      radio.addEventListener("change", async (e) => {
-        if (e.target.checked) {
-          this.selectedResolution = e.target.value;
-
-          // Restart camera if it's already running
-          if (this.isRunning) {
-            await this.restartCamera();
-          }
         }
       });
     });
@@ -125,27 +113,15 @@ class CyberVision {
     }
   }
 
-  getResolutionConstraints() {
-    const resolutions = {
-      "4k": { width: 3840, height: 2160 },
-      "1080p": { width: 1920, height: 1080 },
-      "720p": { width: 1280, height: 720 },
-    };
-    return resolutions[this.selectedResolution];
-  }
-
   async startCamera() {
     try {
       this.setStatus("Requesting camera access...");
 
-      // Get selected resolution
-      const resolution = this.getResolutionConstraints();
-
-      // Request camera
+      // Request camera at 1080p
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: resolution.width },
-          height: { ideal: resolution.height },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
           facingMode: "user",
         },
       });
@@ -213,30 +189,6 @@ class CyberVision {
     this.stopBtn.disabled = true;
     this.resolutionValue.textContent = "-";
     this.setStatus("Camera stopped.");
-  }
-
-  async restartCamera() {
-    // Store current state
-    const wasRunning = this.isRunning;
-
-    // Stop camera
-    this.isRunning = false;
-    if (this.animationFrame) {
-      cancelAnimationFrame(this.animationFrame);
-      this.animationFrame = null;
-    }
-    if (this.stream) {
-      this.stream.getTracks().forEach((track) => track.stop());
-      this.stream = null;
-    }
-
-    // Wait a brief moment for cleanup
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Restart if it was running
-    if (wasRunning) {
-      await this.startCamera();
-    }
   }
 
   render() {
