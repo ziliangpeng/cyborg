@@ -1,4 +1,6 @@
 /* CyberVision - Main application */
+// TODO: Add automated tests - E2E tests with Playwright for UI/renderer switching,
+// and unit tests for pure logic (FPS calculation, algorithm mapping, etc.)
 
 import { initGPU } from "./webgpu-renderer.js";
 import { initWebGL } from "./webgl-renderer.js";
