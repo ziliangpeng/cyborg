@@ -5,6 +5,7 @@ py_library(
     name = "utils",
     srcs = glob(["utils/*.py"]),
     deps = [
+        "//ai/llm/tokenizer",
         "@pip//huggingface_hub",
         "@pip//numpy",
         "@pip//safetensors",
