@@ -224,6 +224,30 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
 
         self._send_bytes(HTTPStatus.OK, content_type, data)
 
+    def _read_json_body(self) -> dict[str, Any] | None:
+        """Read and parse JSON request body. Returns None and sends error response on failure."""
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+
+        if length <= 0:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Missing Content-Length"})
+            return None
+
+        content_type = self.headers.get("Content-Type", "")
+        if not content_type.startswith("application/json"):
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Expected application/json"})
+            return None
+
+        body = self.rfile.read(length)
+        try:
+            return json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            logging.warning("Invalid JSON: %s", e)
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Invalid JSON"})
+            return None
+
     def do_GET(self) -> None:  # noqa: N802 (stdlib naming)
         parsed = urlparse(self.path)
         path = parsed.path
@@ -243,26 +267,8 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def _handle_tokenize_all(self) -> None:
-        try:
-            length = int(self.headers.get("Content-Length", "0"))
-        except ValueError:
-            length = 0
-
-        if length <= 0:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Missing Content-Length"})
-            return
-
-        content_type = self.headers.get("Content-Type", "")
-        if not content_type.startswith("application/json"):
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Expected application/json"})
-            return
-
-        body = self.rfile.read(length)
-        try:
-            data = json.loads(body.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as e:
-            logging.warning("Invalid JSON: %s", e)
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Invalid JSON"})
+        data = self._read_json_body()
+        if data is None:
             return
 
         text = data.get("text", "")
@@ -287,26 +293,8 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        try:
-            length = int(self.headers.get("Content-Length", "0"))
-        except ValueError:
-            length = 0
-
-        if length <= 0:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Missing Content-Length"})
-            return
-
-        content_type = self.headers.get("Content-Type", "")
-        if not content_type.startswith("application/json"):
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Expected application/json"})
-            return
-
-        body = self.rfile.read(length)
-        try:
-            data = json.loads(body.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as e:
-            logging.warning("Invalid JSON: %s", e)
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Invalid JSON"})
+        data = self._read_json_body()
+        if data is None:
             return
 
         text = data.get("text", "")

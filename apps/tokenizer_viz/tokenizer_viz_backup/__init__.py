@@ -1,1 +1,0 @@
-"""Tokenizer visualization web app."""
