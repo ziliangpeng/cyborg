@@ -9,6 +9,7 @@ const output = document.getElementById("output");
 
 let currentTokens = [];
 let originalText = "";
+let availableTokenizers = []; // Will be populated from API
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -50,27 +51,8 @@ function renderAllStats(results) {
   html += '</tr></thead>';
   html += '<tbody>';
 
-  // Order tokenizers for display
-  const orderedTokenizers = [
-    { key: 'gpt2', name: 'GPT-2' },
-    { key: 'cl100k_base', name: 'GPT-4 (cl100k)' },
-    { key: 'p50k_base', name: 'Codex (p50k)' },
-    { key: 'r50k_base', name: 'GPT-3 (r50k)' },
-    { key: 'o200k_base', name: 'GPT-4o (o200k)' },
-    { key: 'opt', name: 'OPT' },
-    { key: 'llama3', name: 'LLaMA 3' },
-    { key: 'mistral', name: 'Mistral' },
-    { key: 'gemma2', name: 'Gemma 2' },
-    { key: 'gemma3', name: 'Gemma 3' },
-    { key: 'qwen3', name: 'Qwen3' },
-    { key: 'deepseek', name: 'DeepSeek V3' },
-    { key: 'phi3', name: 'Phi-3' },
-    { key: 'command', name: 'Command R' },
-    { key: 'jamba', name: 'Jamba' },
-    { key: 'bloom', name: 'BLOOM' }
-  ];
-
-  orderedTokenizers.forEach(({ key, name }) => {
+  // Use the tokenizers from API (in the order they were fetched)
+  availableTokenizers.forEach(({ key, name }) => {
     const stats = results[key];
     if (!stats) return;
 
@@ -228,5 +210,65 @@ tokenizerGroup.addEventListener("change", () => {
   }
 });
 
-// Initial focus
-textInput.focus();
+// Initialize: fetch available tokenizers and populate UI
+async function initializeTokenizers() {
+  try {
+    const response = await fetch("/api/tokenizers");
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    availableTokenizers = data.tokenizers;
+
+    // Populate radio buttons
+    tokenizerGroup.innerHTML = "";
+
+    // Add individual tokenizer options
+    availableTokenizers.forEach(({ key, name }, index) => {
+      const label = document.createElement("label");
+      label.className = "radio-label";
+
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "tokenizer";
+      input.value = key;
+      if (index === 0) {
+        input.checked = true; // First one is default
+      }
+
+      const span = document.createElement("span");
+      span.textContent = name;
+
+      label.appendChild(input);
+      label.appendChild(span);
+      tokenizerGroup.appendChild(label);
+    });
+
+    // Add "All (compare)" option
+    const allLabel = document.createElement("label");
+    allLabel.className = "radio-label";
+
+    const allInput = document.createElement("input");
+    allInput.type = "radio";
+    allInput.name = "tokenizer";
+    allInput.value = "all";
+
+    const allSpan = document.createElement("span");
+    allSpan.textContent = "All (compare)";
+
+    allLabel.appendChild(allInput);
+    allLabel.appendChild(allSpan);
+    tokenizerGroup.appendChild(allLabel);
+
+  } catch (error) {
+    setStatus(`Error loading tokenizers: ${error.message}`);
+    console.error("Failed to load tokenizers:", error);
+  }
+}
+
+// Initialize on page load
+initializeTokenizers().then(() => {
+  textInput.focus();
+});

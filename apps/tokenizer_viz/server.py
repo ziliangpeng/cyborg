@@ -28,26 +28,27 @@ def _get_webroot() -> Path:
 WEBROOT = _get_webroot()
 STATIC_ROOT = WEBROOT / "static"
 
-# Available tokenizers
+# Available tokenizers with metadata
+# Format: key -> (encoding_name, tokenizer_type, display_name)
 TOKENIZERS = {
     # tiktoken (fast, Rust-based)
-    "gpt2": ("gpt2", "tiktoken"),
-    "cl100k_base": ("cl100k_base", "tiktoken"),  # GPT-4
-    "p50k_base": ("p50k_base", "tiktoken"),  # Codex
-    "r50k_base": ("r50k_base", "tiktoken"),  # GPT-3
-    "o200k_base": ("o200k_base", "tiktoken"),  # GPT-4o
+    "gpt2": ("gpt2", "tiktoken", "GPT-2"),
+    "cl100k_base": ("cl100k_base", "tiktoken", "GPT-4 (cl100k)"),
+    "p50k_base": ("p50k_base", "tiktoken", "Codex (p50k)"),
+    "r50k_base": ("r50k_base", "tiktoken", "GPT-3 (r50k)"),
+    "o200k_base": ("o200k_base", "tiktoken", "GPT-4o (o200k)"),
     # HuggingFace (Python-based)
-    "opt": ("facebook/opt-125m", "huggingface"),
-    "llama3": ("meta-llama/Meta-Llama-3-8B", "huggingface"),
-    "mistral": ("mistralai/Mistral-7B-v0.1", "huggingface"),
-    "gemma2": ("google/gemma-2-2b-it", "huggingface"),
-    "gemma3": ("google/gemma-3-1b-it", "huggingface"),
-    "qwen3": ("Qwen/Qwen3-8B", "huggingface"),
-    "deepseek": ("deepseek-ai/DeepSeek-V3", "huggingface"),
-    "phi3": ("microsoft/Phi-3-mini-4k-instruct", "huggingface"),
-    "command": ("CohereForAI/c4ai-command-r-v01", "huggingface"),
-    "jamba": ("ai21labs/Jamba-v0.1", "huggingface"),
-    "bloom": ("bigscience/bloom-560m", "huggingface"),
+    "opt": ("facebook/opt-125m", "huggingface", "OPT"),
+    "llama3": ("meta-llama/Meta-Llama-3-8B", "huggingface", "LLaMA 3"),
+    "mistral": ("mistralai/Mistral-7B-v0.1", "huggingface", "Mistral"),
+    "gemma2": ("google/gemma-2-2b-it", "huggingface", "Gemma 2"),
+    "gemma3": ("google/gemma-3-1b-it", "huggingface", "Gemma 3"),
+    "qwen3": ("Qwen/Qwen3-8B", "huggingface", "Qwen3"),
+    "deepseek": ("deepseek-ai/DeepSeek-V3", "huggingface", "DeepSeek V3"),
+    "phi3": ("microsoft/Phi-3-mini-4k-instruct", "huggingface", "Phi-3"),
+    "command": ("CohereForAI/c4ai-command-r-v01", "huggingface", "Command R"),
+    "jamba": ("ai21labs/Jamba-v0.1", "huggingface", "Jamba"),
+    "bloom": ("bigscience/bloom-560m", "huggingface", "BLOOM"),
 }
 
 # Cache tokenizer instances to avoid re-initialization overhead
@@ -57,7 +58,7 @@ _TOKENIZER_CACHE: dict[str, Tokenizer] = {}
 def _get_tokenizer(tokenizer_name: str) -> Tokenizer:
     """Get cached tokenizer instance, creating it if not in cache."""
     if tokenizer_name not in _TOKENIZER_CACHE:
-        encoding_name, tokenizer_type = TOKENIZERS[tokenizer_name]
+        encoding_name, tokenizer_type, _ = TOKENIZERS[tokenizer_name]
         _TOKENIZER_CACHE[tokenizer_name] = Tokenizer(encoding_name, tokenizer_type)
     return _TOKENIZER_CACHE[tokenizer_name]
 
@@ -75,7 +76,7 @@ def _tokenize_text(text: str, tokenizer_name: str) -> list[dict[str, Any]]:
     if tokenizer_name not in TOKENIZERS:
         raise ValueError(f"Unknown tokenizer: {tokenizer_name}")
 
-    _, tokenizer_type = TOKENIZERS[tokenizer_name]
+    _, tokenizer_type, _ = TOKENIZERS[tokenizer_name]
     tokenizer = _get_tokenizer(tokenizer_name)
 
     result = []
@@ -134,7 +135,7 @@ def _tokenize_all(text: str) -> dict[str, dict[str, Any]]:
     char_count = len(text)
 
     for tokenizer_name in TOKENIZERS:
-        _, tokenizer_type = TOKENIZERS[tokenizer_name]
+        _, tokenizer_type, _ = TOKENIZERS[tokenizer_name]
 
         try:
             start_time = time.perf_counter()
@@ -247,6 +248,17 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
                 return
             self._send_file(safe_path)
             return
+        if path == "/api/tokenizers":
+            # Return list of available tokenizers with metadata
+            tokenizer_list = [
+                {
+                    "key": key,
+                    "name": display_name,
+                }
+                for key, (_, _, display_name) in TOKENIZERS.items()
+            ]
+            self._send_json(HTTPStatus.OK, {"ok": True, "tokenizers": tokenizer_list})
+            return
 
         self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -295,7 +307,7 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
         try:
             import time
 
-            _, tokenizer_type = TOKENIZERS[tokenizer_name]
+            _, tokenizer_type, _ = TOKENIZERS[tokenizer_name]
             start_time = time.perf_counter()
             tokens = _tokenize_text(text, tokenizer_name)
             end_time = time.perf_counter()
