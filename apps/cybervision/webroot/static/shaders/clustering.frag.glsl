@@ -34,11 +34,11 @@ vec3 kmeans(vec3 color, int k) {
   vec3 bestCentroid = vec3(0.0);
   for (int i = 0; i < 32; i++) {
     if (i >= k) break;
-    vec3 centroid = generateCentroid(i, k);
-    float dist = length(color - centroid);
+    vec3 center = generateCentroid(i, k);
+    float dist = length(color - center);
     if (dist < minDist) {
       minDist = dist;
-      bestCentroid = centroid;
+      bestCentroid = center;
     }
   }
   return bestCentroid;
