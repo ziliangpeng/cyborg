@@ -9,3 +9,8 @@ click>=8.1.0
 # TinyLLM dependencies
 tinygrad
 huggingface_hub
+safetensors
+tiktoken
+transformers>=4.40.0  # For OPT tokenizer (need newer version for pre-built wheels)
+torch  # For loading PyTorch bin weights
+setuptools  # Required by torch

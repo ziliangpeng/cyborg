@@ -1,14 +1,40 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 # Utilities library
 py_library(
     name = "utils",
     srcs = glob(["utils/*.py"]),
     deps = [
-        "@pip//tinygrad",
         "@pip//huggingface_hub",
         "@pip//numpy",
         "@pip//safetensors",
+        "@pip//tiktoken",
+        "@pip//tinygrad",
+        "@pip//torch",  # For loading PyTorch bin format (some models don't have safetensors)
+        "@pip//transformers",  # For OPT tokenizer
+    ],
+    visibility = ["//ai/llm/tinyllm:__subpackages__"],
+)
+
+# Building block operations
+py_library(
+    name = "ops",
+    srcs = glob(["ops/*.py"]),
+    deps = [
+        "@pip//tinygrad",
+    ],
+    visibility = ["//ai/llm/tinyllm:__subpackages__"],
+)
+
+# Model implementations
+py_library(
+    name = "models",
+    srcs = glob(["models/*.py"]),
+    deps = [
+        ":ops",
+        ":utils",
+        "@pip//numpy",
+        "@pip//tinygrad",
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
 )
@@ -18,6 +44,7 @@ py_library(
     name = "tinyllm",
     srcs = ["__init__.py"],
     deps = [
+        ":models",
         ":utils",
     ],
     visibility = ["//visibility:public"],
@@ -30,4 +57,34 @@ py_test(
     deps = [":tinyllm"],
     size = "large",  # May download weights
     timeout = "long",  # Allow time for download
+)
+
+# GPT-2 model test
+py_test(
+    name = "test_gpt2",
+    srcs = ["test_gpt2.py"],
+    deps = [":tinyllm"],
+    size = "large",  # May download weights
+    timeout = "long",  # Allow time for download
+)
+
+# OPT model test
+py_test(
+    name = "test_opt",
+    srcs = ["test_opt.py"],
+    deps = [":tinyllm"],
+    size = "large",  # May download weights
+    timeout = "long",  # Allow time for download
+)
+
+# Interactive CLI
+py_binary(
+    name = "cli",
+    srcs = ["cli.py"],
+    main = "cli.py",
+    deps = [
+        ":tinyllm",
+        "@pip//click",
+        "@pip//tinygrad",
+    ],
 )

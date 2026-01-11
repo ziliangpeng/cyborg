@@ -25,6 +25,8 @@ build --spawn_strategy=sandboxed
 # Usage: bazel test --config=ci //...
 build:ci --build_tag_filters=-gpu,-cuda
 test:ci --test_tag_filters=-gpu,-cuda
+build:ci --deleted_packages=cuda,cuda/matmul,cuda/softmax
+test:ci --deleted_packages=cuda,cuda/matmul,cuda/softmax
 
 # ============================================================================
 # Local Development Configuration (for machines with GPU)
@@ -39,4 +41,3 @@ test:local --test_tag_filters=
 
 # CUDA architecture settings for WMMA support (Volta+ / SM 7.0+)
 build --@rules_cuda//cuda:archs=sm_70,sm_75,sm_80,sm_86,sm_89,sm_90
-
