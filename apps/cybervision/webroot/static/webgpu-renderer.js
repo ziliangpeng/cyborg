@@ -379,9 +379,13 @@ export class WebGPURenderer {
     // Map algorithm string to number
     const algorithmMap = {
       "quantization": 0,
-      "kmeans": 1,
-      "meanshift": 2,
-      "posterize": 3,
+      "quantization-true": 1,
+      "kmeans": 2,
+      "kmeans-true": 3,
+      "meanshift": 4,
+      "meanshift-true": 5,
+      "posterize": 6,
+      "posterize-true": 7,
     };
 
     // Update uniform buffer with current parameters
