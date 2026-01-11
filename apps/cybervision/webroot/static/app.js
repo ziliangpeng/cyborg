@@ -16,8 +16,18 @@ class CyberVision {
     this.dotSizeValue = document.getElementById("dotSizeValue");
     this.randomColorCheckbox = document.getElementById("randomColorCheckbox");
     this.fpsValue = document.getElementById("fpsValue");
+    this.latencyValue = document.getElementById("latencyValue");
     this.gpuStatus = document.getElementById("gpuStatus");
     this.resolutionValue = document.getElementById("resolutionValue");
+
+    // Clustering controls
+    this.halftoneControls = document.getElementById("halftoneControls");
+    this.clusteringControls = document.getElementById("clusteringControls");
+    this.algorithmSelect = document.getElementById("algorithmSelect");
+    this.colorCountSlider = document.getElementById("colorCountSlider");
+    this.colorCountValue = document.getElementById("colorCountValue");
+    this.thresholdSlider = document.getElementById("thresholdSlider");
+    this.thresholdValue = document.getElementById("thresholdValue");
 
     // State
     this.renderer = null;
@@ -31,9 +41,18 @@ class CyberVision {
     this.dotSize = 8;
     this.useRandomColors = false;
 
+    // Clustering state
+    this.clusteringAlgorithm = "quantization";
+    this.colorCount = 8;
+    this.colorThreshold = 0.1;
+
     // FPS tracking
     this.frameCount = 0;
     this.lastFpsTime = performance.now();
+
+    // Latency tracking
+    this.frameLatencies = [];
+    this.lastLatencyUpdate = performance.now();
 
     this.init();
   }
@@ -90,6 +109,7 @@ class CyberVision {
       radio.addEventListener("change", (e) => {
         if (e.target.checked) {
           this.currentEffect = e.target.value;
+          this.updateEffectControls();
         }
       });
     });
@@ -106,7 +126,36 @@ class CyberVision {
       this.useRandomColors = e.target.checked;
     });
 
+    // Clustering event listeners
+    this.algorithmSelect.addEventListener("change", (e) => {
+      this.clusteringAlgorithm = e.target.value;
+    });
+
+    this.colorCountSlider.addEventListener("input", (e) => {
+      this.colorCount = parseInt(e.target.value, 10);
+      this.colorCountValue.textContent = this.colorCount;
+    });
+
+    this.thresholdSlider.addEventListener("input", (e) => {
+      this.colorThreshold = parseFloat(e.target.value);
+      this.thresholdValue.textContent = this.colorThreshold.toFixed(2);
+    });
+
     this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
+  }
+
+  updateEffectControls() {
+    // Show/hide effect-specific controls based on current effect
+    if (this.currentEffect === "halftone") {
+      this.halftoneControls.style.display = "block";
+      this.clusteringControls.style.display = "none";
+    } else if (this.currentEffect === "clustering") {
+      this.halftoneControls.style.display = "none";
+      this.clusteringControls.style.display = "block";
+    } else {
+      this.halftoneControls.style.display = "none";
+      this.clusteringControls.style.display = "none";
+    }
   }
 
   updateHalftoneParams() {
@@ -197,12 +246,20 @@ class CyberVision {
   render() {
     if (!this.isRunning) return;
 
+    const frameStart = performance.now();
+
     try {
       if (this.currentEffect === "halftone") {
         this.renderHalftone();
+      } else if (this.currentEffect === "clustering") {
+        this.renderClustering();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
+
+      const frameEnd = performance.now();
+      const latency = frameEnd - frameStart;
+      this.frameLatencies.push(latency);
 
       this.updateFPS();
     } catch (err) {
@@ -223,6 +280,15 @@ class CyberVision {
     }
   }
 
+  renderClustering() {
+    this.renderer.renderClustering(
+      this.video,
+      this.clusteringAlgorithm,
+      this.colorCount,
+      this.colorThreshold
+    );
+  }
+
   renderPassthrough() {
     this.renderer.renderPassthrough(this.video);
   }
@@ -231,12 +297,22 @@ class CyberVision {
     this.frameCount++;
     const now = performance.now();
     const elapsed = now - this.lastFpsTime;
+    const latencyElapsed = now - this.lastLatencyUpdate;
 
+    // Update FPS once per second
     if (elapsed >= 1000) {
       const fps = Math.round((this.frameCount / elapsed) * 1000);
       this.fpsValue.textContent = fps;
       this.frameCount = 0;
       this.lastFpsTime = now;
+    }
+
+    // Update latency once per second (average of collected samples)
+    if (latencyElapsed >= 1000 && this.frameLatencies.length > 0) {
+      const avgLatency = this.frameLatencies.reduce((sum, lat) => sum + lat, 0) / this.frameLatencies.length;
+      this.latencyValue.textContent = avgLatency.toFixed(2);
+      this.frameLatencies = [];
+      this.lastLatencyUpdate = now;
     }
   }
 
