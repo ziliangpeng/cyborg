@@ -89,7 +89,7 @@ fn meanshift(pos: vec2i, color: vec3f, bandwidth: f32) -> vec3f {
   }
 
   // Quantize final result to reduce color count
-  return quantize(currentColor, 8.0);
+  return quantize(currentColor, params.colorCount);
 }
 
 // ============ POSTERIZE (edge-aware quantization) ============

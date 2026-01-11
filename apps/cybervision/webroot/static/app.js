@@ -146,16 +146,8 @@ class CyberVision {
 
   updateEffectControls() {
     // Show/hide effect-specific controls based on current effect
-    if (this.currentEffect === "halftone") {
-      this.halftoneControls.style.display = "block";
-      this.clusteringControls.style.display = "none";
-    } else if (this.currentEffect === "clustering") {
-      this.halftoneControls.style.display = "none";
-      this.clusteringControls.style.display = "block";
-    } else {
-      this.halftoneControls.style.display = "none";
-      this.clusteringControls.style.display = "none";
-    }
+    this.halftoneControls.style.display = this.currentEffect === "halftone" ? "block" : "none";
+    this.clusteringControls.style.display = this.currentEffect === "clustering" ? "block" : "none";
   }
 
   updateHalftoneParams() {
@@ -310,7 +302,7 @@ class CyberVision {
     // Update latency once per second (average of collected samples)
     if (latencyElapsed >= 1000 && this.frameLatencies.length > 0) {
       const avgLatency = this.frameLatencies.reduce((sum, lat) => sum + lat, 0) / this.frameLatencies.length;
-      this.latencyValue.textContent = avgLatency.toFixed(2);
+      this.latencyValue.textContent = `${avgLatency.toFixed(2)} ms`;
       this.frameLatencies = [];
       this.lastLatencyUpdate = now;
     }

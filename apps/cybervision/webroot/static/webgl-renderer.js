@@ -183,7 +183,7 @@ export class WebGLRenderer {
         if (totalWeight > 0.0) {
           currentColor = weightedSum / totalWeight;
         }
-        return quantize(currentColor, 8.0);
+        return quantize(currentColor, u_colorCount);
       }
 
       vec3 posterize(vec2 uv, vec3 color, float levels, float threshold) {
