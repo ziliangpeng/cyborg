@@ -36,6 +36,20 @@ class Tokenizer:
             return self.enc.decode(tokens)
         return self.enc.decode(tokens, skip_special_tokens=True)
 
+    def decode_with_offsets(self, tokens: list[int]) -> tuple[str, list[int]]:
+        """
+        Decode token IDs to text with character offsets.
+
+        Returns:
+            Tuple of (decoded_text, offsets) where offsets[i] is the character index
+            where token i starts in the decoded text.
+
+        Note: Only supported for tiktoken tokenizers.
+        """
+        if not self._is_tiktoken:
+            raise NotImplementedError("decode_with_offsets is only supported for tiktoken tokenizers")
+        return self.enc.decode_with_offsets(tokens)
+
     @classmethod
     def for_model(cls, model_name: str) -> "Tokenizer":
         """

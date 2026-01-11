@@ -1,0 +1,11 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "tokenizer",
+    srcs = glob(["*.py"]),
+    deps = [
+        "@pip//tiktoken",
+        "@pip//transformers",  # For HuggingFace tokenizers
+    ],
+    visibility = ["//visibility:public"],
+)
