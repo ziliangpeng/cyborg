@@ -259,6 +259,13 @@ body {
   margin-top: 12px;
 }
 
+/* Config section */
+.config-section {
+  margin-bottom: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
 /* Info section */
 .info-section {
   padding-top: 20px;

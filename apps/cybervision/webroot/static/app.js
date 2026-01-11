@@ -12,6 +12,7 @@ class CyberVision {
     this.stopBtn = document.getElementById("stopBtn");
     this.statusEl = document.getElementById("status");
     this.effectRadios = document.querySelectorAll('input[name="effect"]');
+    this.resolutionRadios = document.querySelectorAll('input[name="resolution"]');
     this.dotSizeSlider = document.getElementById("dotSizeSlider");
     this.dotSizeValue = document.getElementById("dotSizeValue");
     this.fpsValue = document.getElementById("fpsValue");
@@ -28,6 +29,7 @@ class CyberVision {
     // Effect state
     this.currentEffect = "halftone";
     this.dotSize = 8;
+    this.selectedResolution = "1080p"; // Default resolution
 
     // FPS tracking
     this.frameCount = 0;
@@ -92,6 +94,14 @@ class CyberVision {
       });
     });
 
+    this.resolutionRadios.forEach((radio) => {
+      radio.addEventListener("change", (e) => {
+        if (e.target.checked) {
+          this.selectedResolution = e.target.value;
+        }
+      });
+    });
+
     this.dotSizeSlider.addEventListener("input", (e) => {
       this.dotSize = parseInt(e.target.value);
       this.dotSizeValue.textContent = this.dotSize;
@@ -110,15 +120,27 @@ class CyberVision {
     }
   }
 
+  getResolutionConstraints() {
+    const resolutions = {
+      "4k": { width: 3840, height: 2160 },
+      "1080p": { width: 1920, height: 1080 },
+      "720p": { width: 1280, height: 720 },
+    };
+    return resolutions[this.selectedResolution];
+  }
+
   async startCamera() {
     try {
       this.setStatus("Requesting camera access...");
 
+      // Get selected resolution
+      const resolution = this.getResolutionConstraints();
+
       // Request camera
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: resolution.width },
+          height: { ideal: resolution.height },
           facingMode: "user",
         },
       });
