@@ -55,8 +55,10 @@ bazel_dep(name = "rules_python", version = "0.38.0")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
+    is_default = True,
     python_version = "3.13",
 )
+use_repo(python, "python_3_13")
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 

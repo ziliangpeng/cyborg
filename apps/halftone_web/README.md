@@ -8,13 +8,6 @@ Simple website for `visual.halftone` that lets you upload an image and preview a
 bazel run //apps/halftone_web:halftone_web -- --port 8080
 ```
 
-Or without Bazel:
-
-```bash
-pip install -r apps/halftone_web/requirements.txt
-PYTHONPATH=. python -m apps.halftone_web.main --port 8080
-```
-
 Then open:
 
 - `http://127.0.0.1:8080/`

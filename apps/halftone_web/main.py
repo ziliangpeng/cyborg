@@ -20,8 +20,8 @@ def main() -> None:
         from apps.halftone_web.server import run_server
     except ModuleNotFoundError as e:
         raise SystemExit(
-            "Missing dependencies. If running outside Bazel, install: "
-            "`pip install -r apps/halftone_web/requirements.txt`"
+            "Missing dependencies. Run via Bazel: "
+            "`bazel run //apps/halftone_web:halftone_web`"
         ) from e
 
     run_server(host=args.host, port=args.port, debug=args.debug)
