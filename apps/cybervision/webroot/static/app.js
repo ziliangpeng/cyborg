@@ -1,6 +1,7 @@
 /* CyberVision - Main application */
 
-import { initGPU } from "./gpu.js";
+import { initGPU } from "./webgpu-renderer.js";
+import { initWebGL } from "./webgl-renderer.js";
 
 class CyberVision {
   constructor() {
@@ -17,7 +18,8 @@ class CyberVision {
     this.gpuStatus = document.getElementById("gpuStatus");
 
     // State
-    this.gpuContext = null;
+    this.renderer = null;
+    this.rendererType = null; // 'webgpu' or 'webgl'
     this.stream = null;
     this.isRunning = false;
     this.animationFrame = null;
@@ -25,14 +27,6 @@ class CyberVision {
     // Effect state
     this.currentEffect = "halftone";
     this.dotSize = 8;
-
-    // WebGPU resources
-    this.halftoneShader = null;
-    this.halftonePipeline = null;
-    this.halftoneBindGroup = null;
-    this.uniformBuffer = null;
-    this.inputTexture = null;
-    this.outputTexture = null;
 
     // FPS tracking
     this.frameCount = 0;
@@ -42,18 +36,29 @@ class CyberVision {
   }
 
   async init() {
-    // Check WebGPU support
+    // Try WebGPU first, fallback to WebGL
     try {
-      this.gpuContext = await initGPU(this.canvas);
-      this.gpuStatus.textContent = "Supported";
+      console.log("Attempting to initialize WebGPU...");
+      this.renderer = await initGPU(this.canvas);
+      this.rendererType = "webgpu";
+      this.gpuStatus.textContent = "WebGPU";
       this.gpuStatus.style.color = "#34d399";
-      await this.initHalftoneEffect();
+      console.log("WebGPU initialized successfully");
     } catch (err) {
-      this.gpuStatus.textContent = "Not supported";
-      this.gpuStatus.style.color = "#f87171";
-      this.setStatus(`WebGPU Error: ${err.message}`);
-      this.startBtn.disabled = true;
-      return;
+      console.log("WebGPU failed, trying WebGL:", err.message);
+      try {
+        this.renderer = await initWebGL(this.canvas);
+        this.rendererType = "webgl";
+        this.gpuStatus.textContent = "WebGL";
+        this.gpuStatus.style.color = "#60a5fa";
+        console.log("WebGL initialized successfully");
+      } catch (err2) {
+        this.gpuStatus.textContent = "Not supported";
+        this.gpuStatus.style.color = "#f87171";
+        this.setStatus(`Error: Neither WebGPU nor WebGL2 are supported. ${err2.message}`);
+        this.startBtn.disabled = true;
+        return;
+      }
     }
 
     // Event listeners
@@ -65,40 +70,25 @@ class CyberVision {
     this.dotSizeSlider.addEventListener("input", (e) => {
       this.dotSize = parseInt(e.target.value);
       this.dotSizeValue.textContent = this.dotSize;
-      this.updateHalftoneParams();
+      if (this.rendererType === "webgpu") {
+        this.updateHalftoneParams();
+      }
     });
 
-    this.setStatus("Ready. Click 'Start Camera' to begin.");
-  }
-
-  async initHalftoneEffect() {
-    // Load shader
-    const shaderResponse = await fetch("/static/shaders/halftone.wgsl");
-    const shaderCode = await shaderResponse.text();
-    this.halftoneShader = this.gpuContext.device.createShaderModule({
-      code: shaderCode,
-    });
-
-    // Create uniform buffer
-    const uniformData = new Float32Array([
-      this.dotSize, // sampleSize
-      0,            // width (will be updated)
-      0,            // height (will be updated)
-      0,            // padding
-    ]);
-    this.uniformBuffer = this.gpuContext.createUniformBuffer(uniformData);
+    this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
   }
 
   updateHalftoneParams() {
-    if (!this.uniformBuffer || !this.video.videoWidth) return;
-
-    const uniformData = new Float32Array([
-      this.dotSize,
-      this.video.videoWidth,
-      this.video.videoHeight,
-      0,
-    ]);
-    this.gpuContext.updateUniformBuffer(this.uniformBuffer, uniformData);
+    // Only for WebGPU
+    if (this.rendererType === "webgpu" && this.renderer.uniformBuffer && this.video.videoWidth) {
+      const uniformData = new Float32Array([
+        this.dotSize,
+        this.video.videoWidth,
+        this.video.videoHeight,
+        0,
+      ]);
+      this.renderer.updateUniformBuffer(this.renderer.uniformBuffer, uniformData);
+    }
   }
 
   async startCamera() {
@@ -135,29 +125,18 @@ class CyberVision {
 
       console.log(`Video dimensions: ${this.video.videoWidth}x${this.video.videoHeight}`);
 
-      // Reconfigure canvas context
-      this.gpuContext.canvasContext.configure({
-        device: this.gpuContext.device,
-        format: this.gpuContext.canvasFormat,
-        alphaMode: "opaque",
-        width: this.canvas.width,
-        height: this.canvas.height,
-      });
-
-      // Setup halftone pipeline
-      console.log("Setting up halftone pipeline...");
-      await this.setupHalftonePipeline();
-
-      // Update params with video dimensions
-      this.updateHalftoneParams();
-      console.log("Halftone pipeline ready");
+      // Initialize renderer-specific resources
+      if (this.rendererType === "webgpu") {
+        await this.setupWebGPU();
+      }
+      // WebGL doesn't need additional setup after init
 
       // Update UI
       this.startBtn.disabled = true;
       this.stopBtn.disabled = false;
       this.isRunning = true;
 
-      this.setStatus("Camera running.");
+      this.setStatus(`Camera running with ${this.rendererType.toUpperCase()}.`);
 
       // Start render loop
       this.render();
@@ -167,12 +146,39 @@ class CyberVision {
     }
   }
 
-  async setupHalftonePipeline() {
+  async setupWebGPU() {
     const width = this.video.videoWidth;
     const height = this.video.videoHeight;
 
+    // Reconfigure canvas context
+    this.renderer.canvasContext.configure({
+      device: this.renderer.device,
+      format: this.renderer.canvasFormat,
+      alphaMode: "opaque",
+      width: width,
+      height: height,
+    });
+
+    console.log("Setting up WebGPU pipeline...");
+
+    // Load and create halftone shader
+    const shaderResponse = await fetch("/static/shaders/halftone.wgsl");
+    const shaderCode = await shaderResponse.text();
+    this.renderer.halftoneShader = this.renderer.device.createShaderModule({
+      code: shaderCode,
+    });
+
+    // Create uniform buffer
+    const uniformData = new Float32Array([
+      this.dotSize,
+      width,
+      height,
+      0,
+    ]);
+    this.renderer.uniformBuffer = this.renderer.createUniformBuffer(uniformData);
+
     // Create textures
-    this.inputTexture = this.gpuContext.device.createTexture({
+    this.renderer.inputTexture = this.renderer.device.createTexture({
       size: [width, height],
       format: "rgba8unorm",
       usage:
@@ -181,45 +187,46 @@ class CyberVision {
         GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    // Output texture for compute shader (must be rgba8unorm for storage)
-    this.outputTexture = this.gpuContext.device.createTexture({
+    this.renderer.outputTexture = this.renderer.device.createTexture({
       size: [width, height],
       format: "rgba8unorm",
       usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
     });
 
     // Create compute pipeline
-    this.halftonePipeline = this.gpuContext.device.createComputePipeline({
+    this.renderer.halftonePipeline = this.renderer.device.createComputePipeline({
       layout: "auto",
       compute: {
-        module: this.halftoneShader,
+        module: this.renderer.halftoneShader,
         entryPoint: "main",
       },
     });
 
     // Create bind group
-    this.halftoneBindGroup = this.gpuContext.device.createBindGroup({
-      layout: this.halftonePipeline.getBindGroupLayout(0),
+    this.renderer.halftoneBindGroup = this.renderer.device.createBindGroup({
+      layout: this.renderer.halftonePipeline.getBindGroupLayout(0),
       entries: [
         {
           binding: 0,
-          resource: this.inputTexture.createView(),
+          resource: this.renderer.inputTexture.createView(),
         },
         {
           binding: 1,
-          resource: this.outputTexture.createView(),
+          resource: this.renderer.outputTexture.createView(),
         },
         {
           binding: 2,
           resource: {
-            buffer: this.uniformBuffer,
+            buffer: this.renderer.uniformBuffer,
           },
         },
       ],
     });
 
-    // Create blit pipeline to copy rgba texture to bgra canvas
+    // Setup blit pipeline for rgba->bgra conversion
     await this.setupBlitPipeline();
+
+    console.log("WebGPU pipeline ready");
   }
 
   async setupBlitPipeline() {
@@ -244,11 +251,11 @@ class CyberVision {
       }
     `;
 
-    const blitShader = this.gpuContext.device.createShaderModule({
+    const blitShader = this.renderer.device.createShaderModule({
       code: blitShaderCode,
     });
 
-    this.blitPipeline = this.gpuContext.device.createRenderPipeline({
+    this.renderer.blitPipeline = this.renderer.device.createRenderPipeline({
       layout: "auto",
       vertex: {
         module: blitShader,
@@ -257,30 +264,28 @@ class CyberVision {
       fragment: {
         module: blitShader,
         entryPoint: "fs_main",
-        targets: [{ format: this.gpuContext.canvasFormat }],
+        targets: [{ format: this.renderer.canvasFormat }],
       },
       primitive: {
         topology: "triangle-list",
       },
     });
 
-    // Create sampler
-    this.blitSampler = this.gpuContext.device.createSampler({
+    this.renderer.blitSampler = this.renderer.device.createSampler({
       magFilter: "linear",
       minFilter: "linear",
     });
 
-    // Create bind group
-    this.blitBindGroup = this.gpuContext.device.createBindGroup({
-      layout: this.blitPipeline.getBindGroupLayout(0),
+    this.renderer.blitBindGroup = this.renderer.device.createBindGroup({
+      layout: this.renderer.blitPipeline.getBindGroupLayout(0),
       entries: [
         {
           binding: 0,
-          resource: this.outputTexture.createView(),
+          resource: this.renderer.outputTexture.createView(),
         },
         {
           binding: 1,
-          resource: this.blitSampler,
+          resource: this.renderer.blitSampler,
         },
       ],
     });
@@ -308,20 +313,12 @@ class CyberVision {
     if (!this.isRunning) return;
 
     try {
-      // Copy video frame to input texture
-      this.gpuContext.device.queue.copyExternalImageToTexture(
-        { source: this.video, flipY: false },
-        { texture: this.inputTexture },
-        [this.video.videoWidth, this.video.videoHeight]
-      );
-
       if (this.currentEffect === "halftone") {
         this.renderHalftone();
       } else {
         this.renderPassthrough();
       }
 
-      // Update FPS
       this.updateFPS();
     } catch (err) {
       console.error("Render error:", err);
@@ -330,17 +327,41 @@ class CyberVision {
       return;
     }
 
-    // Continue loop
     this.animationFrame = requestAnimationFrame(() => this.render());
   }
 
   renderHalftone() {
-    const commandEncoder = this.gpuContext.device.createCommandEncoder();
+    if (this.rendererType === "webgpu") {
+      this.renderHalftoneWebGPU();
+    } else {
+      this.renderer.renderHalftone(this.video, this.dotSize);
+    }
+  }
+
+  renderPassthrough() {
+    if (this.rendererType === "webgpu") {
+      this.renderPassthroughWebGPU();
+    } else {
+      this.renderer.renderPassthrough(this.video);
+    }
+  }
+
+  renderHalftoneWebGPU() {
+    const device = this.renderer.device;
+
+    // Copy video frame to input texture
+    device.queue.copyExternalImageToTexture(
+      { source: this.video, flipY: false },
+      { texture: this.renderer.inputTexture },
+      [this.video.videoWidth, this.video.videoHeight]
+    );
+
+    const commandEncoder = device.createCommandEncoder();
 
     // Run compute shader
     const computePass = commandEncoder.beginComputePass();
-    computePass.setPipeline(this.halftonePipeline);
-    computePass.setBindGroup(0, this.halftoneBindGroup);
+    computePass.setPipeline(this.renderer.halftonePipeline);
+    computePass.setBindGroup(0, this.renderer.halftoneBindGroup);
 
     const workgroupsX = Math.ceil(this.video.videoWidth / 8);
     const workgroupsY = Math.ceil(this.video.videoHeight / 8);
@@ -348,7 +369,7 @@ class CyberVision {
     computePass.end();
 
     // Blit rgba texture to canvas (bgra format)
-    const canvasTexture = this.gpuContext.canvasContext.getCurrentTexture();
+    const canvasTexture = this.renderer.canvasContext.getCurrentTexture();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
@@ -358,34 +379,43 @@ class CyberVision {
         },
       ],
     });
-    renderPass.setPipeline(this.blitPipeline);
-    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.setPipeline(this.renderer.blitPipeline);
+    renderPass.setBindGroup(0, this.renderer.blitBindGroup);
     renderPass.draw(6, 1, 0, 0);
     renderPass.end();
 
-    this.gpuContext.device.queue.submit([commandEncoder.finish()]);
+    device.queue.submit([commandEncoder.finish()]);
   }
 
-  renderPassthrough() {
-    const commandEncoder = this.gpuContext.device.createCommandEncoder();
+  renderPassthroughWebGPU() {
+    const device = this.renderer.device;
+
+    // Copy video frame to input texture
+    device.queue.copyExternalImageToTexture(
+      { source: this.video, flipY: false },
+      { texture: this.renderer.inputTexture },
+      [this.video.videoWidth, this.video.videoHeight]
+    );
+
+    const commandEncoder = device.createCommandEncoder();
 
     // Create temporary bind group for input texture
-    const passthroughBindGroup = this.gpuContext.device.createBindGroup({
-      layout: this.blitPipeline.getBindGroupLayout(0),
+    const passthroughBindGroup = device.createBindGroup({
+      layout: this.renderer.blitPipeline.getBindGroupLayout(0),
       entries: [
         {
           binding: 0,
-          resource: this.inputTexture.createView(),
+          resource: this.renderer.inputTexture.createView(),
         },
         {
           binding: 1,
-          resource: this.blitSampler,
+          resource: this.renderer.blitSampler,
         },
       ],
     });
 
     // Blit input texture directly to canvas
-    const canvasTexture = this.gpuContext.canvasContext.getCurrentTexture();
+    const canvasTexture = this.renderer.canvasContext.getCurrentTexture();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
@@ -395,12 +425,12 @@ class CyberVision {
         },
       ],
     });
-    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setPipeline(this.renderer.blitPipeline);
     renderPass.setBindGroup(0, passthroughBindGroup);
     renderPass.draw(6, 1, 0, 0);
     renderPass.end();
 
-    this.gpuContext.device.queue.submit([commandEncoder.finish()]);
+    device.queue.submit([commandEncoder.finish()]);
   }
 
   updateFPS() {
