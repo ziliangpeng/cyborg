@@ -5,13 +5,13 @@ py_library(
     name = "utils",
     srcs = glob(["utils/*.py"]),
     deps = [
-        "@pip//huggingface_hub:huggingface_hub",
-        "@pip//numpy:numpy",
-        "@pip//safetensors:safetensors",
-        "@pip//tiktoken:tiktoken",
-        "@pip//tinygrad:tinygrad",
-        "@pip//torch:torch",  # For loading PyTorch bin format (some models don't have safetensors)
-        "@pip//transformers:transformers",  # For OPT tokenizer
+        "@pip//huggingface_hub",
+        "@pip//numpy",
+        "@pip//safetensors",
+        "@pip//tiktoken",
+        "@pip//tinygrad",
+        "@pip//torch",  # For loading PyTorch bin format (some models don't have safetensors)
+        "@pip//transformers",  # For OPT tokenizer
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
 )
@@ -21,7 +21,7 @@ py_library(
     name = "ops",
     srcs = glob(["ops/*.py"]),
     deps = [
-        "@pip//tinygrad:tinygrad",
+        "@pip//tinygrad",
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
 )
@@ -33,8 +33,8 @@ py_library(
     deps = [
         ":ops",
         ":utils",
-        "@pip//numpy:numpy",
-        "@pip//tinygrad:tinygrad",
+        "@pip//numpy",
+        "@pip//tinygrad",
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
 )
@@ -84,7 +84,7 @@ py_binary(
     main = "cli.py",
     deps = [
         ":tinyllm",
-        "@pip//click:click",
-        "@pip//tinygrad:tinygrad",
+        "@pip//click",
+        "@pip//tinygrad",
     ],
 )
