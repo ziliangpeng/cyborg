@@ -24,7 +24,7 @@ export class WebGLRenderer {
     console.log("WebGL2 initialized");
 
     // Create shaders
-    this.createShaders();
+    await this.createShaders();
 
     // Create buffers for fullscreen quad
     this.createBuffers();
@@ -35,9 +35,24 @@ export class WebGLRenderer {
     return this;
   }
 
-  createShaders() {
+  async loadShader(path) {
+    const response = await fetch(path);
+    if (!response.ok) {
+      throw new Error(`Failed to load shader: ${path}`);
+    }
+    return await response.text();
+  }
+
+  async createShaders() {
     const gl = this.gl;
 
+    // Load shaders from files
+    const vertexShaderSource = await this.loadShader("/static/shaders/common.vert.glsl");
+    const halftoneFragmentSource = await this.loadShader("/static/shaders/halftone.frag.glsl");
+    const clusteringFragmentSource = await this.loadShader("/static/shaders/clustering.frag.glsl");
+    const passthroughFragmentSource = await this.loadShader("/static/shaders/passthrough.frag.glsl");
+
+    /* OLD INLINE SHADERS - NOW LOADED FROM FILES
     // Vertex shader (same for all effects)
     const vertexShaderSource = `#version 300 es
       in vec2 a_position;
@@ -249,6 +264,7 @@ export class WebGLRenderer {
         fragColor = texture(u_video, v_texCoord);
       }
     `;
+    END OF OLD INLINE SHADERS */
 
     // Compile shaders
     const vertexShader = this.compileShader(gl.VERTEX_SHADER, vertexShaderSource);
