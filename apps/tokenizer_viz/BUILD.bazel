@@ -1,0 +1,18 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "tokenizer_viz",
+    srcs = [
+        "__init__.py",
+        "main.py",
+        "server.py",
+    ],
+    main = "main.py",
+    data = glob(["webroot/**"]),
+    deps = [
+        "//ai/llm/tinyllm:tinyllm",
+        "@pip//tiktoken",
+        "@pip//transformers",
+        "@bazel_tools//tools/python/runfiles",
+    ],
+)
