@@ -99,35 +99,19 @@ def _tokenize_text(text: str, tokenizer_name: str) -> list[dict[str, Any]]:
                 }
             )
     else:
-        # For tiktoken, use a sequential matching approach
-        # Encode the text to get token IDs
+        # For tiktoken, use decode_with_offsets to get accurate character positions
         token_ids = tokenizer.encode(text)
+        decoded_text, offsets = tokenizer.decode_with_offsets(token_ids)
 
-        # Build result by matching tokens sequentially
-        text_pos = 0
-        for i, token_id in enumerate(token_ids):
-            # Decode this single token
+        for i, (token_id, start) in enumerate(zip(token_ids, offsets)):
+            # Decode this single token to get its text
             token_text = tokenizer.decode([token_id])
 
-            # Try to find this token text in the remaining text
-            # For tiktoken, decoded tokens should match the original text
-            if text_pos < len(text):
-                # Look for the token text starting from current position
-                found_pos = text.find(token_text, text_pos)
-                if found_pos != -1:
-                    start = found_pos
-                    end = found_pos + len(token_text)
-                    text_pos = end
-                else:
-                    # If not found, it might be a special token or byte-level encoding issue
-                    # Use the current position and advance by token length
-                    start = text_pos
-                    end = min(text_pos + len(token_text), len(text))
-                    text_pos = end
+            # Calculate end position as start of next token, or end of text for last token
+            if i + 1 < len(offsets):
+                end = offsets[i + 1]
             else:
-                # Past end of text (shouldn't happen, but handle gracefully)
-                start = len(text)
-                end = len(text)
+                end = len(decoded_text)
 
             result.append(
                 {
