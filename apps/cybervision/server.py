@@ -39,14 +39,19 @@ class CyberVisionHandler(BaseHTTPRequestHandler):
 
     def _send_file(self, path: Path) -> None:
         if not path.exists() or not path.is_file():
+            logging.debug(f"Path not found: {path}")
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        base = WEBROOT.resolve()
-        target = path.resolve()
+        # Use absolute() instead of resolve() to avoid following symlinks
+        # Bazel uses symlinks in runfiles, so resolve() would break the path check
+        base = WEBROOT.absolute()
+        target = path.absolute()
+        logging.debug(f"Base: {base}, Target: {target}")
         try:
             target.relative_to(base)
-        except ValueError:
+        except ValueError as e:
+            logging.debug(f"Path traversal check failed: {e}")
             self.send_error(HTTPStatus.FORBIDDEN)
             return
 
@@ -82,6 +87,8 @@ class CyberVisionHandler(BaseHTTPRequestHandler):
 
 def run_server(*, host: str, port: int, debug: bool) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    logging.info(f"WEBROOT: {WEBROOT.resolve()}")
+    logging.info(f"WEBROOT exists: {WEBROOT.exists()}")
     with ThreadingHTTPServer((host, port), CyberVisionHandler) as httpd:
         logging.info("Listening on http://%s:%d", host, port)
         try:

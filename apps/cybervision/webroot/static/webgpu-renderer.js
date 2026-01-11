@@ -14,19 +14,23 @@ export class WebGPURenderer {
 
     // Pipelines
     this.halftonePipeline = null;
+    this.clusteringPipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
     this.halftoneBindGroup = null;
+    this.clusteringBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
     // Buffers and samplers
     this.uniformBuffer = null;
+    this.clusteringUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
     this.halftoneShader = null;
+    this.clusteringShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -96,6 +100,13 @@ export class WebGPURenderer {
       code: shaderCode,
     });
 
+    // Load and create clustering shader
+    const clusteringShaderResponse = await fetch("/static/shaders/clustering.wgsl");
+    const clusteringShaderCode = await clusteringShaderResponse.text();
+    this.clusteringShader = this.device.createShaderModule({
+      code: clusteringShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -107,6 +118,18 @@ export class WebGPURenderer {
       0, 0, 0,  // padding
     ]);
     this.uniformBuffer = this.createUniformBuffer(uniformData);
+
+    // Create clustering uniform buffer
+    const clusteringUniformData = new Float32Array([
+      0,  // algorithm (0=quantization, 1=kmeans, 2=meanshift, 3=posterize)
+      8,  // colorCount
+      0.1,  // threshold
+      0,  // padding
+      this.videoWidth,
+      this.videoHeight,
+      0, 0,  // padding
+    ]);
+    this.clusteringUniformBuffer = this.createUniformBuffer(clusteringUniformData);
 
     // Create textures
     this.inputTexture = this.device.createTexture({
@@ -149,6 +172,36 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.uniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create clustering compute pipeline
+    this.clusteringPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.clusteringShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create clustering bind group
+    this.clusteringBindGroup = this.device.createBindGroup({
+      layout: this.clusteringPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.clusteringUniformBuffer,
           },
         },
       ],
@@ -316,6 +369,65 @@ export class WebGPURenderer {
     });
     renderPass.setPipeline(this.blitPipeline);
     renderPass.setBindGroup(0, this.passthroughBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderClustering(video, algorithm, colorCount, threshold) {
+    // Map algorithm string to number
+    const algorithmMap = {
+      "quantization": 0,
+      "kmeans": 1,
+      "meanshift": 2,
+      "posterize": 3,
+    };
+
+    // Update uniform buffer with current parameters
+    const uniformData = new Float32Array([
+      algorithmMap[algorithm] || 0,
+      colorCount,
+      threshold,
+      0,  // padding
+      this.videoWidth,
+      this.videoHeight,
+      0, 0,  // padding
+    ]);
+    this.updateUniformBuffer(this.clusteringUniformBuffer, uniformData);
+
+    // Copy video frame to input texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    // Run compute shader
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.clusteringPipeline);
+    computePass.setBindGroup(0, this.clusteringBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    // Blit rgba texture to canvas (bgra format)
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
     renderPass.draw(6, 1, 0, 0);
     renderPass.end();
 
