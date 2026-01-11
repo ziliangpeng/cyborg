@@ -28,6 +28,7 @@ class CyberVision {
     // Effect state
     this.currentEffect = "original";
     this.dotSize = 8;
+    this.coloredDots = 3;
 
     // FPS tracking
     this.frameCount = 0;
@@ -149,7 +150,7 @@ class CyberVision {
 
       // Initialize renderer-specific resources
       if (this.rendererType === "webgpu") {
-        await this.renderer.setupPipeline(this.video, this.dotSize);
+        await this.renderer.setupPipeline(this.video, this.dotSize, this.coloredDots);
       }
       // WebGL doesn't need additional setup after init
 
@@ -213,7 +214,7 @@ class CyberVision {
     if (this.rendererType === "webgpu") {
       this.renderer.renderHalftone(this.video);
     } else {
-      this.renderer.renderHalftone(this.video, this.dotSize);
+      this.renderer.renderHalftone(this.video, this.dotSize, this.coloredDots);
     }
   }
 

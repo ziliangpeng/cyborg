@@ -72,9 +72,10 @@ export class WebGPURenderer {
     return this;
   }
 
-  async setupPipeline(video, dotSize) {
+  async setupPipeline(video, dotSize, coloredDots = 3) {
     this.videoWidth = video.videoWidth;
     this.videoHeight = video.videoHeight;
+    this.coloredDots = coloredDots;
 
     // Reconfigure canvas context with video dimensions
     this.canvasContext.configure({
@@ -99,7 +100,7 @@ export class WebGPURenderer {
       dotSize,
       this.videoWidth,
       this.videoHeight,
-      0,
+      coloredDots,
     ]);
     this.uniformBuffer = this.createUniformBuffer(uniformData);
 
@@ -239,7 +240,7 @@ export class WebGPURenderer {
         dotSize,
         this.videoWidth,
         this.videoHeight,
-        0,
+        this.coloredDots,
       ]);
       this.updateUniformBuffer(this.uniformBuffer, uniformData);
     }

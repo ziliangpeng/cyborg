@@ -8,7 +8,7 @@ struct HalftoneParams {
   sampleSize: f32,
   width: f32,
   height: f32,
-  _padding: f32,  // Align to 16 bytes
+  coloredDots: f32,  // Number of colored dots (N)
 }
 
 @group(0) @binding(2) var<uniform> params: HalftoneParams;
@@ -41,6 +41,22 @@ fn sampleBrightness(tex: texture_2d<f32>, center: vec2f, sampleSize: f32) -> f32
   return sum / max(count, 1.0);
 }
 
+// Simple hash function for pseudo-random number generation
+fn hash(p: vec2f) -> f32 {
+  let p3 = fract(vec3f(p.x, p.y, p.x) * 0.1031);
+  let p3_dot = dot(p3, vec3f(p3.y + 33.33, p3.z + 33.33, p3.x + 33.33));
+  let p3_result = p3 + vec3f(p3_dot, p3_dot, p3_dot);
+  return fract((p3_result.x + p3_result.y) * p3_result.z);
+}
+
+// Generate random color based on cell position
+fn randomColor(cellIndex: vec2f, seed: f32) -> vec3f {
+  let r = hash(cellIndex + vec2f(seed, 0.0));
+  let g = hash(cellIndex + vec2f(0.0, seed));
+  let b = hash(cellIndex + vec2f(seed, seed));
+  return vec3f(r, g, b);
+}
+
 @compute @workgroup_size(8, 8)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let dims = textureDimensions(outputTex);
@@ -71,8 +87,21 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   // Draw circle using step function
   let inside = step(dist, radius);
 
-  // Black dot on white background
-  let color = mix(vec3f(1.0), vec3f(0.0), inside);
+  // Determine if this dot should be colored
+  let cellIndex = vec2f(cellX, cellY);
+  let cellHash = hash(cellIndex);
+  let totalCells = (params.width / sampleSize) * (params.height / sampleSize);
+  let colorProbability = params.coloredDots / totalCells;
+  let isColored = cellHash < colorProbability;
+
+  // Choose color: random color if selected, black otherwise
+  var dotColor = vec3f(0.0);  // Default black
+  if (isColored) {
+    dotColor = randomColor(cellIndex, 12.345);
+  }
+
+  // Black/colored dot on white background
+  let color = mix(vec3f(1.0), dotColor, inside);
 
   textureStore(outputTex, vec2i(id.xy), vec4f(color, 1.0));
 }

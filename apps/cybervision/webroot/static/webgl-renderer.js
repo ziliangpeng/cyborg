@@ -59,6 +59,23 @@ export class WebGLRenderer {
       uniform sampler2D u_video;
       uniform vec2 u_resolution;
       uniform float u_dotSize;
+      uniform float u_coloredDots;
+
+      // Simple hash function for pseudo-random number generation
+      float hash(vec2 p) {
+        vec3 p3 = fract(vec3(p.x, p.y, p.x) * 0.1031);
+        float p3_dot = dot(p3, vec3(p3.y + 33.33, p3.z + 33.33, p3.x + 33.33));
+        vec3 p3_result = p3 + vec3(p3_dot);
+        return fract((p3_result.x + p3_result.y) * p3_result.z);
+      }
+
+      // Generate random color based on cell position
+      vec3 randomColor(vec2 cellIndex, float seed) {
+        float r = hash(cellIndex + vec2(seed, 0.0));
+        float g = hash(cellIndex + vec2(0.0, seed));
+        float b = hash(cellIndex + vec2(seed, seed));
+        return vec3(r, g, b);
+      }
 
       void main() {
         vec2 pixelPos = v_texCoord * u_resolution;
@@ -82,8 +99,20 @@ export class WebGLRenderer {
         // Draw circle
         float inside = step(dist, radius);
 
-        // Black dot on white background
-        vec3 outputColor = mix(vec3(1.0), vec3(0.0), inside);
+        // Determine if this dot should be colored
+        float cellHash = hash(cellIndex);
+        float totalCells = (u_resolution.x / u_dotSize) * (u_resolution.y / u_dotSize);
+        float colorProbability = u_coloredDots / totalCells;
+        bool isColored = cellHash < colorProbability;
+
+        // Choose color: random color if selected, black otherwise
+        vec3 dotColor = vec3(0.0);  // Default black
+        if (isColored) {
+          dotColor = randomColor(cellIndex, 12.345);
+        }
+
+        // Black/colored dot on white background
+        vec3 outputColor = mix(vec3(1.0), dotColor, inside);
         fragColor = vec4(outputColor, 1.0);
       }
     `;
@@ -202,7 +231,7 @@ export class WebGLRenderer {
     );
   }
 
-  renderHalftone(video, dotSize) {
+  renderHalftone(video, dotSize, coloredDots = 3) {
     const gl = this.gl;
     const program = this.halftoneProgram;
 
@@ -228,10 +257,12 @@ export class WebGLRenderer {
     const videoLoc = gl.getUniformLocation(program, "u_video");
     const resolutionLoc = gl.getUniformLocation(program, "u_resolution");
     const dotSizeLoc = gl.getUniformLocation(program, "u_dotSize");
+    const coloredDotsLoc = gl.getUniformLocation(program, "u_coloredDots");
 
     gl.uniform1i(videoLoc, 0);
     gl.uniform2f(resolutionLoc, video.videoWidth, video.videoHeight);
     gl.uniform1f(dotSizeLoc, dotSize);
+    gl.uniform1f(coloredDotsLoc, coloredDots);
 
     // Draw
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
