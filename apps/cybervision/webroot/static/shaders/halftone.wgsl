@@ -9,6 +9,10 @@ struct HalftoneParams {
   width: f32,
   height: f32,
   coloredDots: f32,  // Number of colored dots (N)
+  time: f32,  // Floor of seconds, changes every second
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
 }
 
 @group(0) @binding(2) var<uniform> params: HalftoneParams;
@@ -89,7 +93,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
   // Determine if this dot should be colored
   let cellIndex = vec2f(cellX, cellY);
-  let cellHash = hash(cellIndex);
+  // Include time in hash so selection changes every second
+  let cellHash = hash(cellIndex + vec2f(params.time * 1000.0, params.time * 1000.0));
   let totalCells = (params.width / sampleSize) * (params.height / sampleSize);
   let colorProbability = params.coloredDots / totalCells;
   let isColored = cellHash < colorProbability;

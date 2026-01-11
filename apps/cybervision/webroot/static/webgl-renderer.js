@@ -60,6 +60,7 @@ export class WebGLRenderer {
       uniform vec2 u_resolution;
       uniform float u_dotSize;
       uniform float u_coloredDots;
+      uniform float u_time;
 
       // Simple hash function for pseudo-random number generation
       float hash(vec2 p) {
@@ -100,7 +101,8 @@ export class WebGLRenderer {
         float inside = step(dist, radius);
 
         // Determine if this dot should be colored
-        float cellHash = hash(cellIndex);
+        // Include time in hash so selection changes every second
+        float cellHash = hash(cellIndex + vec2(u_time * 1000.0, u_time * 1000.0));
         float totalCells = (u_resolution.x / u_dotSize) * (u_resolution.y / u_dotSize);
         float colorProbability = u_coloredDots / totalCells;
         bool isColored = cellHash < colorProbability;
@@ -258,11 +260,15 @@ export class WebGLRenderer {
     const resolutionLoc = gl.getUniformLocation(program, "u_resolution");
     const dotSizeLoc = gl.getUniformLocation(program, "u_dotSize");
     const coloredDotsLoc = gl.getUniformLocation(program, "u_coloredDots");
+    const timeLoc = gl.getUniformLocation(program, "u_time");
+
+    const time = Math.floor(performance.now() / 1000);
 
     gl.uniform1i(videoLoc, 0);
     gl.uniform2f(resolutionLoc, video.videoWidth, video.videoHeight);
     gl.uniform1f(dotSizeLoc, dotSize);
     gl.uniform1f(coloredDotsLoc, coloredDots);
+    gl.uniform1f(timeLoc, time);
 
     // Draw
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);

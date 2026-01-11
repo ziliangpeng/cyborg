@@ -28,9 +28,11 @@ export class WebGPURenderer {
     // Shader modules
     this.halftoneShader = null;
 
-    // Video dimensions
+    // Video dimensions and effect params
     this.videoWidth = 0;
     this.videoHeight = 0;
+    this.dotSize = 8;
+    this.coloredDots = 3;
   }
 
   async init(canvas) {
@@ -75,6 +77,7 @@ export class WebGPURenderer {
   async setupPipeline(video, dotSize, coloredDots = 3) {
     this.videoWidth = video.videoWidth;
     this.videoHeight = video.videoHeight;
+    this.dotSize = dotSize;
     this.coloredDots = coloredDots;
 
     // Reconfigure canvas context with video dimensions
@@ -96,11 +99,14 @@ export class WebGPURenderer {
     });
 
     // Create uniform buffer
+    const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
       dotSize,
       this.videoWidth,
       this.videoHeight,
       coloredDots,
+      time,
+      0, 0, 0,  // padding
     ]);
     this.uniformBuffer = this.createUniformBuffer(uniformData);
 
@@ -235,18 +241,34 @@ export class WebGPURenderer {
   }
 
   updateDotSize(dotSize) {
+    this.dotSize = dotSize;
     if (this.uniformBuffer && this.videoWidth) {
+      const time = Math.floor(performance.now() / 1000);
       const uniformData = new Float32Array([
         dotSize,
         this.videoWidth,
         this.videoHeight,
         this.coloredDots,
+        time,
+        0, 0, 0,  // padding
       ]);
       this.updateUniformBuffer(this.uniformBuffer, uniformData);
     }
   }
 
   renderHalftone(video) {
+    // Update time in uniform buffer every frame
+    const time = Math.floor(performance.now() / 1000);
+    const uniformData = new Float32Array([
+      this.dotSize,
+      this.videoWidth,
+      this.videoHeight,
+      this.coloredDots,
+      time,
+      0, 0, 0,  // padding
+    ]);
+    this.updateUniformBuffer(this.uniformBuffer, uniformData);
+
     // Copy video frame to input texture
     this.device.queue.copyExternalImageToTexture(
       { source: video, flipY: false },
