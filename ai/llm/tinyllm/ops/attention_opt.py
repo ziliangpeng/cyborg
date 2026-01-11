@@ -1,4 +1,8 @@
-"""OPT-style multi-head self-attention for TinyLLM."""
+"""OPT-style multi-head self-attention for TinyLLM.
+
+TODO: Find a way to combine this into the GPT-2 attention (attention.py) since
+the math is identical - only the weight dict structure differs.
+"""
 
 import math
 
