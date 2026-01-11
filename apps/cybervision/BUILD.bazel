@@ -1,0 +1,13 @@
+py_binary(
+    name = "cybervision",
+    srcs = [
+        "__init__.py",
+        "main.py",
+        "server.py",
+    ],
+    main = "main.py",
+    data = glob(["webroot/**"]),
+    deps = [
+        "@pip//click",
+    ],
+)
