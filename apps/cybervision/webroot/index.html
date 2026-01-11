@@ -40,9 +40,13 @@
                 <input type="radio" name="effect" value="halftone" />
                 <span>Halftone</span>
               </label>
+              <label class="radio-label">
+                <input type="radio" name="effect" value="clustering" />
+                <span>Clustering</span>
+              </label>
             </div>
 
-            <div class="effect-controls">
+            <div class="effect-controls halftone-controls" id="halftoneControls">
               <div class="control-group">
                 <label for="dotSizeSlider">
                   Dot Size: <span id="dotSizeValue">8</span>px
@@ -64,6 +68,54 @@
                 </label>
               </div>
             </div>
+
+            <div class="effect-controls clustering-controls" id="clusteringControls" style="display: none;">
+              <div class="control-group">
+                <label for="algorithmSelect">Algorithm</label>
+                <select id="algorithmSelect" class="select">
+                  <option value="quantization-kmeans">Quantization / K-means</option>
+                  <option value="meanshift">Mean Shift</option>
+                  <option value="posterize">Posterize</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label class="radio-label">
+                  <input type="checkbox" id="trueColorsCheckbox" />
+                  <span>True Colors (exactly N colors)</span>
+                </label>
+              </div>
+
+              <div class="control-group">
+                <label for="colorCountSlider">
+                  Number of Colors: <span id="colorCountValue">8</span>
+                </label>
+                <input
+                  id="colorCountSlider"
+                  type="range"
+                  min="2"
+                  max="32"
+                  value="8"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="thresholdSlider">
+                  Color Threshold: <span id="thresholdValue">0.1</span>
+                </label>
+                <input
+                  id="thresholdSlider"
+                  type="range"
+                  min="0.01"
+                  max="0.5"
+                  value="0.1"
+                  step="0.01"
+                  class="slider"
+                />
+              </div>
+            </div>
           </section>
 
 
@@ -75,8 +127,18 @@
                 <span id="fpsValue" class="stat-value">0</span>
               </div>
               <div class="stat-item">
+                <span class="stat-label">Latency:</span>
+                <span id="latencyValue" class="stat-value">0 ms</span>
+              </div>
+              <div class="stat-item">
                 <span class="stat-label">Renderer:</span>
                 <span id="gpuStatus" class="stat-value">Checking...</span>
+              </div>
+              <div class="stat-item">
+                <label class="radio-label">
+                  <input type="checkbox" id="webglToggle" />
+                  <span>Force WebGL</span>
+                </label>
               </div>
               <div class="stat-item">
                 <span class="stat-label">Resolution:</span>
