@@ -214,14 +214,9 @@ class CyberVision {
 
   async handleRendererToggle(forceWebGL) {
     const wasRunning = this.isRunning;
-    let videoSettings = null;
 
-    // Stop camera if running and save settings
+    // Stop camera if running
     if (wasRunning) {
-      videoSettings = {
-        width: this.video.videoWidth,
-        height: this.video.videoHeight,
-      };
       this.stopCamera();
     }
 
