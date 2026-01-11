@@ -27,6 +27,7 @@ class CyberVision {
     this.halftoneControls = document.getElementById("halftoneControls");
     this.clusteringControls = document.getElementById("clusteringControls");
     this.algorithmSelect = document.getElementById("algorithmSelect");
+    this.trueColorsCheckbox = document.getElementById("trueColorsCheckbox");
     this.colorCountSlider = document.getElementById("colorCountSlider");
     this.colorCountValue = document.getElementById("colorCountValue");
     this.thresholdSlider = document.getElementById("thresholdSlider");
@@ -48,6 +49,7 @@ class CyberVision {
 
     // Clustering state
     this.clusteringAlgorithm = "quantization";
+    this.useTrueColors = false;
     this.colorCount = 8;
     this.colorThreshold = 0.1;
 
@@ -194,6 +196,10 @@ class CyberVision {
     // Clustering event listeners
     this.algorithmSelect.addEventListener("change", (e) => {
       this.clusteringAlgorithm = e.target.value;
+    });
+
+    this.trueColorsCheckbox.addEventListener("change", (e) => {
+      this.useTrueColors = e.target.checked;
     });
 
     this.colorCountSlider.addEventListener("input", (e) => {
@@ -372,9 +378,14 @@ class CyberVision {
   }
 
   renderClustering() {
+    // Compute algorithm string based on base algorithm and true colors toggle
+    const algorithmString = this.useTrueColors
+      ? `${this.clusteringAlgorithm}-true`
+      : this.clusteringAlgorithm;
+
     this.renderer.renderClustering(
       this.video,
-      this.clusteringAlgorithm,
+      algorithmString,
       this.colorCount,
       this.colorThreshold
     );
