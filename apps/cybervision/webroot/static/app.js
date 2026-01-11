@@ -95,9 +95,14 @@ class CyberVision {
     });
 
     this.resolutionRadios.forEach((radio) => {
-      radio.addEventListener("change", (e) => {
+      radio.addEventListener("change", async (e) => {
         if (e.target.checked) {
           this.selectedResolution = e.target.value;
+
+          // Restart camera if it's already running
+          if (this.isRunning) {
+            await this.restartCamera();
+          }
         }
       });
     });
@@ -208,6 +213,30 @@ class CyberVision {
     this.stopBtn.disabled = true;
     this.resolutionValue.textContent = "-";
     this.setStatus("Camera stopped.");
+  }
+
+  async restartCamera() {
+    // Store current state
+    const wasRunning = this.isRunning;
+
+    // Stop camera
+    this.isRunning = false;
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+    if (this.stream) {
+      this.stream.getTracks().forEach((track) => track.stop());
+      this.stream = null;
+    }
+
+    // Wait a brief moment for cleanup
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Restart if it was running
+    if (wasRunning) {
+      await this.startCamera();
+    }
   }
 
   render() {
