@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
 py_binary(
     name = "halftone_web",
     srcs = [
@@ -11,6 +13,7 @@ py_binary(
         "//visual/halftone",
         "@pip//pillow",
         "@pip//numpy",
+        "@rules_python//python/runfiles",
     ],
 )
 
