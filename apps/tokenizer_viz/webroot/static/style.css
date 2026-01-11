@@ -170,6 +170,41 @@ body {
   min-height: 20px;
 }
 
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.stats-table thead {
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.stats-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 600;
+  border-bottom: 2px solid var(--border);
+}
+
+.stats-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-table tbody tr:hover {
+  background: rgba(96, 165, 250, 0.05);
+}
+
+.stats-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.stats-table .error {
+  color: #f87171;
+  font-style: italic;
+}
+
 .section-title {
   margin: 0 0 16px;
   font-size: 18px;

@@ -120,6 +120,43 @@ def _tokenize_text(text: str, tokenizer_name: str) -> list[dict[str, Any]]:
     return result
 
 
+def _tokenize_all(text: str) -> dict[str, dict[str, Any]]:
+    """Tokenize text with all available tokenizers and return stats for each."""
+    import time
+
+    results = {}
+    char_count = len(text)
+
+    for tokenizer_name in TOKENIZERS:
+        encoding_name, tokenizer_type = TOKENIZERS[tokenizer_name]
+
+        try:
+            start_time = time.perf_counter()
+            tokenizer = Tokenizer(encoding_name, tokenizer_type)
+            token_ids = tokenizer.encode(text)
+            end_time = time.perf_counter()
+
+            latency_ms = (end_time - start_time) * 1000
+            token_count = len(token_ids)
+            avg_chars_per_token = char_count / token_count if token_count > 0 else 0
+            compression_ratio = char_count / token_count if token_count > 0 else 0
+
+            results[tokenizer_name] = {
+                "tokenCount": token_count,
+                "charCount": char_count,
+                "latencyMs": round(latency_ms, 2),
+                "avgCharsPerToken": round(avg_chars_per_token, 2),
+                "compressionRatio": round(compression_ratio, 2),
+            }
+        except Exception as e:
+            logging.warning("Failed to tokenize with %s: %s", tokenizer_name, e)
+            results[tokenizer_name] = {
+                "error": str(e),
+            }
+
+    return results
+
+
 class TokenizerVizHandler(BaseHTTPRequestHandler):
     server_version = "TokenizerViz/0.1"
 
@@ -182,8 +219,47 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
 
         self.send_error(HTTPStatus.NOT_FOUND)
 
+    def _handle_tokenize_all(self) -> None:
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+
+        if length <= 0:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Missing Content-Length"})
+            return
+
+        content_type = self.headers.get("Content-Type", "")
+        if not content_type.startswith("application/json"):
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Expected application/json"})
+            return
+
+        body = self.rfile.read(length)
+        try:
+            data = json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            logging.warning("Invalid JSON: %s", e)
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Invalid JSON"})
+            return
+
+        text = data.get("text", "")
+
+        if not text:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Missing 'text' field"})
+            return
+
+        try:
+            results = _tokenize_all(text)
+            self._send_json(HTTPStatus.OK, {"ok": True, "results": results})
+        except Exception as e:
+            logging.exception("Tokenization failed: %s", e)
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(e)})
+
     def do_POST(self) -> None:  # noqa: N802 (stdlib naming)
         parsed = urlparse(self.path)
+        if parsed.path == "/api/tokenize-all":
+            self._handle_tokenize_all()
+            return
         if parsed.path != "/api/tokenize":
             self.send_error(HTTPStatus.NOT_FOUND)
             return

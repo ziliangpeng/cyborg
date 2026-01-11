@@ -21,6 +21,7 @@ function clearStatus() {
 function setStats(stats) {
   if (!stats) {
     statsEl.textContent = "";
+    statsEl.innerHTML = "";
     return;
   }
 
@@ -33,6 +34,50 @@ function setStats(stats) {
   ];
 
   statsEl.textContent = parts.join(" • ");
+}
+
+function renderAllStats(results) {
+  // Build comparison table
+  let html = '<table class="stats-table">';
+  html += '<thead><tr>';
+  html += '<th>Tokenizer</th>';
+  html += '<th>Tokens</th>';
+  html += '<th>Latency</th>';
+  html += '<th>Chars/Token</th>';
+  html += '<th>Compression</th>';
+  html += '</tr></thead>';
+  html += '<tbody>';
+
+  // Order tokenizers for display
+  const orderedTokenizers = [
+    { key: 'gpt2', name: 'GPT-2' },
+    { key: 'cl100k_base', name: 'GPT-4 (cl100k)' },
+    { key: 'p50k_base', name: 'p50k_base' },
+    { key: 'r50k_base', name: 'r50k_base' },
+    { key: 'opt-125m', name: 'OPT-125M' },
+    { key: 'opt-350m', name: 'OPT-350M' },
+    { key: 'opt-1.3b', name: 'OPT-1.3B' }
+  ];
+
+  orderedTokenizers.forEach(({ key, name }) => {
+    const stats = results[key];
+    if (!stats) return;
+
+    if (stats.error) {
+      html += `<tr><td>${name}</td><td colspan="4" class="error">Error: ${escapeHtml(stats.error)}</td></tr>`;
+    } else {
+      html += '<tr>';
+      html += `<td>${name}</td>`;
+      html += `<td>${stats.tokenCount}</td>`;
+      html += `<td>${stats.latencyMs}ms</td>`;
+      html += `<td>${stats.avgCharsPerToken}</td>`;
+      html += `<td>${stats.compressionRatio}x</td>`;
+      html += '</tr>';
+    }
+  });
+
+  html += '</tbody></table>';
+  statsEl.innerHTML = html;
 }
 
 function renderTokens(tokens, text) {
@@ -86,7 +131,7 @@ async function tokenize() {
   if (!text) {
     setStatus("Please enter some text");
     output.textContent = "";
-    setTokenCount(null);
+    setStats(null);
     return;
   }
 
@@ -102,26 +147,48 @@ async function tokenize() {
   output.textContent = "";
 
   try {
-    const response = await fetch("/api/tokenize", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: text,
-        tokenizer: selectedTokenizer,
-      }),
-    });
+    if (selectedTokenizer === "all") {
+      // Tokenize with all tokenizers
+      const response = await fetch("/api/tokenize-all", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: text }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok || !data.ok) {
-      throw new Error(data.error || `HTTP ${response.status}`);
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      renderAllStats(data.results);
+      output.textContent = "";
+      clearStatus();
+    } else {
+      // Tokenize with single tokenizer
+      const response = await fetch("/api/tokenize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: text,
+          tokenizer: selectedTokenizer,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      renderTokens(data.tokens, text);
+      setStats(data.stats);
+      clearStatus();
     }
-
-    renderTokens(data.tokens, text);
-    setStats(data.stats);
-    clearStatus();
   } catch (error) {
     setStatus(`Error: ${error.message}`);
     output.textContent = "";
