@@ -4,11 +4,9 @@ export class WebGLRenderer {
   constructor() {
     this.gl = null;
     this.canvas = null;
-    this.program = null;
     this.halftoneProgram = null;
     this.passthroughProgram = null;
     this.videoTexture = null;
-    this.framebuffer = null;
     this.positionBuffer = null;
     this.texCoordBuffer = null;
   }

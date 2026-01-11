@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import mimetypes
 import os
-import ssl
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -43,8 +42,8 @@ class CyberVisionHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        base = WEBROOT.absolute()
-        target = path.absolute()
+        base = WEBROOT.resolve()
+        target = path.resolve()
         try:
             target.relative_to(base)
         except ValueError:
