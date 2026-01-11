@@ -34,10 +34,19 @@ TOKENIZERS = {
     "cl100k_base": ("cl100k_base", "tiktoken"),  # GPT-4
     "p50k_base": ("p50k_base", "tiktoken"),
     "r50k_base": ("r50k_base", "tiktoken"),
-    "opt-125m": ("facebook/opt-125m", "huggingface"),
-    "opt-350m": ("facebook/opt-350m", "huggingface"),
-    "opt-1.3b": ("facebook/opt-1.3b", "huggingface"),
+    "opt": ("facebook/opt-125m", "huggingface"),
 }
+
+# Cache tokenizer instances to avoid re-initialization overhead
+_TOKENIZER_CACHE: dict[str, Tokenizer] = {}
+
+
+def _get_tokenizer(tokenizer_name: str) -> Tokenizer:
+    """Get cached tokenizer instance, creating it if not in cache."""
+    if tokenizer_name not in _TOKENIZER_CACHE:
+        encoding_name, tokenizer_type = TOKENIZERS[tokenizer_name]
+        _TOKENIZER_CACHE[tokenizer_name] = Tokenizer(encoding_name, tokenizer_type)
+    return _TOKENIZER_CACHE[tokenizer_name]
 
 
 def _safe_join(root: Path, rel: str) -> Path | None:
@@ -53,8 +62,8 @@ def _tokenize_text(text: str, tokenizer_name: str) -> list[dict[str, Any]]:
     if tokenizer_name not in TOKENIZERS:
         raise ValueError(f"Unknown tokenizer: {tokenizer_name}")
 
-    encoding_name, tokenizer_type = TOKENIZERS[tokenizer_name]
-    tokenizer = Tokenizer(encoding_name, tokenizer_type)
+    _, tokenizer_type = TOKENIZERS[tokenizer_name]
+    tokenizer = _get_tokenizer(tokenizer_name)
 
     result = []
 
@@ -128,11 +137,11 @@ def _tokenize_all(text: str) -> dict[str, dict[str, Any]]:
     char_count = len(text)
 
     for tokenizer_name in TOKENIZERS:
-        encoding_name, tokenizer_type = TOKENIZERS[tokenizer_name]
+        _, tokenizer_type = TOKENIZERS[tokenizer_name]
 
         try:
             start_time = time.perf_counter()
-            tokenizer = Tokenizer(encoding_name, tokenizer_type)
+            tokenizer = _get_tokenizer(tokenizer_name)
             token_ids = tokenizer.encode(text)
             end_time = time.perf_counter()
 
@@ -147,6 +156,7 @@ def _tokenize_all(text: str) -> dict[str, dict[str, Any]]:
                 "latencyMs": round(latency_ms, 2),
                 "avgCharsPerToken": round(avg_chars_per_token, 2),
                 "compressionRatio": round(compression_ratio, 2),
+                "library": tokenizer_type,
             }
         except Exception as e:
             logging.warning("Failed to tokenize with %s: %s", tokenizer_name, e)
@@ -300,6 +310,7 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
         try:
             import time
 
+            _, tokenizer_type = TOKENIZERS[tokenizer_name]
             start_time = time.perf_counter()
             tokens = _tokenize_text(text, tokenizer_name)
             end_time = time.perf_counter()
@@ -321,6 +332,7 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
                         "latencyMs": round(latency_ms, 2),
                         "avgCharsPerToken": round(avg_chars_per_token, 2),
                         "compressionRatio": round(compression_ratio, 2),
+                        "library": tokenizer_type,
                     },
                 },
             )

@@ -30,7 +30,8 @@ function setStats(stats) {
     `${stats.charCount} char${stats.charCount !== 1 ? "s" : ""}`,
     `${stats.latencyMs}ms`,
     `${stats.avgCharsPerToken} chars/token`,
-    `${stats.compressionRatio}x compression`
+    `${stats.compressionRatio}x compression`,
+    `[${stats.library}]`
   ];
 
   statsEl.textContent = parts.join(" • ");
@@ -41,6 +42,7 @@ function renderAllStats(results) {
   let html = '<table class="stats-table">';
   html += '<thead><tr>';
   html += '<th>Tokenizer</th>';
+  html += '<th>Library</th>';
   html += '<th>Tokens</th>';
   html += '<th>Latency</th>';
   html += '<th>Chars/Token</th>';
@@ -54,9 +56,7 @@ function renderAllStats(results) {
     { key: 'cl100k_base', name: 'GPT-4 (cl100k)' },
     { key: 'p50k_base', name: 'p50k_base' },
     { key: 'r50k_base', name: 'r50k_base' },
-    { key: 'opt-125m', name: 'OPT-125M' },
-    { key: 'opt-350m', name: 'OPT-350M' },
-    { key: 'opt-1.3b', name: 'OPT-1.3B' }
+    { key: 'opt', name: 'OPT' }
   ];
 
   orderedTokenizers.forEach(({ key, name }) => {
@@ -64,10 +64,11 @@ function renderAllStats(results) {
     if (!stats) return;
 
     if (stats.error) {
-      html += `<tr><td>${name}</td><td colspan="4" class="error">Error: ${escapeHtml(stats.error)}</td></tr>`;
+      html += `<tr><td>${name}</td><td colspan="5" class="error">Error: ${escapeHtml(stats.error)}</td></tr>`;
     } else {
       html += '<tr>';
       html += `<td>${name}</td>`;
+      html += `<td>${stats.library}</td>`;
       html += `<td>${stats.tokenCount}</td>`;
       html += `<td>${stats.latencyMs}ms</td>`;
       html += `<td>${stats.avgCharsPerToken}</td>`;
