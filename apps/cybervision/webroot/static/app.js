@@ -16,6 +16,7 @@ class CyberVision {
     this.dotSizeValue = document.getElementById("dotSizeValue");
     this.fpsValue = document.getElementById("fpsValue");
     this.gpuStatus = document.getElementById("gpuStatus");
+    this.resolutionValue = document.getElementById("resolutionValue");
 
     // State
     this.renderer = null;
@@ -143,6 +144,9 @@ class CyberVision {
 
       console.log(`Video dimensions: ${this.video.videoWidth}x${this.video.videoHeight}`);
 
+      // Update resolution display
+      this.resolutionValue.textContent = `${this.video.videoWidth}x${this.video.videoHeight}`;
+
       // Initialize renderer-specific resources
       if (this.rendererType === "webgpu") {
         await this.renderer.setupPipeline(this.video, this.dotSize);
@@ -180,6 +184,7 @@ class CyberVision {
 
     this.startBtn.disabled = false;
     this.stopBtn.disabled = true;
+    this.resolutionValue.textContent = "-";
     this.setStatus("Camera stopped.");
   }
 
