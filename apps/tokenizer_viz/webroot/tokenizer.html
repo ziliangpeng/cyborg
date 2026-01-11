@@ -13,35 +13,37 @@
         <p class="muted">Paste or type text to see how different tokenizers break it down into tokens.</p>
       </header>
 
-      <section class="panel">
-        <div class="form-group">
-          <label for="textInput" class="label">Text Input</label>
-          <textarea
-            id="textInput"
-            class="textarea"
-            rows="6"
-            placeholder="Enter or paste text here..."
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label class="label">Tokenizer</label>
-          <div class="radio-group" id="tokenizerGroup">
-            <!-- Tokenizer options dynamically loaded from /api/tokenizers -->
+      <div class="two-column">
+        <section class="panel left-column">
+          <div class="form-group">
+            <label for="textInput" class="label">Text Input</label>
+            <textarea
+              id="textInput"
+              class="textarea"
+              rows="8"
+              placeholder="Enter or paste text here..."
+            ></textarea>
           </div>
-        </div>
 
-        <div class="row gap">
-          <button id="tokenizeBtn" class="button">Tokenize</button>
-        </div>
-        <div id="status" class="status muted" role="status"></div>
-        <div id="stats" class="stats muted"></div>
-      </section>
+          <div class="form-group">
+            <label class="label">Tokenizer</label>
+            <div class="radio-group" id="tokenizerGroup">
+              <!-- Tokenizer options dynamically loaded from /api/tokenizers -->
+            </div>
+          </div>
 
-      <section class="panel">
-        <h2 class="section-title">Tokenized Output</h2>
-        <div id="output" class="output"></div>
-      </section>
+          <div class="row gap">
+            <button id="tokenizeBtn" class="button">Tokenize</button>
+          </div>
+          <div id="status" class="status muted" role="status"></div>
+        </section>
+
+        <section class="panel right-column">
+          <div id="stats" class="stats muted"></div>
+          <h2 class="section-title">Tokenized Output</h2>
+          <div id="output" class="output"></div>
+        </section>
+      </div>
     </main>
 
     <script src="/static/app.js"></script>
