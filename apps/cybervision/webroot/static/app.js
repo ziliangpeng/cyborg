@@ -48,7 +48,7 @@ class CyberVision {
     this.useRandomColors = false;
 
     // Clustering state
-    this.clusteringAlgorithm = "quantization";
+    this.clusteringAlgorithm = "quantization-kmeans";
     this.useTrueColors = false;
     this.colorCount = 8;
     this.colorThreshold = 0.1;

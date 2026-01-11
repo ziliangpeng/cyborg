@@ -104,30 +104,24 @@ void main() {
   int k = int(u_colorCount);
 
   if (algo == 0) {
-    // Quantization (per-channel)
+    // Quantization / K-means (per-channel)
     result = quantize(color, u_colorCount);
   } else if (algo == 1) {
-    // Quantization True (true colors)
+    // Quantization / K-means (true colors)
     result = kmeans(color, k);
   } else if (algo == 2) {
-    // K-means (per-channel)
-    result = quantize(color, max(u_colorCount, 2.0));
-  } else if (algo == 3) {
-    // K-means True (true colors)
-    result = kmeans(color, k);
-  } else if (algo == 4) {
     // Mean shift (per-channel)
     vec3 smoothed = meanshiftSmoothing(v_texCoord, color, u_threshold);
-    result = quantize(smoothed, max(u_colorCount, 2.0));
-  } else if (algo == 5) {
-    // Mean shift True (true colors)
+    result = quantize(smoothed, u_colorCount);
+  } else if (algo == 3) {
+    // Mean shift (true colors)
     vec3 smoothed = meanshiftSmoothing(v_texCoord, color, u_threshold);
     result = kmeans(smoothed, k);
-  } else if (algo == 6) {
+  } else if (algo == 4) {
     // Posterize (per-channel)
     result = posterizeEdgeAware(v_texCoord, color, u_colorCount, u_threshold);
   } else {
-    // Posterize True (true colors)
+    // Posterize (true colors)
     vec3 posterized = posterizeEdgeAware(v_texCoord, color, u_colorCount, u_threshold);
     result = kmeans(posterized, k);
   }
