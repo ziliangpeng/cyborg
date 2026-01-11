@@ -72,9 +72,10 @@ export class WebGLRenderer {
 
       // Generate random color based on cell position
       vec3 randomColor(vec2 cellIndex, float seed) {
-        float r = hash(cellIndex + vec2(seed, 0.0));
-        float g = hash(cellIndex + vec2(0.0, seed));
-        float b = hash(cellIndex + vec2(seed, seed));
+        float seedOffset = seed * 127.1;  // Large multiplier breaks linear correlation
+        float r = hash(cellIndex + vec2(seedOffset, seedOffset * 0.7));
+        float g = hash(cellIndex + vec2(seedOffset * 0.3, seedOffset));
+        float b = hash(cellIndex + vec2(seedOffset * 0.5, seedOffset * 0.9));
         return vec3(r, g, b);
       }
 

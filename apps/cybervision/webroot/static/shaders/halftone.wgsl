@@ -55,9 +55,10 @@ fn hash(p: vec2f) -> f32 {
 
 // Generate random color based on cell position
 fn randomColor(cellIndex: vec2f, seed: f32) -> vec3f {
-  let r = hash(cellIndex + vec2f(seed, 0.0));
-  let g = hash(cellIndex + vec2f(0.0, seed));
-  let b = hash(cellIndex + vec2f(seed, seed));
+  let seedOffset = seed * 127.1;  // Large multiplier breaks linear correlation
+  let r = hash(cellIndex + vec2f(seedOffset, seedOffset * 0.7));
+  let g = hash(cellIndex + vec2f(seedOffset * 0.3, seedOffset));
+  let b = hash(cellIndex + vec2f(seedOffset * 0.5, seedOffset * 0.9));
   return vec3f(r, g, b);
 }
 
