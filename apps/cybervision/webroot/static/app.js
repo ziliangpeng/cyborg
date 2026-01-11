@@ -36,22 +36,39 @@ class CyberVision {
   }
 
   async init() {
-    // Try WebGPU first, fallback to WebGL
+    // Check if WebGL fallback is disabled via URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const disableWebGL = urlParams.get('disable-webgl') === 'true';
+
+    // Try WebGPU first, fallback to WebGL (unless disabled)
     try {
       console.log("Attempting to initialize WebGPU...");
+      console.log("navigator.gpu:", navigator.gpu);
       this.renderer = await initGPU(this.canvas);
       this.rendererType = "webgpu";
-      this.gpuStatus.textContent = "WebGPU";
+      this.gpuStatus.textContent = "WebGPU ✓";
       this.gpuStatus.style.color = "#34d399";
-      console.log("WebGPU initialized successfully");
+      console.log("✓ WebGPU initialized successfully");
+      console.log("✓ Using compute shaders");
     } catch (err) {
-      console.log("WebGPU failed, trying WebGL:", err.message);
+      console.log("✗ WebGPU failed:", err.message);
+
+      if (disableWebGL) {
+        this.gpuStatus.textContent = "WebGL disabled";
+        this.gpuStatus.style.color = "#f87171";
+        this.setStatus(`WebGPU failed and WebGL fallback is disabled. Error: ${err.message}`);
+        this.startBtn.disabled = true;
+        return;
+      }
+
+      console.log("Trying WebGL fallback...");
       try {
         this.renderer = await initWebGL(this.canvas);
         this.rendererType = "webgl";
-        this.gpuStatus.textContent = "WebGL";
+        this.gpuStatus.textContent = "WebGL (fallback)";
         this.gpuStatus.style.color = "#60a5fa";
-        console.log("WebGL initialized successfully");
+        console.log("✓ WebGL initialized successfully");
+        console.log("✓ Using fragment shaders");
       } catch (err2) {
         this.gpuStatus.textContent = "Not supported";
         this.gpuStatus.style.color = "#f87171";
