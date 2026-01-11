@@ -52,8 +52,7 @@ class CyberVision {
       console.log("✓ WebGPU initialized successfully");
       console.log("✓ Using compute shaders");
     } catch (err) {
-      console.log("✗ WebGPU failed:", err);
-      console.log("WebGPU error details:", err.message, err.stack);
+      console.log("✗ WebGPU failed:", err.message);
 
       if (disableWebGL) {
         this.gpuStatus.textContent = "WebGL disabled";
@@ -72,8 +71,6 @@ class CyberVision {
         console.log("✓ WebGL initialized successfully");
         console.log("✓ Using fragment shaders");
       } catch (err2) {
-        console.log("✗ WebGL also failed:", err2);
-        console.log("WebGL error details:", err2.message, err2.stack);
         this.gpuStatus.textContent = "Not supported";
         this.gpuStatus.style.color = "#f87171";
         this.setStatus(`Error: Neither WebGPU nor WebGL2 are supported. ${err2.message}`);
