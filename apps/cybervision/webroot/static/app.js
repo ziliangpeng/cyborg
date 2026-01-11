@@ -75,7 +75,7 @@ class CyberVision {
       } catch (err2) {
         this.gpuStatus.textContent = "Not supported";
         this.gpuStatus.style.color = "#f87171";
-        this.setStatus(`Error: Neither WebGPU nor WebGL2 are supported. ${err2.message}`);
+        this.setStatus(`Error: WebGPU failed (${err.message}). WebGL2 also failed (${err2.message}).`);
         this.startBtn.disabled = true;
         return;
       }
@@ -95,7 +95,7 @@ class CyberVision {
     });
 
     this.dotSizeSlider.addEventListener("input", (e) => {
-      this.dotSize = parseInt(e.target.value);
+      this.dotSize = parseInt(e.target.value, 10);
       this.dotSizeValue.textContent = this.dotSize;
       if (this.rendererType === "webgpu") {
         this.updateHalftoneParams();

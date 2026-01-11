@@ -23,7 +23,7 @@ export class WebGLRenderer {
     console.log("WebGL2 initialized");
 
     // Create shaders
-    await this.createShaders();
+    this.createShaders();
 
     // Create buffers for fullscreen quad
     this.createBuffers();
@@ -34,7 +34,7 @@ export class WebGLRenderer {
     return this;
   }
 
-  async createShaders() {
+  createShaders() {
     const gl = this.gl;
 
     // Vertex shader (same for all effects)
