@@ -63,6 +63,18 @@ def _get_tokenizer(tokenizer_name: str) -> Tokenizer:
     return _TOKENIZER_CACHE[tokenizer_name]
 
 
+def _preload_tokenizers() -> None:
+    """Preload all tokenizers into cache on startup."""
+    logging.info("Preloading %d tokenizers...", len(TOKENIZERS))
+    for name in TOKENIZERS:
+        try:
+            _get_tokenizer(name)
+            logging.info("Loaded tokenizer: %s", name)
+        except Exception as e:
+            logging.warning("Failed to preload tokenizer %s: %s", name, e)
+    logging.info("Tokenizer preloading complete")
+
+
 def _safe_join(root: Path, rel: str) -> Path | None:
     rel = rel.lstrip("/")
     norm = os.path.normpath(rel)
@@ -340,6 +352,7 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
 
 def run_server(*, host: str, port: int, debug: bool) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    _preload_tokenizers()
     try:
         httpd = ThreadingHTTPServer((host, port), TokenizerVizHandler)
         logging.info("Listening on http://%s:%d", host, port)
