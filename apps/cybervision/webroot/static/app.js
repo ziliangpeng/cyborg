@@ -14,6 +14,7 @@ class CyberVision {
     this.effectRadios = document.querySelectorAll('input[name="effect"]');
     this.dotSizeSlider = document.getElementById("dotSizeSlider");
     this.dotSizeValue = document.getElementById("dotSizeValue");
+    this.randomColorCheckbox = document.getElementById("randomColorCheckbox");
     this.fpsValue = document.getElementById("fpsValue");
     this.gpuStatus = document.getElementById("gpuStatus");
     this.resolutionValue = document.getElementById("resolutionValue");
@@ -28,7 +29,7 @@ class CyberVision {
     // Effect state
     this.currentEffect = "original";
     this.dotSize = 8;
-    this.coloredDots = 3;
+    this.useRandomColors = false;
 
     // FPS tracking
     this.frameCount = 0;
@@ -101,6 +102,10 @@ class CyberVision {
       }
     });
 
+    this.randomColorCheckbox.addEventListener("change", (e) => {
+      this.useRandomColors = e.target.checked;
+    });
+
     this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
   }
 
@@ -150,7 +155,7 @@ class CyberVision {
 
       // Initialize renderer-specific resources
       if (this.rendererType === "webgpu") {
-        await this.renderer.setupPipeline(this.video, this.dotSize, this.coloredDots);
+        await this.renderer.setupPipeline(this.video, this.dotSize);
       }
       // WebGL doesn't need additional setup after init
 
@@ -212,9 +217,9 @@ class CyberVision {
 
   renderHalftone() {
     if (this.rendererType === "webgpu") {
-      this.renderer.renderHalftone(this.video);
+      this.renderer.renderHalftone(this.video, this.useRandomColors);
     } else {
-      this.renderer.renderHalftone(this.video, this.dotSize, this.coloredDots);
+      this.renderer.renderHalftone(this.video, this.dotSize, this.useRandomColors);
     }
   }
 

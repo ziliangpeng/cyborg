@@ -59,7 +59,7 @@ export class WebGLRenderer {
       uniform sampler2D u_video;
       uniform vec2 u_resolution;
       uniform float u_dotSize;
-      uniform float u_coloredDots;
+      uniform float u_useRandomColors;
       uniform float u_time;
 
       // Simple hash function for pseudo-random number generation
@@ -100,20 +100,15 @@ export class WebGLRenderer {
         // Draw circle
         float inside = step(dist, radius);
 
-        // Determine if this dot should be colored
-        // Include time in hash so selection changes every second
-        float cellHash = hash(cellIndex + vec2(u_time * 1000.0, u_time * 1000.0));
-        float totalCells = (u_resolution.x / u_dotSize) * (u_resolution.y / u_dotSize);
-        float colorProbability = u_coloredDots / totalCells;
-        bool isColored = cellHash < colorProbability;
-
-        // Choose color: random color if selected, black otherwise
+        // Determine dot color based on useRandomColors flag
         vec3 dotColor = vec3(0.0);  // Default black
-        if (isColored) {
-          dotColor = randomColor(cellIndex, 12.345);
+
+        if (u_useRandomColors > 0.5) {
+          // Use random color that changes every second
+          dotColor = randomColor(cellIndex, u_time);
         }
 
-        // Black/colored dot on white background
+        // Colored/black dot on white background
         vec3 outputColor = mix(vec3(1.0), dotColor, inside);
         fragColor = vec4(outputColor, 1.0);
       }
@@ -233,7 +228,7 @@ export class WebGLRenderer {
     );
   }
 
-  renderHalftone(video, dotSize, coloredDots = 3) {
+  renderHalftone(video, dotSize, useRandomColors = false) {
     const gl = this.gl;
     const program = this.halftoneProgram;
 
@@ -259,7 +254,7 @@ export class WebGLRenderer {
     const videoLoc = gl.getUniformLocation(program, "u_video");
     const resolutionLoc = gl.getUniformLocation(program, "u_resolution");
     const dotSizeLoc = gl.getUniformLocation(program, "u_dotSize");
-    const coloredDotsLoc = gl.getUniformLocation(program, "u_coloredDots");
+    const useRandomColorsLoc = gl.getUniformLocation(program, "u_useRandomColors");
     const timeLoc = gl.getUniformLocation(program, "u_time");
 
     const time = Math.floor(performance.now() / 1000);
@@ -267,7 +262,7 @@ export class WebGLRenderer {
     gl.uniform1i(videoLoc, 0);
     gl.uniform2f(resolutionLoc, video.videoWidth, video.videoHeight);
     gl.uniform1f(dotSizeLoc, dotSize);
-    gl.uniform1f(coloredDotsLoc, coloredDots);
+    gl.uniform1f(useRandomColorsLoc, useRandomColors ? 1.0 : 0.0);
     gl.uniform1f(timeLoc, time);
 
     // Draw

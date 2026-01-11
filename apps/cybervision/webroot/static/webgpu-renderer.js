@@ -32,7 +32,6 @@ export class WebGPURenderer {
     this.videoWidth = 0;
     this.videoHeight = 0;
     this.dotSize = 8;
-    this.coloredDots = 3;
   }
 
   async init(canvas) {
@@ -74,11 +73,10 @@ export class WebGPURenderer {
     return this;
   }
 
-  async setupPipeline(video, dotSize, coloredDots = 3) {
+  async setupPipeline(video, dotSize) {
     this.videoWidth = video.videoWidth;
     this.videoHeight = video.videoHeight;
     this.dotSize = dotSize;
-    this.coloredDots = coloredDots;
 
     // Reconfigure canvas context with video dimensions
     this.canvasContext.configure({
@@ -104,7 +102,7 @@ export class WebGPURenderer {
       dotSize,
       this.videoWidth,
       this.videoHeight,
-      coloredDots,
+      0,  // useRandomColors (will be updated in render)
       time,
       0, 0, 0,  // padding
     ]);
@@ -242,28 +240,16 @@ export class WebGPURenderer {
 
   updateDotSize(dotSize) {
     this.dotSize = dotSize;
-    if (this.uniformBuffer && this.videoWidth) {
-      const time = Math.floor(performance.now() / 1000);
-      const uniformData = new Float32Array([
-        dotSize,
-        this.videoWidth,
-        this.videoHeight,
-        this.coloredDots,
-        time,
-        0, 0, 0,  // padding
-      ]);
-      this.updateUniformBuffer(this.uniformBuffer, uniformData);
-    }
   }
 
-  renderHalftone(video) {
-    // Update time in uniform buffer every frame
+  renderHalftone(video, useRandomColors = false) {
+    // Update uniform buffer every frame with current time and color mode
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
       this.dotSize,
       this.videoWidth,
       this.videoHeight,
-      this.coloredDots,
+      useRandomColors ? 1.0 : 0.0,
       time,
       0, 0, 0,  // padding
     ]);

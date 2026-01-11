@@ -8,7 +8,7 @@ struct HalftoneParams {
   sampleSize: f32,
   width: f32,
   height: f32,
-  coloredDots: f32,  // Number of colored dots (N)
+  useRandomColors: f32,  // 1.0 = use random colors, 0.0 = use black
   time: f32,  // Floor of seconds, changes every second
   _pad1: f32,
   _pad2: f32,
@@ -91,21 +91,16 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   // Draw circle using step function
   let inside = step(dist, radius);
 
-  // Determine if this dot should be colored
+  // Determine dot color based on useRandomColors flag
   let cellIndex = vec2f(cellX, cellY);
-  // Include time in hash so selection changes every second
-  let cellHash = hash(cellIndex + vec2f(params.time * 1000.0, params.time * 1000.0));
-  let totalCells = (params.width / sampleSize) * (params.height / sampleSize);
-  let colorProbability = params.coloredDots / totalCells;
-  let isColored = cellHash < colorProbability;
-
-  // Choose color: random color if selected, black otherwise
   var dotColor = vec3f(0.0);  // Default black
-  if (isColored) {
-    dotColor = randomColor(cellIndex, 12.345);
+
+  if (params.useRandomColors > 0.5) {
+    // Use random color that changes every second
+    dotColor = randomColor(cellIndex, params.time);
   }
 
-  // Black/colored dot on white background
+  // Colored/black dot on white background
   let color = mix(vec3f(1.0), dotColor, inside);
 
   textureStore(outputTex, vec2i(id.xy), vec4f(color, 1.0));
