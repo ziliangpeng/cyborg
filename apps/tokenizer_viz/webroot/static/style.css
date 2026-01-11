@@ -159,6 +159,17 @@ body {
   min-height: 20px;
 }
 
+.stats {
+  margin-top: 12px;
+  font-size: 14px;
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 20px;
+}
+
 .section-title {
   margin: 0 0 16px;
   font-size: 18px;

@@ -3,8 +3,8 @@
 const textInput = document.getElementById("textInput");
 const tokenizerGroup = document.getElementById("tokenizerGroup");
 const tokenizeBtn = document.getElementById("tokenizeBtn");
-const tokenCount = document.getElementById("tokenCount");
 const statusEl = document.getElementById("status");
+const statsEl = document.getElementById("stats");
 const output = document.getElementById("output");
 
 let currentTokens = [];
@@ -18,12 +18,21 @@ function clearStatus() {
   statusEl.textContent = "";
 }
 
-function setTokenCount(count) {
-  if (count !== null && count !== undefined) {
-    tokenCount.textContent = `${count} token${count !== 1 ? "s" : ""}`;
-  } else {
-    tokenCount.textContent = "";
+function setStats(stats) {
+  if (!stats) {
+    statsEl.textContent = "";
+    return;
   }
+
+  const parts = [
+    `${stats.tokenCount} token${stats.tokenCount !== 1 ? "s" : ""}`,
+    `${stats.charCount} char${stats.charCount !== 1 ? "s" : ""}`,
+    `${stats.latencyMs}ms`,
+    `${stats.avgCharsPerToken} chars/token`,
+    `${stats.compressionRatio}x compression`
+  ];
+
+  statsEl.textContent = parts.join(" • ");
 }
 
 function renderTokens(tokens, text) {
@@ -89,7 +98,7 @@ async function tokenize() {
 
   tokenizeBtn.disabled = true;
   setStatus("Tokenizing...");
-  setTokenCount(null);
+  setStats(null);
   output.textContent = "";
 
   try {
@@ -111,12 +120,12 @@ async function tokenize() {
     }
 
     renderTokens(data.tokens, text);
-    setTokenCount(data.tokenCount);
+    setStats(data.stats);
     clearStatus();
   } catch (error) {
     setStatus(`Error: ${error.message}`);
     output.textContent = "";
-    setTokenCount(null);
+    setStats(null);
     console.error("Tokenization error:", error);
   } finally {
     tokenizeBtn.disabled = false;

@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from bazel_tools.tools.python.runfiles import runfiles
 
-from ai.llm.tinyllm import Tokenizer
+from ai.llm.tokenizer import Tokenizer
 
 
 def _get_webroot() -> Path:
@@ -222,8 +222,32 @@ class TokenizerVizHandler(BaseHTTPRequestHandler):
             return
 
         try:
+            import time
+
+            start_time = time.perf_counter()
             tokens = _tokenize_text(text, tokenizer_name)
-            self._send_json(HTTPStatus.OK, {"ok": True, "tokens": tokens, "tokenCount": len(tokens)})
+            end_time = time.perf_counter()
+
+            latency_ms = (end_time - start_time) * 1000
+            char_count = len(text)
+            token_count = len(tokens)
+            avg_chars_per_token = char_count / token_count if token_count > 0 else 0
+            compression_ratio = char_count / token_count if token_count > 0 else 0
+
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "ok": True,
+                    "tokens": tokens,
+                    "stats": {
+                        "tokenCount": token_count,
+                        "charCount": char_count,
+                        "latencyMs": round(latency_ms, 2),
+                        "avgCharsPerToken": round(avg_chars_per_token, 2),
+                        "compressionRatio": round(compression_ratio, 2),
+                    },
+                },
+            )
         except Exception as e:
             logging.exception("Tokenization failed: %s", e)
             self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(e)})

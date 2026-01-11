@@ -10,7 +10,7 @@ py_binary(
     main = "main.py",
     data = glob(["webroot/**"]),
     deps = [
-        "//ai/llm/tinyllm:tinyllm",
+        "//ai/llm/tokenizer",
         "@pip//tiktoken",
         "@pip//transformers",
         "@bazel_tools//tools/python/runfiles",
