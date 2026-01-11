@@ -54,9 +54,20 @@ function renderAllStats(results) {
   const orderedTokenizers = [
     { key: 'gpt2', name: 'GPT-2' },
     { key: 'cl100k_base', name: 'GPT-4 (cl100k)' },
-    { key: 'p50k_base', name: 'p50k_base' },
-    { key: 'r50k_base', name: 'r50k_base' },
-    { key: 'opt', name: 'OPT' }
+    { key: 'p50k_base', name: 'Codex (p50k)' },
+    { key: 'r50k_base', name: 'GPT-3 (r50k)' },
+    { key: 'o200k_base', name: 'GPT-4o (o200k)' },
+    { key: 'opt', name: 'OPT' },
+    { key: 'llama3', name: 'LLaMA 3' },
+    { key: 'mistral', name: 'Mistral' },
+    { key: 'gemma2', name: 'Gemma 2' },
+    { key: 'gemma3', name: 'Gemma 3' },
+    { key: 'qwen3', name: 'Qwen3' },
+    { key: 'deepseek', name: 'DeepSeek V3' },
+    { key: 'phi3', name: 'Phi-3' },
+    { key: 'command', name: 'Command R' },
+    { key: 'jamba', name: 'Jamba' },
+    { key: 'bloom', name: 'BLOOM' }
   ];
 
   orderedTokenizers.forEach(({ key, name }) => {

@@ -30,11 +30,24 @@ STATIC_ROOT = WEBROOT / "static"
 
 # Available tokenizers
 TOKENIZERS = {
+    # tiktoken (fast, Rust-based)
     "gpt2": ("gpt2", "tiktoken"),
     "cl100k_base": ("cl100k_base", "tiktoken"),  # GPT-4
-    "p50k_base": ("p50k_base", "tiktoken"),
-    "r50k_base": ("r50k_base", "tiktoken"),
+    "p50k_base": ("p50k_base", "tiktoken"),  # Codex
+    "r50k_base": ("r50k_base", "tiktoken"),  # GPT-3
+    "o200k_base": ("o200k_base", "tiktoken"),  # GPT-4o
+    # HuggingFace (Python-based)
     "opt": ("facebook/opt-125m", "huggingface"),
+    "llama3": ("meta-llama/Meta-Llama-3-8B", "huggingface"),
+    "mistral": ("mistralai/Mistral-7B-v0.1", "huggingface"),
+    "gemma2": ("google/gemma-2-2b-it", "huggingface"),
+    "gemma3": ("google/gemma-3-1b-it", "huggingface"),
+    "qwen3": ("Qwen/Qwen3-8B", "huggingface"),
+    "deepseek": ("deepseek-ai/DeepSeek-V3", "huggingface"),
+    "phi3": ("microsoft/Phi-3-mini-4k-instruct", "huggingface"),
+    "command": ("CohereForAI/c4ai-command-r-v01", "huggingface"),
+    "jamba": ("ai21labs/Jamba-v0.1", "huggingface"),
+    "bloom": ("bigscience/bloom-560m", "huggingface"),
 }
 
 # Cache tokenizer instances to avoid re-initialization overhead
