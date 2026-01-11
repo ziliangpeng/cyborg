@@ -80,6 +80,7 @@ class CyberVision {
         this.startBtn.disabled = true;
         return;
       }
+      this.setupEventListeners();
       this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
       return;
     }
@@ -122,6 +123,11 @@ class CyberVision {
       }
     }
 
+    this.setupEventListeners();
+    this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
+  }
+
+  setupEventListeners() {
     // Event listeners
     this.startBtn.addEventListener("click", () => this.startCamera());
     this.stopBtn.addEventListener("click", () => this.stopCamera());
@@ -162,8 +168,6 @@ class CyberVision {
       this.colorThreshold = parseFloat(e.target.value);
       this.thresholdValue.textContent = this.colorThreshold.toFixed(2);
     });
-
-    this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
   }
 
   updateEffectControls() {
