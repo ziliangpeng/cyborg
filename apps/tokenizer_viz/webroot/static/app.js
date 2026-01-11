@@ -11,6 +11,9 @@ let currentTokens = [];
 let originalText = "";
 let availableTokenizers = []; // Will be populated from API
 
+// Sample text demonstrating multilingual tokenization
+const SAMPLE_TEXT = `Vibe coding 🚀 is revolutionizing software development! Développeurs can now create applications by simply describing their ideas to AI assistants. 开发者无需深入理解每一行代码，而是通过自然语言交流来构建软件。これは従来のプログラミング方法とは大きく異なります 💻. The AI generates code, and developers iterate based on "vibes" ✨ rather than traditional debugging. C'est une nouvelle façon de programmer!`;
+
 function setStatus(text) {
   statusEl.textContent = text;
 }
@@ -261,6 +264,10 @@ async function initializeTokenizers() {
     allLabel.appendChild(allInput);
     allLabel.appendChild(allSpan);
     tokenizerGroup.appendChild(allLabel);
+
+    // Set sample text and auto-tokenize
+    textInput.value = SAMPLE_TEXT;
+    tokenize();
 
   } catch (error) {
     setStatus(`Error loading tokenizers: ${error.message}`);
