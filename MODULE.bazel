@@ -63,6 +63,7 @@ use_repo(python, "python_3_13")
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 
 # Consolidated Python dependencies
+# TODO: Add a Bazel-wrapped uv lock target (e.g., //scripts:lock_python_deps) for consistent updates.
 pip.parse(
     hub_name = "pip",
     python_version = "3.13",
