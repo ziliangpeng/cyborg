@@ -58,9 +58,31 @@ class CyberVision {
   }
 
   async init() {
-    // Check if WebGL fallback is disabled via URL parameter
+    // Check URL parameters for renderer control
     const urlParams = new URLSearchParams(window.location.search);
     const disableWebGL = urlParams.get('disable-webgl') === 'true';
+    const forceWebGL = urlParams.get('force-webgl') === 'true' || urlParams.get('disable-webgpu') === 'true';
+
+    // Force WebGL if requested (for testing)
+    if (forceWebGL) {
+      console.log("WebGL forced via URL parameter, skipping WebGPU");
+      try {
+        this.renderer = await initWebGL(this.canvas);
+        this.rendererType = "webgl";
+        this.gpuStatus.textContent = "WebGL (forced)";
+        this.gpuStatus.style.color = "#60a5fa";
+        console.log("✓ WebGL initialized successfully");
+        console.log("✓ Using fragment shaders");
+      } catch (err) {
+        this.gpuStatus.textContent = "Not supported";
+        this.gpuStatus.style.color = "#f87171";
+        this.setStatus(`Error: WebGL2 failed (${err.message}).`);
+        this.startBtn.disabled = true;
+        return;
+      }
+      this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
+      return;
+    }
 
     // Try WebGPU first, fallback to WebGL (unless disabled)
     try {
