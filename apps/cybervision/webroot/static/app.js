@@ -119,7 +119,7 @@ class CyberVision {
         };
       });
 
-      // Setup canvas size
+      // Setup canvas size (always match video dimensions, rotation is handled by CSS)
       this.canvas.width = this.video.videoWidth;
       this.canvas.height = this.video.videoHeight;
 

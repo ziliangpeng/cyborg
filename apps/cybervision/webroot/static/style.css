@@ -94,6 +94,14 @@ body {
   border-radius: 12px;
 }
 
+/* Fix mobile camera orientation - rotate 90 degrees clockwise */
+@media (max-width: 768px) and (orientation: portrait) {
+  .video-output {
+    transform: rotate(90deg);
+    transform-origin: center center;
+  }
+}
+
 .controls {
   display: flex;
   gap: 12px;
