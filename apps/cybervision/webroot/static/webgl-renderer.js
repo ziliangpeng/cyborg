@@ -451,10 +451,12 @@ export class WebGLRenderer {
 
     // Map algorithm string to number
     const algorithmMap = {
-      "quantization": 0,
-      "kmeans": 1,
+      "quantization-kmeans": 0,
+      "quantization-kmeans-true": 1,
       "meanshift": 2,
-      "posterize": 3,
+      "meanshift-true": 3,
+      "posterize": 4,
+      "posterize-true": 5,
     };
 
     // Update video texture

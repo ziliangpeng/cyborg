@@ -44,7 +44,7 @@ vec3 kmeans(vec3 color, int k) {
   return bestCentroid;
 }
 
-vec3 meanshift(vec2 uv, vec3 color, float bandwidth) {
+vec3 meanshiftSmoothing(vec2 uv, vec3 color, float bandwidth) {
   vec3 currentColor = color;
   vec2 texelSize = 1.0 / u_resolution;
   vec3 weightedSum = vec3(0.0);
@@ -64,10 +64,10 @@ vec3 meanshift(vec2 uv, vec3 color, float bandwidth) {
   if (totalWeight > 0.0) {
     currentColor = weightedSum / totalWeight;
   }
-  return quantize(currentColor, u_colorCount);
+  return currentColor;
 }
 
-vec3 posterize(vec2 uv, vec3 color, float levels, float threshold) {
+vec3 posterizeEdgeAware(vec2 uv, vec3 color, float levels, float threshold) {
   vec3 quantized = quantize(color, levels);
   vec2 texelSize = 1.0 / u_resolution;
   vec3 weightedSum = vec3(0.0);
@@ -104,13 +104,26 @@ void main() {
   int k = int(u_colorCount);
 
   if (algo == 0) {
+    // Quantization / K-means (per-channel)
     result = quantize(color, u_colorCount);
   } else if (algo == 1) {
+    // Quantization / K-means (true colors)
     result = kmeans(color, k);
   } else if (algo == 2) {
-    result = meanshift(v_texCoord, color, u_threshold);
+    // Mean shift (per-channel)
+    vec3 smoothed = meanshiftSmoothing(v_texCoord, color, u_threshold);
+    result = quantize(smoothed, u_colorCount);
+  } else if (algo == 3) {
+    // Mean shift (true colors)
+    vec3 smoothed = meanshiftSmoothing(v_texCoord, color, u_threshold);
+    result = kmeans(smoothed, k);
+  } else if (algo == 4) {
+    // Posterize (per-channel)
+    result = posterizeEdgeAware(v_texCoord, color, u_colorCount, u_threshold);
   } else {
-    result = posterize(v_texCoord, color, u_colorCount, u_threshold);
+    // Posterize (true colors)
+    vec3 posterized = posterizeEdgeAware(v_texCoord, color, u_colorCount, u_threshold);
+    result = kmeans(posterized, k);
   }
 
   fragColor = vec4(result, 1.0);

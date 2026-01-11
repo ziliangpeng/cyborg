@@ -59,7 +59,7 @@ fn kmeans(color: vec3f, k: u32) -> vec3f {
 }
 
 // ============ MEAN SHIFT (approximation) ============
-fn meanshift(pos: vec2i, color: vec3f, bandwidth: f32) -> vec3f {
+fn meanshiftSmoothing(pos: vec2i, color: vec3f, bandwidth: f32) -> vec3f {
   let dims = textureDimensions(inputTex);
   var currentColor = color;
 
@@ -88,12 +88,11 @@ fn meanshift(pos: vec2i, color: vec3f, bandwidth: f32) -> vec3f {
     currentColor = weightedSum / totalWeight;
   }
 
-  // Quantize final result to reduce color count
-  return quantize(currentColor, params.colorCount);
+  return currentColor;
 }
 
 // ============ POSTERIZE (edge-aware quantization) ============
-fn posterize(pos: vec2i, color: vec3f, levels: f32, threshold: f32) -> vec3f {
+fn posterizeEdgeAware(pos: vec2i, color: vec3f, levels: f32, threshold: f32) -> vec3f {
   let dims = textureDimensions(inputTex);
   let quantized = quantize(color, levels);
 
@@ -148,18 +147,26 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let k = u32(params.colorCount);
 
   if (algo == 0u) {
-    // Quantization
-    let levels = max(params.colorCount, 2.0);
-    outputColor = quantize(color, levels);
+    // Quantization / K-means (per-channel)
+    outputColor = quantize(color, params.colorCount);
   } else if (algo == 1u) {
-    // K-means
+    // Quantization / K-means (true colors)
     outputColor = kmeans(color, k);
   } else if (algo == 2u) {
-    // Mean shift
-    outputColor = meanshift(pos, color, params.threshold);
+    // Mean shift (per-channel)
+    let smoothed = meanshiftSmoothing(pos, color, params.threshold);
+    outputColor = quantize(smoothed, params.colorCount);
+  } else if (algo == 3u) {
+    // Mean shift (true colors)
+    let smoothed = meanshiftSmoothing(pos, color, params.threshold);
+    outputColor = kmeans(smoothed, k);
+  } else if (algo == 4u) {
+    // Posterize (per-channel)
+    outputColor = posterizeEdgeAware(pos, color, params.colorCount, params.threshold);
   } else {
-    // Posterize
-    outputColor = posterize(pos, color, params.colorCount, params.threshold);
+    // Posterize (true colors)
+    let posterized = posterizeEdgeAware(pos, color, params.colorCount, params.threshold);
+    outputColor = kmeans(posterized, k);
   }
 
   textureStore(outputTex, pos, vec4f(outputColor, 1.0));
