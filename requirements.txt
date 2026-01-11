@@ -14,3 +14,4 @@ tiktoken
 transformers>=4.40.0  # For OPT tokenizer (need newer version for pre-built wheels)
 torch  # For loading PyTorch bin weights
 setuptools  # Required by torch
+triton; platform_system == "Linux"  # Required by torch on Linux

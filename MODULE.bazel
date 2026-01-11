@@ -67,6 +67,7 @@ pip.parse(
     hub_name = "pip",
     python_version = "3.13",
     requirements_lock = "//:requirements_lock.txt",  # Locked dependencies with transitives
+    requirements_linux = "//:requirements_lock_linux.txt",
 )
 
 use_repo(pip, "pip")

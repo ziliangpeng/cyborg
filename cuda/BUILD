@@ -120,6 +120,7 @@ py_binary(
         ":tinygrad_comparison",
         "//cuda/softmax:softmax",
     ],
+    deps = ["@bazel_tools//tools/python/runfiles"],
     target_compatible_with = ["//constraints:cuda"],
     tags = ["cuda", "gpu"],
 )
