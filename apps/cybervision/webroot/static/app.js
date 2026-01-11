@@ -26,7 +26,7 @@ class CyberVision {
     this.animationFrame = null;
 
     // Effect state
-    this.currentEffect = "halftone";
+    this.currentEffect = "original";
     this.dotSize = 8;
 
     // FPS tracking
@@ -194,7 +194,7 @@ class CyberVision {
     try {
       if (this.currentEffect === "halftone") {
         this.renderHalftone();
-      } else {
+      } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
 
