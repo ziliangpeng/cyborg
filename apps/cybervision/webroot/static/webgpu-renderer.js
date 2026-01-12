@@ -15,22 +15,26 @@ export class WebGPURenderer {
     // Pipelines
     this.halftonePipeline = null;
     this.clusteringPipeline = null;
+    this.edgesPipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
     this.halftoneBindGroup = null;
     this.clusteringBindGroup = null;
+    this.edgesBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
     // Buffers and samplers
     this.uniformBuffer = null;
     this.clusteringUniformBuffer = null;
+    this.edgesUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
     this.halftoneShader = null;
     this.clusteringShader = null;
+    this.edgesShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -107,6 +111,13 @@ export class WebGPURenderer {
       code: clusteringShaderCode,
     });
 
+    // Load and create edges shader
+    const edgesShaderResponse = await fetch("/static/shaders/edges.wgsl");
+    const edgesShaderCode = await edgesShaderResponse.text();
+    this.edgesShader = this.device.createShaderModule({
+      code: edgesShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -130,6 +141,21 @@ export class WebGPURenderer {
       0, 0,  // padding
     ]);
     this.clusteringUniformBuffer = this.createUniformBuffer(clusteringUniformData);
+
+    // Create edges uniform buffer
+    const edgesUniformData = new Float32Array([
+      0,  // algorithm (0=Sobel, 1=Prewitt, 2=Laplacian, 3=Canny)
+      0.1,  // threshold
+      0,  // showOverlay
+      0,  // invert
+      1.0, 1.0, 1.0,  // edgeColor RGB (white)
+      0,  // padding
+      this.videoWidth,
+      this.videoHeight,
+      1,  // thickness
+      0,  // padding
+    ]);
+    this.edgesUniformBuffer = this.createUniformBuffer(edgesUniformData);
 
     // Create textures
     this.inputTexture = this.device.createTexture({
@@ -202,6 +228,36 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.clusteringUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create edges compute pipeline
+    this.edgesPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.edgesShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create edges bind group
+    this.edgesBindGroup = this.device.createBindGroup({
+      layout: this.edgesPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.edgesUniformBuffer,
           },
         },
       ],
@@ -411,6 +467,68 @@ export class WebGPURenderer {
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(this.clusteringPipeline);
     computePass.setBindGroup(0, this.clusteringBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    // Blit rgba texture to canvas (bgra format)
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderEdges(video, algorithm, threshold, showOverlay, invert, edgeColor, thickness) {
+    // Map algorithm string to number
+    const algorithmMap = {
+      "sobel": 0,
+      "prewitt": 1,
+      "laplacian": 2,
+      "canny": 3,
+    };
+
+    // Update uniform buffer with current parameters
+    const uniformData = new Float32Array([
+      algorithmMap[algorithm] || 0,
+      threshold,
+      showOverlay ? 1.0 : 0.0,
+      invert ? 1.0 : 0.0,
+      edgeColor[0], edgeColor[1], edgeColor[2],
+      0,  // padding
+      this.videoWidth,
+      this.videoHeight,
+      thickness,
+      0,  // padding
+    ]);
+    this.updateUniformBuffer(this.edgesUniformBuffer, uniformData);
+
+    // Copy video frame to input texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    // Run compute shader
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.edgesPipeline);
+    computePass.setBindGroup(0, this.edgesBindGroup);
 
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);

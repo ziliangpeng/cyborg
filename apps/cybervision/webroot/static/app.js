@@ -33,6 +33,17 @@ class CyberVision {
     this.thresholdSlider = document.getElementById("thresholdSlider");
     this.thresholdValue = document.getElementById("thresholdValue");
 
+    // Edge detection controls
+    this.edgesControls = document.getElementById("edgesControls");
+    this.edgeAlgorithm = document.getElementById("edgeAlgorithm");
+    this.edgeThreshold = document.getElementById("edgeThreshold");
+    this.edgeThresholdValue = document.getElementById("edgeThresholdValue");
+    this.edgeOverlay = document.getElementById("edgeOverlay");
+    this.edgeInvert = document.getElementById("edgeInvert");
+    this.edgeColor = document.getElementById("edgeColor");
+    this.edgeThickness = document.getElementById("edgeThickness");
+    this.edgeThicknessValue = document.getElementById("edgeThicknessValue");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -52,6 +63,14 @@ class CyberVision {
     this.useTrueColors = false;
     this.colorCount = 8;
     this.colorThreshold = 0.1;
+
+    // Edge detection state
+    this.edgeAlgorithmValue = "sobel";
+    this.edgeThresholdValue_state = 0.1;
+    this.edgeOverlayValue = false;
+    this.edgeInvertValue = false;
+    this.edgeColorValue = "#ffffff";
+    this.edgeThicknessValue_state = 1;
 
     // FPS tracking
     this.frameCount = 0;
@@ -212,6 +231,33 @@ class CyberVision {
       this.thresholdValue.textContent = this.colorThreshold.toFixed(2);
     });
 
+    // Edge detection event listeners
+    this.edgeAlgorithm.addEventListener("change", (e) => {
+      this.edgeAlgorithmValue = e.target.value;
+    });
+
+    this.edgeThreshold.addEventListener("input", (e) => {
+      this.edgeThresholdValue_state = parseFloat(e.target.value);
+      this.edgeThresholdValue.textContent = this.edgeThresholdValue_state.toFixed(2);
+    });
+
+    this.edgeOverlay.addEventListener("change", (e) => {
+      this.edgeOverlayValue = e.target.checked;
+    });
+
+    this.edgeInvert.addEventListener("change", (e) => {
+      this.edgeInvertValue = e.target.checked;
+    });
+
+    this.edgeColor.addEventListener("input", (e) => {
+      this.edgeColorValue = e.target.value;
+    });
+
+    this.edgeThickness.addEventListener("input", (e) => {
+      this.edgeThicknessValue_state = parseInt(e.target.value, 10);
+      this.edgeThicknessValue.textContent = this.edgeThicknessValue_state;
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -253,6 +299,7 @@ class CyberVision {
     // Show/hide effect-specific controls based on current effect
     this.halftoneControls.style.display = this.currentEffect === "halftone" ? "block" : "none";
     this.clusteringControls.style.display = this.currentEffect === "clustering" ? "block" : "none";
+    this.edgesControls.style.display = this.currentEffect === "edges" ? "block" : "none";
   }
 
   updateHalftoneParams() {
@@ -350,6 +397,8 @@ class CyberVision {
         this.renderHalftone();
       } else if (this.currentEffect === "clustering") {
         this.renderClustering();
+      } else if (this.currentEffect === "edges") {
+        this.renderEdges();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -388,6 +437,24 @@ class CyberVision {
       algorithmString,
       this.colorCount,
       this.colorThreshold
+    );
+  }
+
+  renderEdges() {
+    // Parse edge color from hex to RGB
+    const hex = this.edgeColorValue.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    this.renderer.renderEdges(
+      this.video,
+      this.edgeAlgorithmValue,
+      this.edgeThresholdValue_state,
+      this.edgeOverlayValue,
+      this.edgeInvertValue,
+      [r, g, b],
+      this.edgeThicknessValue_state
     );
   }
 
