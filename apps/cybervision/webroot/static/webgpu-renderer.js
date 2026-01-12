@@ -20,6 +20,8 @@ export class WebGPURenderer {
     this.chromaticPipeline = null;
     this.glitchPipeline = null;
     this.thermalPipeline = null;
+    this.pixelSortSegmentPipeline = null;
+    this.pixelSortPipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
@@ -30,6 +32,8 @@ export class WebGPURenderer {
     this.chromaticBindGroup = null;
     this.glitchBindGroup = null;
     this.thermalBindGroup = null;
+    this.pixelSortSegmentBindGroup = null;
+    this.pixelSortBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
@@ -41,6 +45,8 @@ export class WebGPURenderer {
     this.chromaticUniformBuffer = null;
     this.glitchUniformBuffer = null;
     this.thermalUniformBuffer = null;
+    this.pixelSortSegmentUniformBuffer = null;
+    this.pixelSortUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
@@ -51,6 +57,8 @@ export class WebGPURenderer {
     this.chromaticShader = null;
     this.glitchShader = null;
     this.thermalShader = null;
+    this.pixelSortSegmentShader = null;
+    this.pixelSortShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -162,6 +170,20 @@ export class WebGPURenderer {
       code: glitchShaderCode,
     });
 
+    // Load and create pixel sort segment shader
+    const pixelSortSegmentShaderResponse = await fetch("/static/shaders/pixelsort-segment.wgsl");
+    const pixelSortSegmentShaderCode = await pixelSortSegmentShaderResponse.text();
+    this.pixelSortSegmentShader = this.device.createShaderModule({
+      code: pixelSortSegmentShaderCode,
+    });
+
+    // Load and create pixel sort shader
+    const pixelSortShaderResponse = await fetch("/static/shaders/pixelsort.wgsl");
+    const pixelSortShaderCode = await pixelSortShaderResponse.text();
+    this.pixelSortShader = this.device.createShaderModule({
+      code: pixelSortShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -251,6 +273,34 @@ export class WebGPURenderer {
       0, 0,  // padding
     ]);
     this.thermalUniformBuffer = this.createUniformBuffer(thermalUniformData);
+
+    // Create pixel sort segment uniform buffer
+    const pixelSortSegmentUniformData = new Float32Array([
+      0.25,  // thresholdLow
+      0.75,  // thresholdHigh
+      this.videoWidth,
+      this.videoHeight,
+      0,  // thresholdMode (0=brightness)
+      0, 0, 0,  // padding
+    ]);
+    this.pixelSortSegmentUniformBuffer = this.createUniformBuffer(pixelSortSegmentUniformData);
+
+    // Create pixel sort uniform buffer
+    const pixelSortUniformData = new Float32Array([
+      0.25,  // thresholdLow
+      0.75,  // thresholdHigh
+      this.videoWidth,
+      this.videoHeight,
+      0,  // sortKey (0=luminance)
+      0,  // sortOrder (0=ascending)
+      0,  // direction (0=horizontal)
+      0,  // algorithm (0=bitonic)
+      0,  // stage (for bitonic)
+      0,  // step (for bitonic)
+      0,  // iteration (for bubble)
+      0,  // padding
+    ]);
+    this.pixelSortUniformBuffer = this.createUniformBuffer(pixelSortUniformData);
 
     // Create textures
     this.inputTexture = this.device.createTexture({
@@ -503,6 +553,66 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.thermalUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create pixel sort segment compute pipeline
+    this.pixelSortSegmentPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.pixelSortSegmentShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create pixel sort segment bind group
+    this.pixelSortSegmentBindGroup = this.device.createBindGroup({
+      layout: this.pixelSortSegmentPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.pixelSortSegmentUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create pixel sort compute pipeline
+    this.pixelSortPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.pixelSortShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create pixel sort bind group
+    this.pixelSortBindGroup = this.device.createBindGroup({
+      layout: this.pixelSortPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.pixelSortUniformBuffer,
           },
         },
       ],
@@ -1046,6 +1156,153 @@ export class WebGPURenderer {
     renderPass.end();
 
     this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderPixelSort(video, direction, thresholdLow, thresholdHigh, thresholdMode, sortKey, sortOrder, algorithm, iterations) {
+    // Map strings to numbers
+    const directionMap = {
+      "horizontal": 0,
+      "vertical": 1,
+      "diagonal_right": 2,
+      "diagonal_left": 3,
+    };
+
+    const thresholdModeMap = {
+      "brightness": 0,
+      "saturation": 1,
+      "hue": 2,
+      "edge": 3,
+    };
+
+    const sortKeyMap = {
+      "luminance": 0,
+      "hue": 1,
+      "saturation": 2,
+      "red": 3,
+      "green": 4,
+      "blue": 5,
+    };
+
+    const algorithmMap = {
+      "bitonic": 0,
+      "bubble": 1,
+    };
+
+    // Copy video frame to input texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+
+    // Pass 1: Segment identification
+    const segmentUniformData = new Float32Array([
+      thresholdLow,
+      thresholdHigh,
+      this.videoWidth,
+      this.videoHeight,
+      thresholdModeMap[thresholdMode] || 0,
+      0, 0, 0,  // padding
+    ]);
+    this.updateUniformBuffer(this.pixelSortSegmentUniformBuffer, segmentUniformData);
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    let computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.pixelSortSegmentPipeline);
+    computePass.setBindGroup(0, this.pixelSortSegmentBindGroup);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+
+    // Pass 2+: Sorting passes
+    const algo = algorithmMap[algorithm] || 0;
+
+    if (algo === 0) {
+      // Bitonic sort - multiple passes
+      const maxSegmentLength = Math.min(this.videoWidth, 256);  // Limit for Phase 1
+      const numStages = Math.ceil(Math.log2(maxSegmentLength));
+
+      for (let stage = 0; stage < numStages; stage++) {
+        for (let step = stage; step >= 0; step--) {
+          const sortUniformData = new Float32Array([
+            thresholdLow,
+            thresholdHigh,
+            this.videoWidth,
+            this.videoHeight,
+            sortKeyMap[sortKey] || 0,
+            sortOrder === "ascending" ? 0.0 : 1.0,
+            directionMap[direction] || 0,
+            algo,
+            stage,
+            step,
+            0,  // iteration (unused for bitonic)
+            0,  // padding
+          ]);
+          this.updateUniformBuffer(this.pixelSortUniformBuffer, sortUniformData);
+
+          const sortCommandEncoder = this.device.createCommandEncoder();
+          const sortComputePass = sortCommandEncoder.beginComputePass();
+          sortComputePass.setPipeline(this.pixelSortPipeline);
+          sortComputePass.setBindGroup(0, this.pixelSortBindGroup);
+          sortComputePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+          sortComputePass.end();
+
+          this.device.queue.submit([sortCommandEncoder.finish()]);
+        }
+      }
+    } else {
+      // Bubble sort - iterations passes
+      for (let iter = 0; iter < iterations; iter++) {
+        const sortUniformData = new Float32Array([
+          thresholdLow,
+          thresholdHigh,
+          this.videoWidth,
+          this.videoHeight,
+          sortKeyMap[sortKey] || 0,
+          sortOrder === "ascending" ? 0.0 : 1.0,
+          directionMap[direction] || 0,
+          algo,
+          0,  // stage (unused for bubble)
+          0,  // step (unused for bubble)
+          iter,
+          0,  // padding
+        ]);
+        this.updateUniformBuffer(this.pixelSortUniformBuffer, sortUniformData);
+
+        const sortCommandEncoder = this.device.createCommandEncoder();
+        const sortComputePass = sortCommandEncoder.beginComputePass();
+        sortComputePass.setPipeline(this.pixelSortPipeline);
+        sortComputePass.setBindGroup(0, this.pixelSortBindGroup);
+        sortComputePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+        sortComputePass.end();
+
+        this.device.queue.submit([sortCommandEncoder.finish()]);
+      }
+    }
+
+    // Final pass: Blit to canvas
+    const blitCommandEncoder = this.device.createCommandEncoder();
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = blitCommandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([blitCommandEncoder.finish()]);
   }
 
   createUniformBuffer(data) {

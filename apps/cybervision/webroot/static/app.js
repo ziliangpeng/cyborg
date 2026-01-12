@@ -82,6 +82,21 @@ class CyberVision {
     this.thermalContrastValue = document.getElementById("thermalContrastValue");
     this.thermalInvert = document.getElementById("thermalInvert");
 
+    // Pixel sort controls
+    this.pixelSortControls = document.getElementById("pixelSortControls");
+    this.pixelSortDirection = document.getElementById("pixelSortDirection");
+    this.pixelSortThresholdMode = document.getElementById("pixelSortThresholdMode");
+    this.pixelSortThresholdLow = document.getElementById("pixelSortThresholdLow");
+    this.pixelSortThresholdLowValue = document.getElementById("pixelSortThresholdLowValue");
+    this.pixelSortThresholdHigh = document.getElementById("pixelSortThresholdHigh");
+    this.pixelSortThresholdHighValue = document.getElementById("pixelSortThresholdHighValue");
+    this.pixelSortKey = document.getElementById("pixelSortKey");
+    this.pixelSortOrder = document.getElementById("pixelSortOrder");
+    this.pixelSortAlgorithm = document.getElementById("pixelSortAlgorithm");
+    this.pixelSortIterations = document.getElementById("pixelSortIterations");
+    this.pixelSortIterationsValue = document.getElementById("pixelSortIterationsValue");
+    this.pixelSortIterationsGroup = document.getElementById("pixelSortIterationsGroup");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -132,6 +147,16 @@ class CyberVision {
     this.thermalPaletteValue = "classic";
     this.thermalContrastValue_state = 1.0;
     this.thermalInvertValue = false;
+
+    // Pixel sort state
+    this.pixelSortDirectionValue = "horizontal";
+    this.pixelSortThresholdModeValue = "brightness";
+    this.pixelSortThresholdLowValue_state = 0.25;
+    this.pixelSortThresholdHighValue_state = 0.75;
+    this.pixelSortKeyValue = "luminance";
+    this.pixelSortOrderValue = "ascending";
+    this.pixelSortAlgorithmValue = "bitonic";
+    this.pixelSortIterationsValue_state = 50;
 
     // FPS tracking
     this.frameCount = 0;
@@ -394,6 +419,48 @@ class CyberVision {
       this.thermalInvertValue = e.target.checked;
     });
 
+    // Pixel sort event listeners
+    this.pixelSortDirection.addEventListener("change", (e) => {
+      this.pixelSortDirectionValue = e.target.value;
+    });
+
+    this.pixelSortThresholdMode.addEventListener("change", (e) => {
+      this.pixelSortThresholdModeValue = e.target.value;
+    });
+
+    this.pixelSortThresholdLow.addEventListener("input", (e) => {
+      this.pixelSortThresholdLowValue_state = parseFloat(e.target.value);
+      this.pixelSortThresholdLowValue.textContent = this.pixelSortThresholdLowValue_state.toFixed(2);
+    });
+
+    this.pixelSortThresholdHigh.addEventListener("input", (e) => {
+      this.pixelSortThresholdHighValue_state = parseFloat(e.target.value);
+      this.pixelSortThresholdHighValue.textContent = this.pixelSortThresholdHighValue_state.toFixed(2);
+    });
+
+    this.pixelSortKey.addEventListener("change", (e) => {
+      this.pixelSortKeyValue = e.target.value;
+    });
+
+    this.pixelSortOrder.addEventListener("change", (e) => {
+      this.pixelSortOrderValue = e.target.value;
+    });
+
+    this.pixelSortAlgorithm.addEventListener("change", (e) => {
+      this.pixelSortAlgorithmValue = e.target.value;
+      // Show/hide iterations slider based on algorithm
+      if (e.target.value === "bubble") {
+        this.pixelSortIterationsGroup.style.display = "block";
+      } else {
+        this.pixelSortIterationsGroup.style.display = "none";
+      }
+    });
+
+    this.pixelSortIterations.addEventListener("input", (e) => {
+      this.pixelSortIterationsValue_state = parseInt(e.target.value, 10);
+      this.pixelSortIterationsValue.textContent = this.pixelSortIterationsValue_state;
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -443,10 +510,20 @@ class CyberVision {
     this.chromaticControls.style.display = this.currentEffect === "chromatic" ? "block" : "none";
     this.glitchControls.style.display = this.currentEffect === "glitch" ? "block" : "none";
     this.thermalControls.style.display = this.currentEffect === "thermal" ? "block" : "none";
+    this.pixelSortControls.style.display = this.currentEffect === "pixelsort" ? "block" : "none";
 
     // Update mosaic info when mosaic effect is shown
     if (this.currentEffect === "mosaic") {
       this.updateMosaicInfo();
+    }
+
+    // Update pixel sort iterations visibility
+    if (this.currentEffect === "pixelsort") {
+      if (this.pixelSortAlgorithmValue === "bubble") {
+        this.pixelSortIterationsGroup.style.display = "block";
+      } else {
+        this.pixelSortIterationsGroup.style.display = "none";
+      }
     }
   }
 
@@ -564,6 +641,8 @@ class CyberVision {
         this.renderGlitch();
       } else if (this.currentEffect === "thermal") {
         this.renderThermal();
+      } else if (this.currentEffect === "pixelsort") {
+        this.renderPixelSort();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -664,6 +743,23 @@ class CyberVision {
       this.thermalContrastValue_state,
       this.thermalInvertValue
     );
+  }
+
+  renderPixelSort() {
+    // Only WebGPU for now
+    if (this.rendererType === "webgpu") {
+      this.renderer.renderPixelSort(
+        this.video,
+        this.pixelSortDirectionValue,
+        this.pixelSortThresholdLowValue_state,
+        this.pixelSortThresholdHighValue_state,
+        this.pixelSortThresholdModeValue,
+        this.pixelSortKeyValue,
+        this.pixelSortOrderValue,
+        this.pixelSortAlgorithmValue,
+        this.pixelSortIterationsValue_state
+      );
+    }
   }
 
   renderPassthrough() {
