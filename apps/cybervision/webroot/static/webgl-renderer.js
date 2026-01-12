@@ -9,6 +9,7 @@ export class WebGLRenderer {
     this.edgesProgram = null;
     this.mosaicProgram = null;
     this.chromaticProgram = null;
+    this.glitchProgram = null;
     this.thermalProgram = null;
     this.passthroughProgram = null;
     this.videoTexture = null;
@@ -57,6 +58,7 @@ export class WebGLRenderer {
     const edgesFragmentSource = await this.loadShader("/static/shaders/edges.frag.glsl");
     const mosaicFragmentSource = await this.loadShader("/static/shaders/mosaic.frag.glsl");
     const chromaticFragmentSource = await this.loadShader("/static/shaders/chromatic.frag.glsl");
+    const glitchFragmentSource = await this.loadShader("/static/shaders/glitch.frag.glsl");
     const thermalFragmentSource = await this.loadShader("/static/shaders/thermal.frag.glsl");
     const passthroughFragmentSource = await this.loadShader("/static/shaders/passthrough.frag.glsl");
 
@@ -281,6 +283,7 @@ export class WebGLRenderer {
     const edgesFragment = this.compileShader(gl.FRAGMENT_SHADER, edgesFragmentSource);
     const mosaicFragment = this.compileShader(gl.FRAGMENT_SHADER, mosaicFragmentSource);
     const chromaticFragment = this.compileShader(gl.FRAGMENT_SHADER, chromaticFragmentSource);
+    const glitchFragment = this.compileShader(gl.FRAGMENT_SHADER, glitchFragmentSource);
     const thermalFragment = this.compileShader(gl.FRAGMENT_SHADER, thermalFragmentSource);
     const passthroughFragment = this.compileShader(gl.FRAGMENT_SHADER, passthroughFragmentSource);
 
@@ -290,6 +293,7 @@ export class WebGLRenderer {
     this.edgesProgram = this.createProgram(vertexShader, edgesFragment);
     this.mosaicProgram = this.createProgram(vertexShader, mosaicFragment);
     this.chromaticProgram = this.createProgram(vertexShader, chromaticFragment);
+    this.glitchProgram = this.createProgram(vertexShader, glitchFragment);
     this.thermalProgram = this.createProgram(vertexShader, thermalFragment);
     this.passthroughProgram = this.createProgram(vertexShader, passthroughFragment);
 
@@ -674,6 +678,57 @@ export class WebGLRenderer {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
+  renderGlitch(video, mode, intensity, blockSize, colorShift, noiseAmount, scanlineStrength) {
+    const gl = this.gl;
+    const program = this.glitchProgram;
+
+    const modeMap = {
+      "slices": 0,
+      "blocks": 1,
+      "scanlines": 2,
+    };
+
+    this.updateVideoTexture(video);
+
+    gl.useProgram(program);
+
+    const positionLoc = gl.getAttribLocation(program, "a_position");
+    const texCoordLoc = gl.getAttribLocation(program, "a_texCoord");
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.enableVertexAttribArray(texCoordLoc);
+    gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 0, 0);
+
+    const videoLoc = gl.getUniformLocation(program, "u_video");
+    const resolutionLoc = gl.getUniformLocation(program, "u_resolution");
+    const modeLoc = gl.getUniformLocation(program, "u_mode");
+    const intensityLoc = gl.getUniformLocation(program, "u_intensity");
+    const blockSizeLoc = gl.getUniformLocation(program, "u_blockSize");
+    const colorShiftLoc = gl.getUniformLocation(program, "u_colorShift");
+    const noiseAmountLoc = gl.getUniformLocation(program, "u_noiseAmount");
+    const scanlineStrengthLoc = gl.getUniformLocation(program, "u_scanlineStrength");
+    const timeLoc = gl.getUniformLocation(program, "u_time");
+
+    gl.uniform1i(videoLoc, 0);
+    gl.uniform2f(resolutionLoc, video.videoWidth, video.videoHeight);
+    gl.uniform1f(modeLoc, modeMap[mode] || 0);
+    gl.uniform1f(intensityLoc, intensity);
+    gl.uniform1f(blockSizeLoc, blockSize);
+    gl.uniform1f(colorShiftLoc, colorShift);
+    gl.uniform1f(noiseAmountLoc, noiseAmount);
+    gl.uniform1f(scanlineStrengthLoc, scanlineStrength);
+    gl.uniform1f(timeLoc, performance.now() / 1000);
+
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
   renderThermal(video, palette, contrast, invert) {
     const gl = this.gl;
     const program = this.thermalProgram;
@@ -733,6 +788,7 @@ export class WebGLRenderer {
       if (this.edgesProgram) gl.deleteProgram(this.edgesProgram);
       if (this.mosaicProgram) gl.deleteProgram(this.mosaicProgram);
       if (this.chromaticProgram) gl.deleteProgram(this.chromaticProgram);
+      if (this.glitchProgram) gl.deleteProgram(this.glitchProgram);
       if (this.thermalProgram) gl.deleteProgram(this.thermalProgram);
       if (this.passthroughProgram) gl.deleteProgram(this.passthroughProgram);
     }

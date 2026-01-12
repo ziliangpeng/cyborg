@@ -57,6 +57,10 @@
                 <span>Chromatic Aberration</span>
               </label>
               <label class="radio-label">
+                <input type="radio" name="effect" value="glitch" />
+                <span>Glitch</span>
+              </label>
+              <label class="radio-label">
                 <input type="radio" name="effect" value="thermal" />
                 <span>Thermal</span>
               </label>
@@ -279,6 +283,92 @@
                   max="100"
                   value="50"
                   step="1"
+                  class="slider"
+                />
+              </div>
+            </div>
+
+            <div class="effect-controls glitch-controls" id="glitchControls" style="display: none;">
+              <div class="control-group">
+                <label for="glitchMode">Mode</label>
+                <select id="glitchMode" class="select">
+                  <option value="slices">Slices</option>
+                  <option value="blocks">Blocks</option>
+                  <option value="scanlines">Scanlines</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="glitchIntensity">
+                  Intensity: <span id="glitchIntensityValue">12</span>px
+                </label>
+                <input
+                  id="glitchIntensity"
+                  type="range"
+                  min="0"
+                  max="50"
+                  value="12"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="glitchBlockSize">
+                  Block Size: <span id="glitchBlockSizeValue">24</span>px
+                </label>
+                <input
+                  id="glitchBlockSize"
+                  type="range"
+                  min="4"
+                  max="128"
+                  value="24"
+                  step="2"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="glitchColorShift">
+                  Color Shift: <span id="glitchColorShiftValue">4</span>px
+                </label>
+                <input
+                  id="glitchColorShift"
+                  type="range"
+                  min="0"
+                  max="20"
+                  value="4"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="glitchNoise">
+                  Noise: <span id="glitchNoiseValue">0.15</span>
+                </label>
+                <input
+                  id="glitchNoise"
+                  type="range"
+                  min="0"
+                  max="0.5"
+                  value="0.15"
+                  step="0.01"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="glitchScanline">
+                  Scanlines: <span id="glitchScanlineValue">0.30</span>
+                </label>
+                <input
+                  id="glitchScanline"
+                  type="range"
+                  min="0"
+                  max="1"
+                  value="0.3"
+                  step="0.05"
                   class="slider"
                 />
               </div>

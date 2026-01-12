@@ -18,6 +18,7 @@ export class WebGPURenderer {
     this.edgesPipeline = null;
     this.mosaicPipeline = null;
     this.chromaticPipeline = null;
+    this.glitchPipeline = null;
     this.thermalPipeline = null;
     this.blitPipeline = null;
 
@@ -27,6 +28,7 @@ export class WebGPURenderer {
     this.edgesBindGroup = null;
     this.mosaicBindGroup = null;
     this.chromaticBindGroup = null;
+    this.glitchBindGroup = null;
     this.thermalBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
@@ -37,6 +39,7 @@ export class WebGPURenderer {
     this.edgesUniformBuffer = null;
     this.mosaicUniformBuffer = null;
     this.chromaticUniformBuffer = null;
+    this.glitchUniformBuffer = null;
     this.thermalUniformBuffer = null;
     this.blitSampler = null;
 
@@ -46,6 +49,7 @@ export class WebGPURenderer {
     this.edgesShader = null;
     this.mosaicShader = null;
     this.chromaticShader = null;
+    this.glitchShader = null;
     this.thermalShader = null;
 
     // Video dimensions and effect params
@@ -151,6 +155,13 @@ export class WebGPURenderer {
       code: thermalShaderCode,
     });
 
+    // Load and create glitch shader
+    const glitchShaderResponse = await fetch("/static/shaders/glitch.wgsl");
+    const glitchShaderCode = await glitchShaderResponse.text();
+    this.glitchShader = this.device.createShaderModule({
+      code: glitchShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -212,6 +223,22 @@ export class WebGPURenderer {
       0, 0,  // padding
     ]);
     this.chromaticUniformBuffer = this.createUniformBuffer(chromaticUniformData);
+
+    // Create glitch uniform buffer
+    const glitchUniformData = new Float32Array([
+      0,  // mode (0=Slices, 1=Blocks, 2=Scanlines)
+      12,  // intensity
+      24,  // blockSize
+      4,  // colorShift
+      0.15,  // noiseAmount
+      0.3,  // scanlineStrength
+      performance.now() / 1000,  // time
+      0,  // padding
+      this.videoWidth,
+      this.videoHeight,
+      0, 0,  // padding
+    ]);
+    this.glitchUniformBuffer = this.createUniformBuffer(glitchUniformData);
 
     // Create thermal uniform buffer
     const thermalUniformData = new Float32Array([
@@ -386,6 +413,36 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.chromaticUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create glitch compute pipeline
+    this.glitchPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.glitchShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create glitch bind group
+    this.glitchBindGroup = this.device.createBindGroup({
+      layout: this.glitchPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.glitchUniformBuffer,
           },
         },
       ],
@@ -813,6 +870,65 @@ export class WebGPURenderer {
     computePass.end();
 
     // Blit rgba texture to canvas (bgra format)
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderGlitch(video, mode, intensity, blockSize, colorShift, noiseAmount, scanlineStrength) {
+    // Map mode string to number
+    const modeMap = {
+      "slices": 0,
+      "blocks": 1,
+      "scanlines": 2,
+    };
+
+    const uniformData = new Float32Array([
+      modeMap[mode] || 0,
+      intensity,
+      blockSize,
+      colorShift,
+      noiseAmount,
+      scanlineStrength,
+      performance.now() / 1000,
+      0,  // padding
+      this.videoWidth,
+      this.videoHeight,
+      0, 0,  // padding
+    ]);
+    this.updateUniformBuffer(this.glitchUniformBuffer, uniformData);
+
+    // Copy video frame to input texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.glitchPipeline);
+    computePass.setBindGroup(0, this.glitchBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
     const canvasTexture = this.canvasContext.getCurrentTexture();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [

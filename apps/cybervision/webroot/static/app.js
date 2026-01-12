@@ -60,6 +60,20 @@ class CyberVision {
     this.chromaticCenterY = document.getElementById("chromaticCenterY");
     this.chromaticCenterYValue = document.getElementById("chromaticCenterYValue");
 
+    // Glitch controls
+    this.glitchControls = document.getElementById("glitchControls");
+    this.glitchMode = document.getElementById("glitchMode");
+    this.glitchIntensity = document.getElementById("glitchIntensity");
+    this.glitchIntensityValue = document.getElementById("glitchIntensityValue");
+    this.glitchBlockSize = document.getElementById("glitchBlockSize");
+    this.glitchBlockSizeValue = document.getElementById("glitchBlockSizeValue");
+    this.glitchColorShift = document.getElementById("glitchColorShift");
+    this.glitchColorShiftValue = document.getElementById("glitchColorShiftValue");
+    this.glitchNoise = document.getElementById("glitchNoise");
+    this.glitchNoiseValue = document.getElementById("glitchNoiseValue");
+    this.glitchScanline = document.getElementById("glitchScanline");
+    this.glitchScanlineValue = document.getElementById("glitchScanlineValue");
+
     // Thermal controls
     this.thermalControls = document.getElementById("thermalControls");
     this.thermalPalette = document.getElementById("thermalPalette");
@@ -104,6 +118,14 @@ class CyberVision {
     this.chromaticModeValue = "radial";
     this.chromaticCenterXValue_state = 50;
     this.chromaticCenterYValue_state = 50;
+
+    // Glitch state
+    this.glitchModeValue = "slices";
+    this.glitchIntensityValue_state = 12;
+    this.glitchBlockSizeValue_state = 24;
+    this.glitchColorShiftValue_state = 4;
+    this.glitchNoiseValue_state = 0.15;
+    this.glitchScanlineValue_state = 0.3;
 
     // Thermal state
     this.thermalPaletteValue = "classic";
@@ -326,6 +348,36 @@ class CyberVision {
       this.chromaticCenterYValue.textContent = this.chromaticCenterYValue_state;
     });
 
+    // Glitch event listeners
+    this.glitchMode.addEventListener("change", (e) => {
+      this.glitchModeValue = e.target.value;
+    });
+
+    this.glitchIntensity.addEventListener("input", (e) => {
+      this.glitchIntensityValue_state = parseInt(e.target.value, 10);
+      this.glitchIntensityValue.textContent = this.glitchIntensityValue_state;
+    });
+
+    this.glitchBlockSize.addEventListener("input", (e) => {
+      this.glitchBlockSizeValue_state = parseInt(e.target.value, 10);
+      this.glitchBlockSizeValue.textContent = this.glitchBlockSizeValue_state;
+    });
+
+    this.glitchColorShift.addEventListener("input", (e) => {
+      this.glitchColorShiftValue_state = parseInt(e.target.value, 10);
+      this.glitchColorShiftValue.textContent = this.glitchColorShiftValue_state;
+    });
+
+    this.glitchNoise.addEventListener("input", (e) => {
+      this.glitchNoiseValue_state = parseFloat(e.target.value);
+      this.glitchNoiseValue.textContent = this.glitchNoiseValue_state.toFixed(2);
+    });
+
+    this.glitchScanline.addEventListener("input", (e) => {
+      this.glitchScanlineValue_state = parseFloat(e.target.value);
+      this.glitchScanlineValue.textContent = this.glitchScanlineValue_state.toFixed(2);
+    });
+
     // Thermal event listeners
     this.thermalPalette.addEventListener("change", (e) => {
       this.thermalPaletteValue = e.target.value;
@@ -384,6 +436,7 @@ class CyberVision {
     this.edgesControls.style.display = this.currentEffect === "edges" ? "block" : "none";
     this.mosaicControls.style.display = this.currentEffect === "mosaic" ? "block" : "none";
     this.chromaticControls.style.display = this.currentEffect === "chromatic" ? "block" : "none";
+    this.glitchControls.style.display = this.currentEffect === "glitch" ? "block" : "none";
     this.thermalControls.style.display = this.currentEffect === "thermal" ? "block" : "none";
   }
 
@@ -488,6 +541,8 @@ class CyberVision {
         this.renderMosaic();
       } else if (this.currentEffect === "chromatic") {
         this.renderChromatic();
+      } else if (this.currentEffect === "glitch") {
+        this.renderGlitch();
       } else if (this.currentEffect === "thermal") {
         this.renderThermal();
       } else if (this.currentEffect === "original") {
@@ -568,6 +623,18 @@ class CyberVision {
       this.chromaticModeValue,
       centerX,
       centerY
+    );
+  }
+
+  renderGlitch() {
+    this.renderer.renderGlitch(
+      this.video,
+      this.glitchModeValue,
+      this.glitchIntensityValue_state,
+      this.glitchBlockSizeValue_state,
+      this.glitchColorShiftValue_state,
+      this.glitchNoiseValue_state,
+      this.glitchScanlineValue_state
     );
   }
 
