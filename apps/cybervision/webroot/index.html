@@ -64,6 +64,10 @@
                 <input type="radio" name="effect" value="thermal" />
                 <span>Thermal</span>
               </label>
+              <label class="radio-label">
+                <input type="radio" name="effect" value="pixelsort" />
+                <span>Pixel Sort</span>
+              </label>
             </div>
 
             <div class="effect-controls halftone-controls" id="halftoneControls">
@@ -409,6 +413,124 @@
                   <input type="checkbox" id="thermalInvert" />
                   <span>Invert (Hot = Dark)</span>
                 </label>
+              </div>
+            </div>
+
+            <div class="effect-controls pixelsort-controls" id="pixelSortControls" style="display: none;">
+              <div class="control-group">
+                <label for="pixelSortAngleMode">Angle Mode</label>
+                <select id="pixelSortAngleMode" class="select">
+                  <option value="preset">Preset Directions</option>
+                  <option value="rotate">Custom Angle (Rotate)</option>
+                </select>
+              </div>
+
+              <div class="control-group" id="pixelSortDirectionGroup">
+                <label for="pixelSortDirection">Direction</label>
+                <select id="pixelSortDirection" class="select">
+                  <option value="horizontal">Horizontal →</option>
+                  <option value="vertical">Vertical ↓</option>
+                  <option value="diagonal_right">Diagonal ↘</option>
+                  <option value="diagonal_left">Diagonal ↙</option>
+                </select>
+              </div>
+
+              <div class="control-group" id="pixelSortAngleGroup" style="display: none;">
+                <label for="pixelSortAngle">
+                  Angle: <span id="pixelSortAngleValue">0</span>°
+                </label>
+                <input
+                  id="pixelSortAngle"
+                  type="range"
+                  min="0"
+                  max="360"
+                  value="0"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="pixelSortThresholdMode">Threshold Mode</label>
+                <select id="pixelSortThresholdMode" class="select">
+                  <option value="brightness">Brightness</option>
+                  <option value="saturation">Saturation</option>
+                  <option value="hue">Hue</option>
+                  <option value="edge">Edge</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="pixelSortThresholdLow">
+                  Threshold Low: <span id="pixelSortThresholdLowValue">0.25</span>
+                </label>
+                <input
+                  id="pixelSortThresholdLow"
+                  type="range"
+                  min="0.0"
+                  max="1.0"
+                  value="0.25"
+                  step="0.05"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="pixelSortThresholdHigh">
+                  Threshold High: <span id="pixelSortThresholdHighValue">0.75</span>
+                </label>
+                <input
+                  id="pixelSortThresholdHigh"
+                  type="range"
+                  min="0.0"
+                  max="1.0"
+                  value="0.75"
+                  step="0.05"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="pixelSortKey">Sort By</label>
+                <select id="pixelSortKey" class="select">
+                  <option value="luminance">Luminance</option>
+                  <option value="hue">Hue</option>
+                  <option value="saturation">Saturation</option>
+                  <option value="red">Red Channel</option>
+                  <option value="green">Green Channel</option>
+                  <option value="blue">Blue Channel</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="pixelSortOrder">Sort Order</label>
+                <select id="pixelSortOrder" class="select">
+                  <option value="ascending">Ascending</option>
+                  <option value="descending">Descending</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="pixelSortAlgorithm">Algorithm</label>
+                <select id="pixelSortAlgorithm" class="select">
+                  <option value="bitonic">Bitonic (True Sort)</option>
+                  <option value="bubble">Bubble (Stylized)</option>
+                </select>
+              </div>
+
+              <div class="control-group" id="pixelSortIterationsGroup">
+                <label for="pixelSortIterations">
+                  Iterations: <span id="pixelSortIterationsValue">50</span>
+                </label>
+                <input
+                  id="pixelSortIterations"
+                  type="range"
+                  min="1"
+                  max="100"
+                  value="50"
+                  step="1"
+                  class="slider"
+                />
               </div>
             </div>
           </section>
