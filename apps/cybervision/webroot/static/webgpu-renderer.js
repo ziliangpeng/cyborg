@@ -740,6 +740,27 @@ export class WebGPURenderer {
       ],
     });
 
+    // Create additional rotate bind group (temp -> output) to avoid copies
+    this.rotateTempToOutputBindGroup = this.device.createBindGroup({
+      layout: this.rotatePipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.tempTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.rotateUniformBuffer,
+          },
+        },
+      ],
+    });
+
     // Setup blit pipeline for rgba->bgra conversion
     await this.setupBlitPipeline();
 
@@ -1320,9 +1341,20 @@ export class WebGPURenderer {
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);
 
-    // If using rotate mode, rotate the image first
-    if (angleMode === "rotate") {
-      const angleRadians = -(angle * Math.PI) / 180.0;  // Negative because we rotate the sort direction
+    // Determine if we need to use rotation (custom angle or diagonal presets)
+    const useRotation = angleMode === "rotate" || direction === "diagonal_right" || direction === "diagonal_left";
+    let rotationAngle = angle;
+
+    // Map diagonal presets to angles for rotate-sort-rotate approach
+    if (direction === "diagonal_right") {
+      rotationAngle = 45;  // ↘ diagonal
+    } else if (direction === "diagonal_left") {
+      rotationAngle = -45;  // ↙ diagonal (or 135°)
+    }
+
+    // If using rotation (custom angle or diagonal), rotate the image first
+    if (useRotation) {
+      const angleRadians = -(rotationAngle * Math.PI) / 180.0;  // Negative because we rotate the sort direction
       const rotateUniformData = new Float32Array([
         angleRadians,
         this.videoWidth,
@@ -1358,8 +1390,8 @@ export class WebGPURenderer {
 
     let computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(this.pixelSortSegmentPipeline);
-    // Use appropriate bind group based on mode
-    if (angleMode === "rotate") {
+    // Use appropriate bind group based on whether we rotated
+    if (useRotation) {
       computePass.setBindGroup(0, this.pixelSortSegmentBindGroupRotate);  // temp -> output
     } else {
       computePass.setBindGroup(0, this.pixelSortSegmentBindGroup);  // input -> output
@@ -1371,14 +1403,16 @@ export class WebGPURenderer {
 
     // Pass 2+: Sorting passes with ping-pong between output and temp
     const algo = algorithmMap[algorithm] || 0;
-    // For rotate mode, always use horizontal sorting
-    const sortDirection = (angleMode === "rotate") ? 0 : (directionMap[direction] || 0);
+    // If we used rotation (custom angle or diagonals), always use horizontal sorting
+    // Otherwise use the specified direction (horizontal or vertical only now)
+    const sortDirection = useRotation ? 0 : (directionMap[direction] || 0);
 
     let passCount = 0;
 
     if (algo === 0) {
       // Bitonic sort - multiple passes
-      const maxSegmentLength = Math.min(this.videoWidth, 256);
+      // Use full dimension based on sort direction for complete sorting
+      const maxSegmentLength = (sortDirection === 0) ? this.videoWidth : this.videoHeight;
       const numStages = Math.ceil(Math.log2(maxSegmentLength));
 
       for (let stage = 0; stage < numStages; stage++) {
@@ -1454,9 +1488,9 @@ export class WebGPURenderer {
     // After sorting, the final result is in temp if odd passes, output if even passes
     const finalInTemp = passCount % 2 === 1;
 
-    // If using rotate mode, rotate back
-    if (angleMode === "rotate") {
-      const angleRadians = (angle * Math.PI) / 180.0;  // Positive to rotate back
+    // If we used rotation (custom angle or diagonals), rotate back
+    if (useRotation) {
+      const angleRadians = (rotationAngle * Math.PI) / 180.0;  // Positive to rotate back
       const rotateBackUniformData = new Float32Array([
         angleRadians,
         this.videoWidth,
@@ -1468,10 +1502,22 @@ export class WebGPURenderer {
       const rotateBackEncoder = this.device.createCommandEncoder();
       const rotateBackPass = rotateBackEncoder.beginComputePass();
       rotateBackPass.setPipeline(this.rotatePipeline);
-      // Rotate from wherever the final sorted result is
+
+      // Use appropriate bind group based on where the sorted result is
       if (finalInTemp) {
-        // temp -> output (using rotateBackBindGroup but need to swap)
-        // We don't have a temp->output rotate bind group, so copy temp->output first
+        // Sorted result is in temp, rotate temp -> output directly
+        rotateBackPass.setBindGroup(0, this.rotateTempToOutputBindGroup);
+      } else {
+        // Sorted result is in output, rotate output -> temp, then copy back
+        rotateBackPass.setBindGroup(0, this.rotateBackBindGroup);
+      }
+
+      rotateBackPass.dispatchWorkgroups(workgroupsX, workgroupsY);
+      rotateBackPass.end();
+      this.device.queue.submit([rotateBackEncoder.finish()]);
+
+      // If we rotated output->temp, copy temp back to output for blit
+      if (!finalInTemp) {
         const copyEncoder = this.device.createCommandEncoder();
         copyEncoder.copyTextureToTexture(
           { texture: this.tempTexture },
@@ -1480,20 +1526,7 @@ export class WebGPURenderer {
         );
         this.device.queue.submit([copyEncoder.finish()]);
       }
-      // Now output has the sorted result, rotate output -> temp
-      rotateBackPass.setBindGroup(0, this.rotateBackBindGroup);  // output -> temp
-      rotateBackPass.dispatchWorkgroups(workgroupsX, workgroupsY);
-      rotateBackPass.end();
-      this.device.queue.submit([rotateBackEncoder.finish()]);
-
-      // Final result is now in temp, copy to output for blit
-      const copyEncoder = this.device.createCommandEncoder();
-      copyEncoder.copyTextureToTexture(
-        { texture: this.tempTexture },
-        { texture: this.outputTexture },
-        [this.videoWidth, this.videoHeight]
-      );
-      this.device.queue.submit([copyEncoder.finish()]);
+      // else: result is already in output, ready for blit
     } else {
       // For preset mode, ensure final result is in outputTexture
       if (finalInTemp) {

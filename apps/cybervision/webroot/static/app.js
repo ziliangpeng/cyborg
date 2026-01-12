@@ -472,12 +472,7 @@ class CyberVision {
 
     this.pixelSortAlgorithm.addEventListener("change", (e) => {
       this.pixelSortAlgorithmValue = e.target.value;
-      // Show/hide iterations slider based on algorithm
-      if (e.target.value === "bubble") {
-        this.pixelSortIterationsGroup.style.display = "block";
-      } else {
-        this.pixelSortIterationsGroup.style.display = "none";
-      }
+      this.updatePixelSortIterationsVisibility();
     });
 
     this.pixelSortIterations.addEventListener("input", (e) => {
@@ -543,11 +538,16 @@ class CyberVision {
 
     // Update pixel sort iterations visibility
     if (this.currentEffect === "pixelsort") {
-      if (this.pixelSortAlgorithmValue === "bubble") {
-        this.pixelSortIterationsGroup.style.display = "block";
-      } else {
-        this.pixelSortIterationsGroup.style.display = "none";
-      }
+      this.updatePixelSortIterationsVisibility();
+    }
+  }
+
+  updatePixelSortIterationsVisibility() {
+    // Show iterations slider only for bubble sort algorithm
+    if (this.pixelSortAlgorithmValue === "bubble") {
+      this.pixelSortIterationsGroup.style.display = "block";
+    } else {
+      this.pixelSortIterationsGroup.style.display = "none";
     }
   }
 

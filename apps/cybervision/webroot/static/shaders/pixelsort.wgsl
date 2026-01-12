@@ -33,15 +33,16 @@ fn rgbToHsv(rgb: vec3f) -> vec3f {
   var h: f32 = 0.0;
   if (delta > 0.0) {
     if (cmax == rgb.r) {
-      h = 60.0 * (((rgb.g - rgb.b) / delta) % 6.0);
+      h = (rgb.g - rgb.b) / delta;
     } else if (cmax == rgb.g) {
-      h = 60.0 * (((rgb.b - rgb.r) / delta) + 2.0);
+      h = (rgb.b - rgb.r) / delta + 2.0;
     } else {
-      h = 60.0 * (((rgb.r - rgb.g) / delta) + 4.0);
+      h = (rgb.r - rgb.g) / delta + 4.0;
     }
-  }
-  if (h < 0.0) {
-    h += 360.0;
+    h = h * 60.0;
+    if (h < 0.0) {
+      h += 360.0;
+    }
   }
 
   let s = select(0.0, delta / cmax, cmax > 0.0);
