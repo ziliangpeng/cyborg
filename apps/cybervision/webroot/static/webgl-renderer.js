@@ -8,6 +8,7 @@ export class WebGLRenderer {
     this.clusteringProgram = null;
     this.edgesProgram = null;
     this.mosaicProgram = null;
+    this.chromaticProgram = null;
     this.passthroughProgram = null;
     this.videoTexture = null;
     this.positionBuffer = null;
@@ -54,6 +55,7 @@ export class WebGLRenderer {
     const clusteringFragmentSource = await this.loadShader("/static/shaders/clustering.frag.glsl");
     const edgesFragmentSource = await this.loadShader("/static/shaders/edges.frag.glsl");
     const mosaicFragmentSource = await this.loadShader("/static/shaders/mosaic.frag.glsl");
+    const chromaticFragmentSource = await this.loadShader("/static/shaders/chromatic.frag.glsl");
     const passthroughFragmentSource = await this.loadShader("/static/shaders/passthrough.frag.glsl");
 
     /* OLD INLINE SHADERS - NOW LOADED FROM FILES
@@ -276,6 +278,7 @@ export class WebGLRenderer {
     const clusteringFragment = this.compileShader(gl.FRAGMENT_SHADER, clusteringFragmentSource);
     const edgesFragment = this.compileShader(gl.FRAGMENT_SHADER, edgesFragmentSource);
     const mosaicFragment = this.compileShader(gl.FRAGMENT_SHADER, mosaicFragmentSource);
+    const chromaticFragment = this.compileShader(gl.FRAGMENT_SHADER, chromaticFragmentSource);
     const passthroughFragment = this.compileShader(gl.FRAGMENT_SHADER, passthroughFragmentSource);
 
     // Create programs
@@ -283,6 +286,7 @@ export class WebGLRenderer {
     this.clusteringProgram = this.createProgram(vertexShader, clusteringFragment);
     this.edgesProgram = this.createProgram(vertexShader, edgesFragment);
     this.mosaicProgram = this.createProgram(vertexShader, mosaicFragment);
+    this.chromaticProgram = this.createProgram(vertexShader, chromaticFragment);
     this.passthroughProgram = this.createProgram(vertexShader, passthroughFragment);
 
     console.log("WebGL shaders compiled");
@@ -615,6 +619,57 @@ export class WebGLRenderer {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
+  renderChromatic(video, intensity, mode, centerX, centerY) {
+    const gl = this.gl;
+    const program = this.chromaticProgram;
+
+    // Map mode string to number
+    const modeMap = {
+      "radial": 0,
+      "horizontal": 1,
+      "vertical": 2,
+    };
+
+    // Update video texture
+    this.updateVideoTexture(video);
+
+    // Use program
+    gl.useProgram(program);
+
+    // Set up attributes
+    const positionLoc = gl.getAttribLocation(program, "a_position");
+    const texCoordLoc = gl.getAttribLocation(program, "a_texCoord");
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.enableVertexAttribArray(texCoordLoc);
+    gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 0, 0);
+
+    // Set uniforms
+    const videoLoc = gl.getUniformLocation(program, "u_video");
+    const resolutionLoc = gl.getUniformLocation(program, "u_resolution");
+    const intensityLoc = gl.getUniformLocation(program, "u_intensity");
+    const modeLoc = gl.getUniformLocation(program, "u_mode");
+    const centerXLoc = gl.getUniformLocation(program, "u_centerX");
+    const centerYLoc = gl.getUniformLocation(program, "u_centerY");
+
+    gl.uniform1i(videoLoc, 0);
+    gl.uniform2f(resolutionLoc, video.videoWidth, video.videoHeight);
+    gl.uniform1f(intensityLoc, intensity);
+    gl.uniform1f(modeLoc, modeMap[mode] || 0);
+    gl.uniform1f(centerXLoc, centerX);
+    gl.uniform1f(centerYLoc, centerY);
+
+    // Draw
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
   destroy() {
     const gl = this.gl;
     if (gl) {
@@ -624,6 +679,7 @@ export class WebGLRenderer {
       if (this.halftoneProgram) gl.deleteProgram(this.halftoneProgram);
       if (this.edgesProgram) gl.deleteProgram(this.edgesProgram);
       if (this.mosaicProgram) gl.deleteProgram(this.mosaicProgram);
+      if (this.chromaticProgram) gl.deleteProgram(this.chromaticProgram);
       if (this.passthroughProgram) gl.deleteProgram(this.passthroughProgram);
     }
   }

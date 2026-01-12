@@ -17,6 +17,7 @@ export class WebGPURenderer {
     this.clusteringPipeline = null;
     this.edgesPipeline = null;
     this.mosaicPipeline = null;
+    this.chromaticPipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
@@ -24,6 +25,7 @@ export class WebGPURenderer {
     this.clusteringBindGroup = null;
     this.edgesBindGroup = null;
     this.mosaicBindGroup = null;
+    this.chromaticBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
@@ -32,6 +34,7 @@ export class WebGPURenderer {
     this.clusteringUniformBuffer = null;
     this.edgesUniformBuffer = null;
     this.mosaicUniformBuffer = null;
+    this.chromaticUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
@@ -39,6 +42,7 @@ export class WebGPURenderer {
     this.clusteringShader = null;
     this.edgesShader = null;
     this.mosaicShader = null;
+    this.chromaticShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -129,6 +133,13 @@ export class WebGPURenderer {
       code: mosaicShaderCode,
     });
 
+    // Load and create chromatic shader
+    const chromaticShaderResponse = await fetch("/static/shaders/chromatic.wgsl");
+    const chromaticShaderCode = await chromaticShaderResponse.text();
+    this.chromaticShader = this.device.createShaderModule({
+      code: chromaticShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -178,6 +189,18 @@ export class WebGPURenderer {
       0, 0, 0,  // padding
     ]);
     this.mosaicUniformBuffer = this.createUniformBuffer(mosaicUniformData);
+
+    // Create chromatic uniform buffer
+    const chromaticUniformData = new Float32Array([
+      10,  // intensity
+      0,  // mode (0=Radial, 1=Horizontal, 2=Vertical)
+      0.5,  // centerX (0-1)
+      0.5,  // centerY (0-1)
+      this.videoWidth,
+      this.videoHeight,
+      0, 0,  // padding
+    ]);
+    this.chromaticUniformBuffer = this.createUniformBuffer(chromaticUniformData);
 
     // Create textures
     this.inputTexture = this.device.createTexture({
@@ -310,6 +333,36 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.mosaicUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create chromatic compute pipeline
+    this.chromaticPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.chromaticShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create chromatic bind group
+    this.chromaticBindGroup = this.device.createBindGroup({
+      layout: this.chromaticPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.chromaticUniformBuffer,
           },
         },
       ],
@@ -642,6 +695,64 @@ export class WebGPURenderer {
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(this.mosaicPipeline);
     computePass.setBindGroup(0, this.mosaicBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    // Blit rgba texture to canvas (bgra format)
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderChromatic(video, intensity, mode, centerX, centerY) {
+    // Map mode string to number
+    const modeMap = {
+      "radial": 0,
+      "horizontal": 1,
+      "vertical": 2,
+    };
+
+    // Update uniform buffer with current parameters
+    const uniformData = new Float32Array([
+      intensity,
+      modeMap[mode] || 0,
+      centerX,
+      centerY,
+      this.videoWidth,
+      this.videoHeight,
+      0, 0,  // padding
+    ]);
+    this.updateUniformBuffer(this.chromaticUniformBuffer, uniformData);
+
+    // Copy video frame to input texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    // Run compute shader
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.chromaticPipeline);
+    computePass.setBindGroup(0, this.chromaticBindGroup);
 
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);

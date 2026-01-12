@@ -52,6 +52,10 @@
                 <input type="radio" name="effect" value="mosaic" />
                 <span>Mosaic</span>
               </label>
+              <label class="radio-label">
+                <input type="radio" name="effect" value="chromatic" />
+                <span>Chromatic Aberration</span>
+              </label>
             </div>
 
             <div class="effect-controls halftone-controls" id="halftoneControls">
@@ -217,6 +221,62 @@
                   <option value="dominant">Dominant (Cartoon)</option>
                   <option value="random">Random (Dithered)</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="effect-controls chromatic-controls" id="chromaticControls" style="display: none;">
+              <div class="control-group">
+                <label for="chromaticIntensity">
+                  Intensity: <span id="chromaticIntensityValue">10</span>px
+                </label>
+                <input
+                  id="chromaticIntensity"
+                  type="range"
+                  min="0"
+                  max="50"
+                  value="10"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="chromaticMode">Direction</label>
+                <select id="chromaticMode" class="select">
+                  <option value="radial">Radial</option>
+                  <option value="horizontal">Horizontal</option>
+                  <option value="vertical">Vertical</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="chromaticCenterX">
+                  Center X: <span id="chromaticCenterXValue">50</span>%
+                </label>
+                <input
+                  id="chromaticCenterX"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="50"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="chromaticCenterY">
+                  Center Y: <span id="chromaticCenterYValue">50</span>%
+                </label>
+                <input
+                  id="chromaticCenterY"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="50"
+                  step="1"
+                  class="slider"
+                />
               </div>
             </div>
           </section>

@@ -50,6 +50,16 @@ class CyberVision {
     this.mosaicBlockSizeValue = document.getElementById("mosaicBlockSizeValue");
     this.mosaicMode = document.getElementById("mosaicMode");
 
+    // Chromatic aberration controls
+    this.chromaticControls = document.getElementById("chromaticControls");
+    this.chromaticIntensity = document.getElementById("chromaticIntensity");
+    this.chromaticIntensityValue = document.getElementById("chromaticIntensityValue");
+    this.chromaticMode = document.getElementById("chromaticMode");
+    this.chromaticCenterX = document.getElementById("chromaticCenterX");
+    this.chromaticCenterXValue = document.getElementById("chromaticCenterXValue");
+    this.chromaticCenterY = document.getElementById("chromaticCenterY");
+    this.chromaticCenterYValue = document.getElementById("chromaticCenterYValue");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -81,6 +91,12 @@ class CyberVision {
     // Mosaic state
     this.mosaicBlockSizeValue_state = 8;
     this.mosaicModeValue = "center";
+
+    // Chromatic aberration state
+    this.chromaticIntensityValue_state = 10;
+    this.chromaticModeValue = "radial";
+    this.chromaticCenterXValue_state = 50;
+    this.chromaticCenterYValue_state = 50;
 
     // FPS tracking
     this.frameCount = 0;
@@ -278,6 +294,26 @@ class CyberVision {
       this.mosaicModeValue = e.target.value;
     });
 
+    // Chromatic aberration event listeners
+    this.chromaticIntensity.addEventListener("input", (e) => {
+      this.chromaticIntensityValue_state = parseInt(e.target.value, 10);
+      this.chromaticIntensityValue.textContent = this.chromaticIntensityValue_state;
+    });
+
+    this.chromaticMode.addEventListener("change", (e) => {
+      this.chromaticModeValue = e.target.value;
+    });
+
+    this.chromaticCenterX.addEventListener("input", (e) => {
+      this.chromaticCenterXValue_state = parseInt(e.target.value, 10);
+      this.chromaticCenterXValue.textContent = this.chromaticCenterXValue_state;
+    });
+
+    this.chromaticCenterY.addEventListener("input", (e) => {
+      this.chromaticCenterYValue_state = parseInt(e.target.value, 10);
+      this.chromaticCenterYValue.textContent = this.chromaticCenterYValue_state;
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -321,6 +357,7 @@ class CyberVision {
     this.clusteringControls.style.display = this.currentEffect === "clustering" ? "block" : "none";
     this.edgesControls.style.display = this.currentEffect === "edges" ? "block" : "none";
     this.mosaicControls.style.display = this.currentEffect === "mosaic" ? "block" : "none";
+    this.chromaticControls.style.display = this.currentEffect === "chromatic" ? "block" : "none";
   }
 
   updateHalftoneParams() {
@@ -422,6 +459,8 @@ class CyberVision {
         this.renderEdges();
       } else if (this.currentEffect === "mosaic") {
         this.renderMosaic();
+      } else if (this.currentEffect === "chromatic") {
+        this.renderChromatic();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -486,6 +525,20 @@ class CyberVision {
       this.video,
       this.mosaicBlockSizeValue_state,
       this.mosaicModeValue
+    );
+  }
+
+  renderChromatic() {
+    // Convert center percentage to 0-1 range
+    const centerX = this.chromaticCenterXValue_state / 100;
+    const centerY = this.chromaticCenterYValue_state / 100;
+
+    this.renderer.renderChromatic(
+      this.video,
+      this.chromaticIntensityValue_state,
+      this.chromaticModeValue,
+      centerX,
+      centerY
     );
   }
 
