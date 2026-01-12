@@ -388,6 +388,36 @@ export class WebGPURenderer {
       ],
     });
 
+    // Create dominant mosaic compute pipeline (separate entry point for histogram-based mode)
+    this.mosaicDominantPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.mosaicShader,
+        entryPoint: "mainDominant",
+      },
+    });
+
+    // Create dominant mosaic bind group (shares same bindings as regular mosaic)
+    this.mosaicDominantBindGroup = this.device.createBindGroup({
+      layout: this.mosaicDominantPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.mosaicUniformBuffer,
+          },
+        },
+      ],
+    });
+
     // Create chromatic compute pipeline
     this.chromaticPipeline = this.device.createComputePipeline({
       layout: "auto",
@@ -803,12 +833,25 @@ export class WebGPURenderer {
 
     // Run compute shader
     const computePass = commandEncoder.beginComputePass();
-    computePass.setPipeline(this.mosaicPipeline);
-    computePass.setBindGroup(0, this.mosaicBindGroup);
 
-    const workgroupsX = Math.ceil(this.videoWidth / 8);
-    const workgroupsY = Math.ceil(this.videoHeight / 8);
-    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    if (mode === "dominant") {
+      // Per-block dispatch for dominant mode (uses shared histogram)
+      computePass.setPipeline(this.mosaicDominantPipeline);
+      computePass.setBindGroup(0, this.mosaicDominantBindGroup);
+
+      const blocksX = Math.ceil(this.videoWidth / blockSize);
+      const blocksY = Math.ceil(this.videoHeight / blockSize);
+      computePass.dispatchWorkgroups(blocksX, blocksY);
+    } else {
+      // Per-pixel dispatch for other modes
+      computePass.setPipeline(this.mosaicPipeline);
+      computePass.setBindGroup(0, this.mosaicBindGroup);
+
+      const workgroupsX = Math.ceil(this.videoWidth / 8);
+      const workgroupsY = Math.ceil(this.videoHeight / 8);
+      computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    }
+
     computePass.end();
 
     // Blit rgba texture to canvas (bgra format)

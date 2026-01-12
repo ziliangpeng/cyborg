@@ -17,6 +17,11 @@ struct MosaicParams {
 
 @group(0) @binding(2) var<uniform> params: MosaicParams;
 
+// Workgroup shared memory for dominant color mode
+var<workgroup> histogram: array<atomic<u32>, 512>;
+var<workgroup> maxCount: atomic<u32>;
+var<workgroup> dominantColorIndex: atomic<u32>;
+
 // Hash function for random sampling
 fn hash(p: vec2f) -> f32 {
   let p3 = fract(vec3f(p.x, p.y, p.x) * 0.1031);
@@ -34,15 +39,27 @@ fn luminance(color: vec3f) -> f32 {
 fn quantizeColor(color: vec3f) -> vec3i {
   let levels = 8;
   return vec3i(
-    i32(floor(color.r * f32(levels))),
-    i32(floor(color.g * f32(levels))),
-    i32(floor(color.b * f32(levels)))
+    min(i32(floor(color.r * f32(levels))), levels - 1),
+    min(i32(floor(color.g * f32(levels))), levels - 1),
+    min(i32(floor(color.b * f32(levels))), levels - 1)
   );
 }
 
 // Convert quantized color to hash key
 fn colorToKey(qcolor: vec3i) -> i32 {
   return qcolor.r + qcolor.g * 8 + qcolor.b * 64;
+}
+
+// Convert key back to color (inverse of quantization)
+fn keyToColor(key: i32) -> vec3f {
+  let r = key % 8;
+  let g = (key / 8) % 8;
+  let b = key / 64;
+  return vec3f(
+    (f32(r) + 0.5) / 8.0,
+    (f32(g) + 0.5) / 8.0,
+    (f32(b) + 0.5) / 8.0
+  );
 }
 
 // Sample pixel with bounds checking
@@ -187,4 +204,106 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   }
 
   textureStore(outputTex, pos, vec4f(color, 1.0));
+}
+
+// Dominant mode entry point - uses per-block dispatch with shared histogram
+@compute @workgroup_size(8, 8)
+fn mainDominant(
+  @builtin(global_invocation_id) global_id: vec3<u32>,
+  @builtin(local_invocation_id) local_id: vec3<u32>,
+  @builtin(workgroup_id) workgroup_id: vec3<u32>
+) {
+  let blockSize = i32(params.blockSize);
+  let localIdx = local_id.x + local_id.y * 8u;
+
+  // Phase 1: Initialize histogram (threads cooperate to clear it)
+  if (localIdx < 512u) {
+    atomicStore(&histogram[localIdx], 0u);
+  }
+  if (localIdx == 0u) {
+    atomicStore(&maxCount, 0u);
+    atomicStore(&dominantColorIndex, 999999u);  // Initialize to large value for atomicMin
+  }
+  workgroupBarrier();
+
+  // Phase 2: Sample pixels and build histogram
+  // Each workgroup handles one mosaic block
+  let blockTopLeft = vec2i(
+    i32(workgroup_id.x) * blockSize,
+    i32(workgroup_id.y) * blockSize
+  );
+
+  // Distribute sampling across 64 threads
+  let totalPixels = blockSize * blockSize;
+  let samplesPerThread = (totalPixels + 63) / 64;
+
+  for (var s = 0; s < samplesPerThread; s++) {
+    let sampleIdx = i32(localIdx) * samplesPerThread + s;
+    if (sampleIdx < totalPixels) {
+      let dx = sampleIdx % blockSize;
+      let dy = sampleIdx / blockSize;
+      let samplePos = blockTopLeft + vec2i(dx, dy);
+
+      // Sample and quantize color
+      let color = samplePixel(samplePos);
+      let qcolor = quantizeColor(color);
+      let key = colorToKey(qcolor);
+
+      // Atomically increment histogram bin (with bounds check)
+      if (key >= 0 && key < 512) {
+        atomicAdd(&histogram[u32(key)], 1u);
+      }
+    }
+  }
+  workgroupBarrier();
+
+  // Phase 3: Find maximum count (each thread checks its histogram bins)
+  if (localIdx < 512u) {
+    let count = atomicLoad(&histogram[localIdx]);
+    if (count > 0u) {
+      atomicMax(&maxCount, count);
+    }
+  }
+  workgroupBarrier();
+
+  // Phase 4: Find first bin with max count
+  if (localIdx < 512u) {
+    let max = atomicLoad(&maxCount);
+    let count = atomicLoad(&histogram[localIdx]);
+    if (count == max && count > 0u) {
+      // Use atomicMin to get the lowest index with max count (deterministic)
+      atomicMin(&dominantColorIndex, localIdx);
+    }
+  }
+  workgroupBarrier();
+
+  // Phase 5: Write output pixels (all threads write the same dominant color)
+  let dominantIdx = atomicLoad(&dominantColorIndex);
+  // Fallback to center sample if no dominant color found
+  var outputColor: vec3f;
+  if (dominantIdx == 999999u) {
+    // Fallback: use center sample
+    let centerOffset = blockSize / 2;
+    let centerPos = blockTopLeft + vec2i(centerOffset, centerOffset);
+    outputColor = samplePixel(centerPos);
+  } else {
+    // Use dominant quantized color
+    outputColor = keyToColor(i32(dominantIdx));
+  }
+
+  // Each thread writes multiple pixels if blockSize > 8
+  let pixelsPerThread = (totalPixels + 63) / 64;
+  for (var p = 0; p < pixelsPerThread; p++) {
+    let pixelIdx = i32(localIdx) * pixelsPerThread + p;
+    if (pixelIdx < totalPixels) {
+      let dx = pixelIdx % blockSize;
+      let dy = pixelIdx / blockSize;
+      let outputPos = blockTopLeft + vec2i(dx, dy);
+
+      // Bounds check before writing
+      if (outputPos.x < i32(params.width) && outputPos.y < i32(params.height)) {
+        textureStore(outputTex, outputPos, vec4f(outputColor, 1.0));
+      }
+    }
+  }
 }

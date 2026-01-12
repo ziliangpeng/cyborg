@@ -49,6 +49,7 @@ class CyberVision {
     this.mosaicBlockSize = document.getElementById("mosaicBlockSize");
     this.mosaicBlockSizeValue = document.getElementById("mosaicBlockSizeValue");
     this.mosaicMode = document.getElementById("mosaicMode");
+    this.mosaicInfo = document.getElementById("mosaicInfo");
 
     // Chromatic aberration controls
     this.chromaticControls = document.getElementById("chromaticControls");
@@ -326,6 +327,7 @@ class CyberVision {
 
     this.mosaicMode.addEventListener("change", (e) => {
       this.mosaicModeValue = e.target.value;
+      this.updateMosaicInfo();
     });
 
     // Chromatic aberration event listeners
@@ -419,6 +421,9 @@ class CyberVision {
       await this.switchToRenderer(targetRenderer);
       this.setStatus(`Switched to ${this.rendererType.toUpperCase()}. ${wasRunning ? 'Restarting camera...' : 'Ready.'}`);
 
+      // Update mosaic info visibility based on new renderer
+      this.updateMosaicInfo();
+
       // Restart camera if it was running
       if (wasRunning) {
         await this.startCamera();
@@ -438,6 +443,20 @@ class CyberVision {
     this.chromaticControls.style.display = this.currentEffect === "chromatic" ? "block" : "none";
     this.glitchControls.style.display = this.currentEffect === "glitch" ? "block" : "none";
     this.thermalControls.style.display = this.currentEffect === "thermal" ? "block" : "none";
+
+    // Update mosaic info when mosaic effect is shown
+    if (this.currentEffect === "mosaic") {
+      this.updateMosaicInfo();
+    }
+  }
+
+  updateMosaicInfo() {
+    // Show info text if using dominant mode with WebGL (falls back to centerSample)
+    if (this.mosaicModeValue === "dominant" && this.rendererType === "webgl") {
+      this.mosaicInfo.style.display = "flex";
+    } else {
+      this.mosaicInfo.style.display = "none";
+    }
   }
 
   updateHalftoneParams() {
