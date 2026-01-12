@@ -11,6 +11,7 @@ export class WebGPURenderer {
     // Textures
     this.inputTexture = null;
     this.outputTexture = null;
+    this.tempTexture = null;  // For rotation intermediate results
 
     // Pipelines
     this.halftonePipeline = null;
@@ -22,6 +23,7 @@ export class WebGPURenderer {
     this.thermalPipeline = null;
     this.pixelSortSegmentPipeline = null;
     this.pixelSortPipeline = null;
+    this.rotatePipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
@@ -34,6 +36,8 @@ export class WebGPURenderer {
     this.thermalBindGroup = null;
     this.pixelSortSegmentBindGroup = null;
     this.pixelSortBindGroup = null;
+    this.rotateBindGroup = null;
+    this.rotateBackBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
@@ -47,6 +51,7 @@ export class WebGPURenderer {
     this.thermalUniformBuffer = null;
     this.pixelSortSegmentUniformBuffer = null;
     this.pixelSortUniformBuffer = null;
+    this.rotateUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
@@ -59,6 +64,7 @@ export class WebGPURenderer {
     this.thermalShader = null;
     this.pixelSortSegmentShader = null;
     this.pixelSortShader = null;
+    this.rotateShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -184,6 +190,13 @@ export class WebGPURenderer {
       code: pixelSortShaderCode,
     });
 
+    // Load and create rotate shader
+    const rotateShaderResponse = await fetch("/static/shaders/rotate.wgsl");
+    const rotateShaderCode = await rotateShaderResponse.text();
+    this.rotateShader = this.device.createShaderModule({
+      code: rotateShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -302,6 +315,15 @@ export class WebGPURenderer {
     ]);
     this.pixelSortUniformBuffer = this.createUniformBuffer(pixelSortUniformData);
 
+    // Create rotate uniform buffer
+    const rotateUniformData = new Float32Array([
+      0.0,  // angle (will be updated)
+      this.videoWidth,
+      this.videoHeight,
+      0,  // padding
+    ]);
+    this.rotateUniformBuffer = this.createUniformBuffer(rotateUniformData);
+
     // Create textures
     this.inputTexture = this.device.createTexture({
       size: [this.videoWidth, this.videoHeight],
@@ -313,6 +335,13 @@ export class WebGPURenderer {
     });
 
     this.outputTexture = this.device.createTexture({
+      size: [this.videoWidth, this.videoHeight],
+      format: "rgba8unorm",
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
+    });
+
+    // Create temporary texture for rotation intermediate results
+    this.tempTexture = this.device.createTexture({
       size: [this.videoWidth, this.videoHeight],
       format: "rgba8unorm",
       usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
@@ -613,6 +642,57 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.pixelSortUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create rotate compute pipeline
+    this.rotatePipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.rotateShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create rotate bind group (input -> temp)
+    this.rotateBindGroup = this.device.createBindGroup({
+      layout: this.rotatePipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.tempTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.rotateUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create rotate back bind group (output -> temp for final rotation)
+    this.rotateBackBindGroup = this.device.createBindGroup({
+      layout: this.rotatePipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.tempTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.rotateUniformBuffer,
           },
         },
       ],
@@ -1158,7 +1238,7 @@ export class WebGPURenderer {
     this.device.queue.submit([commandEncoder.finish()]);
   }
 
-  renderPixelSort(video, direction, thresholdLow, thresholdHigh, thresholdMode, sortKey, sortOrder, algorithm, iterations) {
+  renderPixelSort(video, angleMode, direction, angle, thresholdLow, thresholdHigh, thresholdMode, sortKey, sortOrder, algorithm, iterations) {
     // Map strings to numbers
     const directionMap = {
       "horizontal": 0,
@@ -1198,6 +1278,31 @@ export class WebGPURenderer {
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);
 
+    // If using rotate mode, rotate the image first
+    if (angleMode === "rotate") {
+      const angleRadians = (angle * Math.PI) / 180.0;
+      const rotateUniformData = new Float32Array([
+        angleRadians,
+        this.videoWidth,
+        this.videoHeight,
+        0,
+      ]);
+      this.updateUniformBuffer(this.rotateUniformBuffer, rotateUniformData);
+
+      const rotateEncoder = this.device.createCommandEncoder();
+      const rotatePass = rotateEncoder.beginComputePass();
+      rotatePass.setPipeline(this.rotatePipeline);
+      rotatePass.setBindGroup(0, this.rotateBindGroup);
+      rotatePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+      rotatePass.end();
+      this.device.queue.submit([rotateEncoder.finish()]);
+
+      // Now temp texture has rotated image, swap input and temp
+      // We need to work with temp texture as input for sorting
+      // This is handled by using tempTexture → outputTexture for segment/sort
+      // then rotate back outputTexture → finalTexture
+    }
+
     // Pass 1: Segment identification
     const segmentUniformData = new Float32Array([
       thresholdLow,
@@ -1221,10 +1326,12 @@ export class WebGPURenderer {
 
     // Pass 2+: Sorting passes
     const algo = algorithmMap[algorithm] || 0;
+    // For rotate mode, always use horizontal sorting
+    const sortDirection = (angleMode === "rotate") ? 0 : (directionMap[direction] || 0);
 
     if (algo === 0) {
       // Bitonic sort - multiple passes
-      const maxSegmentLength = Math.min(this.videoWidth, 256);  // Limit for Phase 1
+      const maxSegmentLength = Math.min(this.videoWidth, 256);
       const numStages = Math.ceil(Math.log2(maxSegmentLength));
 
       for (let stage = 0; stage < numStages; stage++) {
@@ -1236,7 +1343,7 @@ export class WebGPURenderer {
             this.videoHeight,
             sortKeyMap[sortKey] || 0,
             sortOrder === "ascending" ? 0.0 : 1.0,
-            directionMap[direction] || 0,
+            sortDirection,
             algo,
             stage,
             step,
@@ -1265,7 +1372,7 @@ export class WebGPURenderer {
           this.videoHeight,
           sortKeyMap[sortKey] || 0,
           sortOrder === "ascending" ? 0.0 : 1.0,
-          directionMap[direction] || 0,
+          sortDirection,
           algo,
           0,  // stage (unused for bubble)
           0,  // step (unused for bubble)
@@ -1285,7 +1392,29 @@ export class WebGPURenderer {
       }
     }
 
+    // If using rotate mode, rotate back
+    if (angleMode === "rotate") {
+      const angleRadians = -(angle * Math.PI) / 180.0;  // Negative to rotate back
+      const rotateBackUniformData = new Float32Array([
+        angleRadians,
+        this.videoWidth,
+        this.videoHeight,
+        0,
+      ]);
+      this.updateUniformBuffer(this.rotateUniformBuffer, rotateBackUniformData);
+
+      const rotateBackEncoder = this.device.createCommandEncoder();
+      const rotateBackPass = rotateBackEncoder.beginComputePass();
+      rotateBackPass.setPipeline(this.rotatePipeline);
+      rotateBackPass.setBindGroup(0, this.rotateBackBindGroup);
+      rotateBackPass.dispatchWorkgroups(workgroupsX, workgroupsY);
+      rotateBackPass.end();
+      this.device.queue.submit([rotateBackEncoder.finish()]);
+    }
+
     // Final pass: Blit to canvas
+    // For rotate mode, blit from tempTexture (final rotated result)
+    // For preset mode, blit from outputTexture (sorted result)
     const blitCommandEncoder = this.device.createCommandEncoder();
     const canvasTexture = this.canvasContext.getCurrentTexture();
     const renderPass = blitCommandEncoder.beginRenderPass({
@@ -1298,6 +1427,21 @@ export class WebGPURenderer {
       ],
     });
     renderPass.setPipeline(this.blitPipeline);
+
+    // Use appropriate bind group based on mode
+    if (angleMode === "rotate") {
+      // Need to create a temp blit bind group - actually, the blitBindGroup uses outputTexture
+      // So we need to copy tempTexture back to outputTexture first, or create a new bind group
+      // For simplicity, let's just copy temp -> output
+      const copyEncoder = this.device.createCommandEncoder();
+      copyEncoder.copyTextureToTexture(
+        { texture: this.tempTexture },
+        { texture: this.outputTexture },
+        [this.videoWidth, this.videoHeight]
+      );
+      this.device.queue.submit([copyEncoder.finish()]);
+    }
+
     renderPass.setBindGroup(0, this.blitBindGroup);
     renderPass.draw(6, 1, 0, 0);
     renderPass.end();

@@ -84,7 +84,12 @@ class CyberVision {
 
     // Pixel sort controls
     this.pixelSortControls = document.getElementById("pixelSortControls");
+    this.pixelSortAngleMode = document.getElementById("pixelSortAngleMode");
     this.pixelSortDirection = document.getElementById("pixelSortDirection");
+    this.pixelSortDirectionGroup = document.getElementById("pixelSortDirectionGroup");
+    this.pixelSortAngle = document.getElementById("pixelSortAngle");
+    this.pixelSortAngleValue = document.getElementById("pixelSortAngleValue");
+    this.pixelSortAngleGroup = document.getElementById("pixelSortAngleGroup");
     this.pixelSortThresholdMode = document.getElementById("pixelSortThresholdMode");
     this.pixelSortThresholdLow = document.getElementById("pixelSortThresholdLow");
     this.pixelSortThresholdLowValue = document.getElementById("pixelSortThresholdLowValue");
@@ -149,7 +154,9 @@ class CyberVision {
     this.thermalInvertValue = false;
 
     // Pixel sort state
+    this.pixelSortAngleModeValue = "preset";
     this.pixelSortDirectionValue = "horizontal";
+    this.pixelSortAngleValue_state = 0;
     this.pixelSortThresholdModeValue = "brightness";
     this.pixelSortThresholdLowValue_state = 0.25;
     this.pixelSortThresholdHighValue_state = 0.75;
@@ -420,8 +427,25 @@ class CyberVision {
     });
 
     // Pixel sort event listeners
+    this.pixelSortAngleMode.addEventListener("change", (e) => {
+      this.pixelSortAngleModeValue = e.target.value;
+      // Show/hide direction vs angle controls
+      if (e.target.value === "preset") {
+        this.pixelSortDirectionGroup.style.display = "block";
+        this.pixelSortAngleGroup.style.display = "none";
+      } else {
+        this.pixelSortDirectionGroup.style.display = "none";
+        this.pixelSortAngleGroup.style.display = "block";
+      }
+    });
+
     this.pixelSortDirection.addEventListener("change", (e) => {
       this.pixelSortDirectionValue = e.target.value;
+    });
+
+    this.pixelSortAngle.addEventListener("input", (e) => {
+      this.pixelSortAngleValue_state = parseInt(e.target.value, 10);
+      this.pixelSortAngleValue.textContent = this.pixelSortAngleValue_state;
     });
 
     this.pixelSortThresholdMode.addEventListener("change", (e) => {
@@ -750,7 +774,9 @@ class CyberVision {
     if (this.rendererType === "webgpu") {
       this.renderer.renderPixelSort(
         this.video,
+        this.pixelSortAngleModeValue,
         this.pixelSortDirectionValue,
+        this.pixelSortAngleValue_state,
         this.pixelSortThresholdLowValue_state,
         this.pixelSortThresholdHighValue_state,
         this.pixelSortThresholdModeValue,
