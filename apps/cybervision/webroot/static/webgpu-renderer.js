@@ -16,12 +16,14 @@ export class WebGPURenderer {
     this.halftonePipeline = null;
     this.clusteringPipeline = null;
     this.edgesPipeline = null;
+    this.mosaicPipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
     this.halftoneBindGroup = null;
     this.clusteringBindGroup = null;
     this.edgesBindGroup = null;
+    this.mosaicBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
@@ -29,12 +31,14 @@ export class WebGPURenderer {
     this.uniformBuffer = null;
     this.clusteringUniformBuffer = null;
     this.edgesUniformBuffer = null;
+    this.mosaicUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
     this.halftoneShader = null;
     this.clusteringShader = null;
     this.edgesShader = null;
+    this.mosaicShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -118,6 +122,13 @@ export class WebGPURenderer {
       code: edgesShaderCode,
     });
 
+    // Load and create mosaic shader
+    const mosaicShaderResponse = await fetch("/static/shaders/mosaic.wgsl");
+    const mosaicShaderCode = await mosaicShaderResponse.text();
+    this.mosaicShader = this.device.createShaderModule({
+      code: mosaicShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -156,6 +167,17 @@ export class WebGPURenderer {
       0,  // padding
     ]);
     this.edgesUniformBuffer = this.createUniformBuffer(edgesUniformData);
+
+    // Create mosaic uniform buffer
+    const mosaicUniformData = new Float32Array([
+      8,  // blockSize
+      0,  // mode (0=Center, 1=Average, 2=Min, 3=Max, 4=Dominant, 5=Random)
+      this.videoWidth,
+      this.videoHeight,
+      time,  // time for random mode
+      0, 0, 0,  // padding
+    ]);
+    this.mosaicUniformBuffer = this.createUniformBuffer(mosaicUniformData);
 
     // Create textures
     this.inputTexture = this.device.createTexture({
@@ -258,6 +280,36 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.edgesUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create mosaic compute pipeline
+    this.mosaicPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.mosaicShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create mosaic bind group
+    this.mosaicBindGroup = this.device.createBindGroup({
+      layout: this.mosaicPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.mosaicUniformBuffer,
           },
         },
       ],
@@ -529,6 +581,67 @@ export class WebGPURenderer {
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(this.edgesPipeline);
     computePass.setBindGroup(0, this.edgesBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    // Blit rgba texture to canvas (bgra format)
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderMosaic(video, blockSize, mode) {
+    // Map mode string to number
+    const modeMap = {
+      "center": 0,
+      "average": 1,
+      "min": 2,
+      "max": 3,
+      "dominant": 4,
+      "random": 5,
+    };
+
+    // Update uniform buffer with current parameters
+    const time = Math.floor(performance.now() / 1000);
+    const uniformData = new Float32Array([
+      blockSize,
+      modeMap[mode] || 0,
+      this.videoWidth,
+      this.videoHeight,
+      time,
+      0, 0, 0,  // padding
+    ]);
+    this.updateUniformBuffer(this.mosaicUniformBuffer, uniformData);
+
+    // Copy video frame to input texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    // Run compute shader
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.mosaicPipeline);
+    computePass.setBindGroup(0, this.mosaicBindGroup);
 
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);

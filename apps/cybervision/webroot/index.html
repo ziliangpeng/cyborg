@@ -48,6 +48,10 @@
                 <input type="radio" name="effect" value="edges" />
                 <span>Edge Detection</span>
               </label>
+              <label class="radio-label">
+                <input type="radio" name="effect" value="mosaic" />
+                <span>Mosaic</span>
+              </label>
             </div>
 
             <div class="effect-controls halftone-controls" id="halftoneControls">
@@ -184,6 +188,35 @@
                   step="1"
                   class="slider"
                 />
+              </div>
+            </div>
+
+            <div class="effect-controls mosaic-controls" id="mosaicControls" style="display: none;">
+              <div class="control-group">
+                <label for="mosaicBlockSize">
+                  Block Size: <span id="mosaicBlockSizeValue">8</span>px
+                </label>
+                <input
+                  id="mosaicBlockSize"
+                  type="range"
+                  min="4"
+                  max="64"
+                  value="8"
+                  step="2"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label for="mosaicMode">Mode</label>
+                <select id="mosaicMode" class="select">
+                  <option value="center">Center</option>
+                  <option value="average">Average</option>
+                  <option value="min">Min (Darkest)</option>
+                  <option value="max">Max (Brightest)</option>
+                  <option value="dominant">Dominant (Cartoon)</option>
+                  <option value="random">Random (Dithered)</option>
+                </select>
               </div>
             </div>
           </section>

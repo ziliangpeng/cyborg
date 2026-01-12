@@ -44,6 +44,12 @@ class CyberVision {
     this.edgeThickness = document.getElementById("edgeThickness");
     this.edgeThicknessValue = document.getElementById("edgeThicknessValue");
 
+    // Mosaic controls
+    this.mosaicControls = document.getElementById("mosaicControls");
+    this.mosaicBlockSize = document.getElementById("mosaicBlockSize");
+    this.mosaicBlockSizeValue = document.getElementById("mosaicBlockSizeValue");
+    this.mosaicMode = document.getElementById("mosaicMode");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -71,6 +77,10 @@ class CyberVision {
     this.edgeInvertValue = false;
     this.edgeColorValue = "#ffffff";
     this.edgeThicknessValue_state = 1;
+
+    // Mosaic state
+    this.mosaicBlockSizeValue_state = 8;
+    this.mosaicModeValue = "center";
 
     // FPS tracking
     this.frameCount = 0;
@@ -258,6 +268,16 @@ class CyberVision {
       this.edgeThicknessValue.textContent = this.edgeThicknessValue_state;
     });
 
+    // Mosaic event listeners
+    this.mosaicBlockSize.addEventListener("input", (e) => {
+      this.mosaicBlockSizeValue_state = parseInt(e.target.value, 10);
+      this.mosaicBlockSizeValue.textContent = this.mosaicBlockSizeValue_state;
+    });
+
+    this.mosaicMode.addEventListener("change", (e) => {
+      this.mosaicModeValue = e.target.value;
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -300,6 +320,7 @@ class CyberVision {
     this.halftoneControls.style.display = this.currentEffect === "halftone" ? "block" : "none";
     this.clusteringControls.style.display = this.currentEffect === "clustering" ? "block" : "none";
     this.edgesControls.style.display = this.currentEffect === "edges" ? "block" : "none";
+    this.mosaicControls.style.display = this.currentEffect === "mosaic" ? "block" : "none";
   }
 
   updateHalftoneParams() {
@@ -399,6 +420,8 @@ class CyberVision {
         this.renderClustering();
       } else if (this.currentEffect === "edges") {
         this.renderEdges();
+      } else if (this.currentEffect === "mosaic") {
+        this.renderMosaic();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -455,6 +478,14 @@ class CyberVision {
       this.edgeInvertValue,
       [r, g, b],
       this.edgeThicknessValue_state
+    );
+  }
+
+  renderMosaic() {
+    this.renderer.renderMosaic(
+      this.video,
+      this.mosaicBlockSizeValue_state,
+      this.mosaicModeValue
     );
   }
 
