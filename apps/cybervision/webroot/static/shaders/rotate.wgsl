@@ -65,7 +65,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let sourcePos = vec2f(rotatedX, rotatedY) + center;
 
   // Sample with bilinear interpolation
-  let color = bilinearSample(inputTex, sourcePos, dims);
+  let color = bilinearSample(inputTex, sourcePos, vec2i(dims));
 
   textureStore(outputTex, coord, color);
 }

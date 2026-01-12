@@ -136,8 +136,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let stage = i32(params.stage);
     let step = i32(params.step);
 
-    let pairDistance = 1 << step;
-    let blockSize = 1 << (stage + 1);
+    let pairDistance = 1 << u32(step);
+    let blockSize = 1 << u32(stage + 1);
 
     let pairIndex = primaryCoord % blockSize;
     let ascending = params.sortOrder < 0.5;
