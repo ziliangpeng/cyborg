@@ -337,14 +337,14 @@ export class WebGPURenderer {
     this.outputTexture = this.device.createTexture({
       size: [this.videoWidth, this.videoHeight],
       format: "rgba8unorm",
-      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST,
     });
 
     // Create temporary texture for rotation intermediate results
     this.tempTexture = this.device.createTexture({
       size: [this.videoWidth, this.videoHeight],
       format: "rgba8unorm",
-      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST,
     });
 
     // Create compute pipeline
