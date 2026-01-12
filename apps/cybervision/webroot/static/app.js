@@ -33,6 +33,55 @@ class CyberVision {
     this.thresholdSlider = document.getElementById("thresholdSlider");
     this.thresholdValue = document.getElementById("thresholdValue");
 
+    // Edge detection controls
+    this.edgesControls = document.getElementById("edgesControls");
+    this.edgeAlgorithm = document.getElementById("edgeAlgorithm");
+    this.edgeThreshold = document.getElementById("edgeThreshold");
+    this.edgeThresholdValue = document.getElementById("edgeThresholdValue");
+    this.edgeOverlay = document.getElementById("edgeOverlay");
+    this.edgeInvert = document.getElementById("edgeInvert");
+    this.edgeColor = document.getElementById("edgeColor");
+    this.edgeThickness = document.getElementById("edgeThickness");
+    this.edgeThicknessValue = document.getElementById("edgeThicknessValue");
+
+    // Mosaic controls
+    this.mosaicControls = document.getElementById("mosaicControls");
+    this.mosaicBlockSize = document.getElementById("mosaicBlockSize");
+    this.mosaicBlockSizeValue = document.getElementById("mosaicBlockSizeValue");
+    this.mosaicMode = document.getElementById("mosaicMode");
+    this.mosaicInfo = document.getElementById("mosaicInfo");
+
+    // Chromatic aberration controls
+    this.chromaticControls = document.getElementById("chromaticControls");
+    this.chromaticIntensity = document.getElementById("chromaticIntensity");
+    this.chromaticIntensityValue = document.getElementById("chromaticIntensityValue");
+    this.chromaticMode = document.getElementById("chromaticMode");
+    this.chromaticCenterX = document.getElementById("chromaticCenterX");
+    this.chromaticCenterXValue = document.getElementById("chromaticCenterXValue");
+    this.chromaticCenterY = document.getElementById("chromaticCenterY");
+    this.chromaticCenterYValue = document.getElementById("chromaticCenterYValue");
+
+    // Glitch controls
+    this.glitchControls = document.getElementById("glitchControls");
+    this.glitchMode = document.getElementById("glitchMode");
+    this.glitchIntensity = document.getElementById("glitchIntensity");
+    this.glitchIntensityValue = document.getElementById("glitchIntensityValue");
+    this.glitchBlockSize = document.getElementById("glitchBlockSize");
+    this.glitchBlockSizeValue = document.getElementById("glitchBlockSizeValue");
+    this.glitchColorShift = document.getElementById("glitchColorShift");
+    this.glitchColorShiftValue = document.getElementById("glitchColorShiftValue");
+    this.glitchNoise = document.getElementById("glitchNoise");
+    this.glitchNoiseValue = document.getElementById("glitchNoiseValue");
+    this.glitchScanline = document.getElementById("glitchScanline");
+    this.glitchScanlineValue = document.getElementById("glitchScanlineValue");
+
+    // Thermal controls
+    this.thermalControls = document.getElementById("thermalControls");
+    this.thermalPalette = document.getElementById("thermalPalette");
+    this.thermalContrast = document.getElementById("thermalContrast");
+    this.thermalContrastValue = document.getElementById("thermalContrastValue");
+    this.thermalInvert = document.getElementById("thermalInvert");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -52,6 +101,37 @@ class CyberVision {
     this.useTrueColors = false;
     this.colorCount = 8;
     this.colorThreshold = 0.1;
+
+    // Edge detection state
+    this.edgeAlgorithmValue = "sobel";
+    this.edgeThresholdValue_state = 0.1;
+    this.edgeOverlayValue = false;
+    this.edgeInvertValue = false;
+    this.edgeColorValue = "#ffffff";
+    this.edgeThicknessValue_state = 1;
+
+    // Mosaic state
+    this.mosaicBlockSizeValue_state = 8;
+    this.mosaicModeValue = "center";
+
+    // Chromatic aberration state
+    this.chromaticIntensityValue_state = 10;
+    this.chromaticModeValue = "radial";
+    this.chromaticCenterXValue_state = 50;
+    this.chromaticCenterYValue_state = 50;
+
+    // Glitch state
+    this.glitchModeValue = "slices";
+    this.glitchIntensityValue_state = 12;
+    this.glitchBlockSizeValue_state = 24;
+    this.glitchColorShiftValue_state = 4;
+    this.glitchNoiseValue_state = 0.15;
+    this.glitchScanlineValue_state = 0.3;
+
+    // Thermal state
+    this.thermalPaletteValue = "classic";
+    this.thermalContrastValue_state = 1.0;
+    this.thermalInvertValue = false;
 
     // FPS tracking
     this.frameCount = 0;
@@ -212,6 +292,108 @@ class CyberVision {
       this.thresholdValue.textContent = this.colorThreshold.toFixed(2);
     });
 
+    // Edge detection event listeners
+    this.edgeAlgorithm.addEventListener("change", (e) => {
+      this.edgeAlgorithmValue = e.target.value;
+    });
+
+    this.edgeThreshold.addEventListener("input", (e) => {
+      this.edgeThresholdValue_state = parseFloat(e.target.value);
+      this.edgeThresholdValue.textContent = this.edgeThresholdValue_state.toFixed(2);
+    });
+
+    this.edgeOverlay.addEventListener("change", (e) => {
+      this.edgeOverlayValue = e.target.checked;
+    });
+
+    this.edgeInvert.addEventListener("change", (e) => {
+      this.edgeInvertValue = e.target.checked;
+    });
+
+    this.edgeColor.addEventListener("input", (e) => {
+      this.edgeColorValue = e.target.value;
+    });
+
+    this.edgeThickness.addEventListener("input", (e) => {
+      this.edgeThicknessValue_state = parseInt(e.target.value, 10);
+      this.edgeThicknessValue.textContent = this.edgeThicknessValue_state;
+    });
+
+    // Mosaic event listeners
+    this.mosaicBlockSize.addEventListener("input", (e) => {
+      this.mosaicBlockSizeValue_state = parseInt(e.target.value, 10);
+      this.mosaicBlockSizeValue.textContent = this.mosaicBlockSizeValue_state;
+    });
+
+    this.mosaicMode.addEventListener("change", (e) => {
+      this.mosaicModeValue = e.target.value;
+      this.updateMosaicInfo();
+    });
+
+    // Chromatic aberration event listeners
+    this.chromaticIntensity.addEventListener("input", (e) => {
+      this.chromaticIntensityValue_state = parseInt(e.target.value, 10);
+      this.chromaticIntensityValue.textContent = this.chromaticIntensityValue_state;
+    });
+
+    this.chromaticMode.addEventListener("change", (e) => {
+      this.chromaticModeValue = e.target.value;
+    });
+
+    this.chromaticCenterX.addEventListener("input", (e) => {
+      this.chromaticCenterXValue_state = parseInt(e.target.value, 10);
+      this.chromaticCenterXValue.textContent = this.chromaticCenterXValue_state;
+    });
+
+    this.chromaticCenterY.addEventListener("input", (e) => {
+      this.chromaticCenterYValue_state = parseInt(e.target.value, 10);
+      this.chromaticCenterYValue.textContent = this.chromaticCenterYValue_state;
+    });
+
+    // Glitch event listeners
+    this.glitchMode.addEventListener("change", (e) => {
+      this.glitchModeValue = e.target.value;
+    });
+
+    this.glitchIntensity.addEventListener("input", (e) => {
+      this.glitchIntensityValue_state = parseInt(e.target.value, 10);
+      this.glitchIntensityValue.textContent = this.glitchIntensityValue_state;
+    });
+
+    this.glitchBlockSize.addEventListener("input", (e) => {
+      this.glitchBlockSizeValue_state = parseInt(e.target.value, 10);
+      this.glitchBlockSizeValue.textContent = this.glitchBlockSizeValue_state;
+    });
+
+    this.glitchColorShift.addEventListener("input", (e) => {
+      this.glitchColorShiftValue_state = parseInt(e.target.value, 10);
+      this.glitchColorShiftValue.textContent = this.glitchColorShiftValue_state;
+    });
+
+    this.glitchNoise.addEventListener("input", (e) => {
+      this.glitchNoiseValue_state = parseFloat(e.target.value);
+      this.glitchNoiseValue.textContent = this.glitchNoiseValue_state.toFixed(2);
+    });
+
+    this.glitchScanline.addEventListener("input", (e) => {
+      this.glitchScanlineValue_state = parseFloat(e.target.value);
+      this.glitchScanlineValue.textContent = this.glitchScanlineValue_state.toFixed(2);
+    });
+
+    // Thermal event listeners
+    this.thermalPalette.addEventListener("change", (e) => {
+      this.thermalPaletteValue = e.target.value;
+    });
+
+    this.thermalContrast.addEventListener("input", (e) => {
+      this.thermalContrastValue_state = parseFloat(e.target.value);
+      this.thermalContrastValue.textContent = this.thermalContrastValue_state.toFixed(1);
+    });
+
+    this.thermalInvert.addEventListener("change", (e) => {
+      this.thermalInvertValue = e.target.checked;
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -239,6 +421,9 @@ class CyberVision {
       await this.switchToRenderer(targetRenderer);
       this.setStatus(`Switched to ${this.rendererType.toUpperCase()}. ${wasRunning ? 'Restarting camera...' : 'Ready.'}`);
 
+      // Update mosaic info visibility based on new renderer
+      this.updateMosaicInfo();
+
       // Restart camera if it was running
       if (wasRunning) {
         await this.startCamera();
@@ -253,6 +438,25 @@ class CyberVision {
     // Show/hide effect-specific controls based on current effect
     this.halftoneControls.style.display = this.currentEffect === "halftone" ? "block" : "none";
     this.clusteringControls.style.display = this.currentEffect === "clustering" ? "block" : "none";
+    this.edgesControls.style.display = this.currentEffect === "edges" ? "block" : "none";
+    this.mosaicControls.style.display = this.currentEffect === "mosaic" ? "block" : "none";
+    this.chromaticControls.style.display = this.currentEffect === "chromatic" ? "block" : "none";
+    this.glitchControls.style.display = this.currentEffect === "glitch" ? "block" : "none";
+    this.thermalControls.style.display = this.currentEffect === "thermal" ? "block" : "none";
+
+    // Update mosaic info when mosaic effect is shown
+    if (this.currentEffect === "mosaic") {
+      this.updateMosaicInfo();
+    }
+  }
+
+  updateMosaicInfo() {
+    // Show info text if using dominant mode with WebGL (falls back to centerSample)
+    if (this.mosaicModeValue === "dominant" && this.rendererType === "webgl") {
+      this.mosaicInfo.style.display = "flex";
+    } else {
+      this.mosaicInfo.style.display = "none";
+    }
   }
 
   updateHalftoneParams() {
@@ -350,6 +554,16 @@ class CyberVision {
         this.renderHalftone();
       } else if (this.currentEffect === "clustering") {
         this.renderClustering();
+      } else if (this.currentEffect === "edges") {
+        this.renderEdges();
+      } else if (this.currentEffect === "mosaic") {
+        this.renderMosaic();
+      } else if (this.currentEffect === "chromatic") {
+        this.renderChromatic();
+      } else if (this.currentEffect === "glitch") {
+        this.renderGlitch();
+      } else if (this.currentEffect === "thermal") {
+        this.renderThermal();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -388,6 +602,67 @@ class CyberVision {
       algorithmString,
       this.colorCount,
       this.colorThreshold
+    );
+  }
+
+  renderEdges() {
+    // Parse edge color from hex to RGB
+    const hex = this.edgeColorValue.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    this.renderer.renderEdges(
+      this.video,
+      this.edgeAlgorithmValue,
+      this.edgeThresholdValue_state,
+      this.edgeOverlayValue,
+      this.edgeInvertValue,
+      [r, g, b],
+      this.edgeThicknessValue_state
+    );
+  }
+
+  renderMosaic() {
+    this.renderer.renderMosaic(
+      this.video,
+      this.mosaicBlockSizeValue_state,
+      this.mosaicModeValue
+    );
+  }
+
+  renderChromatic() {
+    // Convert center percentage to 0-1 range
+    const centerX = this.chromaticCenterXValue_state / 100;
+    const centerY = this.chromaticCenterYValue_state / 100;
+
+    this.renderer.renderChromatic(
+      this.video,
+      this.chromaticIntensityValue_state,
+      this.chromaticModeValue,
+      centerX,
+      centerY
+    );
+  }
+
+  renderGlitch() {
+    this.renderer.renderGlitch(
+      this.video,
+      this.glitchModeValue,
+      this.glitchIntensityValue_state,
+      this.glitchBlockSizeValue_state,
+      this.glitchColorShiftValue_state,
+      this.glitchNoiseValue_state,
+      this.glitchScanlineValue_state
+    );
+  }
+
+  renderThermal() {
+    this.renderer.renderThermal(
+      this.video,
+      this.thermalPaletteValue,
+      this.thermalContrastValue_state,
+      this.thermalInvertValue
     );
   }
 
