@@ -23,21 +23,6 @@ float luminance(vec3 color) {
   return 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
 }
 
-// Quantize color for dominant color mode (8 levels per channel = 512 total colors)
-ivec3 quantizeColor(vec3 color) {
-  int levels = 8;
-  return ivec3(
-    int(floor(color.r * float(levels))),
-    int(floor(color.g * float(levels))),
-    int(floor(color.b * float(levels)))
-  );
-}
-
-// Convert quantized color to hash key
-int colorToKey(ivec3 qcolor) {
-  return qcolor.r + qcolor.g * 8 + qcolor.b * 64;
-}
-
 // Sample pixel with bounds checking
 vec3 samplePixel(vec2 uv) {
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {

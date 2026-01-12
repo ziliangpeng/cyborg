@@ -17,15 +17,7 @@ float sampleChannelVec(vec2 uv, int channel) {
     return 0.0;
   }
 
-  vec4 color = texture(u_video, uv);
-
-  if (channel == 0) {
-    return color.r;
-  } else if (channel == 1) {
-    return color.g;
-  } else {
-    return color.b;
-  }
+  return texture(u_video, uv)[channel];
 }
 
 void main() {

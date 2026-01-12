@@ -18,18 +18,6 @@ struct ChromaticParams {
 @group(0) @binding(2) var<uniform> params: ChromaticParams;
 
 // Sample with bounds checking
-fn sampleChannel(uv: vec2f) -> f32 {
-  let dims = vec2f(params.width, params.height);
-  let pixel = uv * dims;
-
-  if (pixel.x < 0.0 || pixel.x >= params.width || pixel.y < 0.0 || pixel.y >= params.height) {
-    return 0.0;
-  }
-
-  let iPixel = vec2i(i32(pixel.x), i32(pixel.y));
-  return textureLoad(inputTex, iPixel, 0).r;
-}
-
 fn sampleChannelVec(uv: vec2f, channel: i32) -> f32 {
   let dims = vec2f(params.width, params.height);
   let pixel = uv * dims;
@@ -41,13 +29,7 @@ fn sampleChannelVec(uv: vec2f, channel: i32) -> f32 {
   let iPixel = vec2i(i32(pixel.x), i32(pixel.y));
   let color = textureLoad(inputTex, iPixel, 0);
 
-  if (channel == 0) {
-    return color.r;
-  } else if (channel == 1) {
-    return color.g;
-  } else {
-    return color.b;
-  }
+  return color[u32(channel)];
 }
 
 @compute @workgroup_size(8, 8)
