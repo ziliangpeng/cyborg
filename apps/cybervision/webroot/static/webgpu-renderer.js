@@ -18,6 +18,7 @@ export class WebGPURenderer {
     this.edgesPipeline = null;
     this.mosaicPipeline = null;
     this.chromaticPipeline = null;
+    this.thermalPipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
@@ -26,6 +27,7 @@ export class WebGPURenderer {
     this.edgesBindGroup = null;
     this.mosaicBindGroup = null;
     this.chromaticBindGroup = null;
+    this.thermalBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
@@ -35,6 +37,7 @@ export class WebGPURenderer {
     this.edgesUniformBuffer = null;
     this.mosaicUniformBuffer = null;
     this.chromaticUniformBuffer = null;
+    this.thermalUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
@@ -43,6 +46,7 @@ export class WebGPURenderer {
     this.edgesShader = null;
     this.mosaicShader = null;
     this.chromaticShader = null;
+    this.thermalShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -140,6 +144,13 @@ export class WebGPURenderer {
       code: chromaticShaderCode,
     });
 
+    // Load and create thermal shader
+    const thermalShaderResponse = await fetch("/static/shaders/thermal.wgsl");
+    const thermalShaderCode = await thermalShaderResponse.text();
+    this.thermalShader = this.device.createShaderModule({
+      code: thermalShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -201,6 +212,18 @@ export class WebGPURenderer {
       0, 0,  // padding
     ]);
     this.chromaticUniformBuffer = this.createUniformBuffer(chromaticUniformData);
+
+    // Create thermal uniform buffer
+    const thermalUniformData = new Float32Array([
+      0,  // palette (0=Classic, 1=Infrared, 2=Fire)
+      1.0,  // contrast
+      0,  // invert
+      0,  // padding
+      this.videoWidth,
+      this.videoHeight,
+      0, 0,  // padding
+    ]);
+    this.thermalUniformBuffer = this.createUniformBuffer(thermalUniformData);
 
     // Create textures
     this.inputTexture = this.device.createTexture({
@@ -363,6 +386,36 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.chromaticUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create thermal compute pipeline
+    this.thermalPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.thermalShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create thermal bind group
+    this.thermalBindGroup = this.device.createBindGroup({
+      layout: this.thermalPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.thermalUniformBuffer,
           },
         },
       ],
@@ -753,6 +806,64 @@ export class WebGPURenderer {
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(this.chromaticPipeline);
     computePass.setBindGroup(0, this.chromaticBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    // Blit rgba texture to canvas (bgra format)
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderThermal(video, palette, contrast, invert) {
+    // Map palette string to number
+    const paletteMap = {
+      "classic": 0,
+      "infrared": 1,
+      "fire": 2,
+    };
+
+    // Update uniform buffer with current parameters
+    const uniformData = new Float32Array([
+      paletteMap[palette] || 0,
+      contrast,
+      invert ? 1.0 : 0.0,
+      0,  // padding
+      this.videoWidth,
+      this.videoHeight,
+      0, 0,  // padding
+    ]);
+    this.updateUniformBuffer(this.thermalUniformBuffer, uniformData);
+
+    // Copy video frame to input texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    // Run compute shader
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.thermalPipeline);
+    computePass.setBindGroup(0, this.thermalBindGroup);
 
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);

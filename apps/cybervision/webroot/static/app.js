@@ -60,6 +60,13 @@ class CyberVision {
     this.chromaticCenterY = document.getElementById("chromaticCenterY");
     this.chromaticCenterYValue = document.getElementById("chromaticCenterYValue");
 
+    // Thermal controls
+    this.thermalControls = document.getElementById("thermalControls");
+    this.thermalPalette = document.getElementById("thermalPalette");
+    this.thermalContrast = document.getElementById("thermalContrast");
+    this.thermalContrastValue = document.getElementById("thermalContrastValue");
+    this.thermalInvert = document.getElementById("thermalInvert");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -97,6 +104,11 @@ class CyberVision {
     this.chromaticModeValue = "radial";
     this.chromaticCenterXValue_state = 50;
     this.chromaticCenterYValue_state = 50;
+
+    // Thermal state
+    this.thermalPaletteValue = "classic";
+    this.thermalContrastValue_state = 1.0;
+    this.thermalInvertValue = false;
 
     // FPS tracking
     this.frameCount = 0;
@@ -314,6 +326,20 @@ class CyberVision {
       this.chromaticCenterYValue.textContent = this.chromaticCenterYValue_state;
     });
 
+    // Thermal event listeners
+    this.thermalPalette.addEventListener("change", (e) => {
+      this.thermalPaletteValue = e.target.value;
+    });
+
+    this.thermalContrast.addEventListener("input", (e) => {
+      this.thermalContrastValue_state = parseFloat(e.target.value);
+      this.thermalContrastValue.textContent = this.thermalContrastValue_state.toFixed(1);
+    });
+
+    this.thermalInvert.addEventListener("change", (e) => {
+      this.thermalInvertValue = e.target.checked;
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -358,6 +384,7 @@ class CyberVision {
     this.edgesControls.style.display = this.currentEffect === "edges" ? "block" : "none";
     this.mosaicControls.style.display = this.currentEffect === "mosaic" ? "block" : "none";
     this.chromaticControls.style.display = this.currentEffect === "chromatic" ? "block" : "none";
+    this.thermalControls.style.display = this.currentEffect === "thermal" ? "block" : "none";
   }
 
   updateHalftoneParams() {
@@ -461,6 +488,8 @@ class CyberVision {
         this.renderMosaic();
       } else if (this.currentEffect === "chromatic") {
         this.renderChromatic();
+      } else if (this.currentEffect === "thermal") {
+        this.renderThermal();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -539,6 +568,15 @@ class CyberVision {
       this.chromaticModeValue,
       centerX,
       centerY
+    );
+  }
+
+  renderThermal() {
+    this.renderer.renderThermal(
+      this.video,
+      this.thermalPaletteValue,
+      this.thermalContrastValue_state,
+      this.thermalInvertValue
     );
   }
 
