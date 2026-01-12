@@ -102,6 +102,13 @@ class CyberVision {
     this.pixelSortIterationsValue = document.getElementById("pixelSortIterationsValue");
     this.pixelSortIterationsGroup = document.getElementById("pixelSortIterationsGroup");
 
+    // Kaleidoscope controls
+    this.kaleidoscopeControls = document.getElementById("kaleidoscopeControls");
+    this.segmentsSlider = document.getElementById("segmentsSlider");
+    this.segmentsValue = document.getElementById("segmentsValue");
+    this.rotationSpeedSlider = document.getElementById("rotationSpeedSlider");
+    this.rotationSpeedValue = document.getElementById("rotationSpeedValue");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -164,6 +171,10 @@ class CyberVision {
     this.pixelSortOrderValue = "ascending";
     this.pixelSortAlgorithmValue = "bitonic";
     this.pixelSortIterationsValue_state = 50;
+
+    // Kaleidoscope state
+    this.kaleidoscopeSegments = 8;
+    this.kaleidoscopeRotationSpeed = 0.0;
 
     // FPS tracking
     this.frameCount = 0;
@@ -480,6 +491,17 @@ class CyberVision {
       this.pixelSortIterationsValue.textContent = this.pixelSortIterationsValue_state;
     });
 
+    // Kaleidoscope event listeners
+    this.segmentsSlider.addEventListener("input", (e) => {
+      this.kaleidoscopeSegments = parseInt(e.target.value, 10);
+      this.segmentsValue.textContent = this.kaleidoscopeSegments;
+    });
+
+    this.rotationSpeedSlider.addEventListener("input", (e) => {
+      this.kaleidoscopeRotationSpeed = parseFloat(e.target.value);
+      this.rotationSpeedValue.textContent = this.kaleidoscopeRotationSpeed.toFixed(2);
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -530,6 +552,7 @@ class CyberVision {
     this.glitchControls.style.display = this.currentEffect === "glitch" ? "block" : "none";
     this.thermalControls.style.display = this.currentEffect === "thermal" ? "block" : "none";
     this.pixelSortControls.style.display = this.currentEffect === "pixelsort" ? "block" : "none";
+    this.kaleidoscopeControls.style.display = this.currentEffect === "kaleidoscope" ? "block" : "none";
 
     // Update mosaic info when mosaic effect is shown
     if (this.currentEffect === "mosaic") {
@@ -667,6 +690,8 @@ class CyberVision {
         this.renderThermal();
       } else if (this.currentEffect === "pixelsort") {
         this.renderPixelSort();
+      } else if (this.currentEffect === "kaleidoscope") {
+        this.renderKaleidoscope();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -813,6 +838,43 @@ class CyberVision {
       this.frameLatencies = [];
       this.lastLatencyUpdate = now;
     }
+  }
+
+  renderPixelSort() {
+    const directionMode = this.pixelSortAngleModeValue;
+    let angle = 0;
+
+    if (directionMode === "preset") {
+      const presetAngles = {
+        horizontal: 0,
+        vertical: 90,
+        diagonal_right: 45,
+        diagonal_left: 135,
+      };
+      angle = presetAngles[this.pixelSortDirectionValue] || 0;
+    } else {
+      angle = this.pixelSortAngleValue_state;
+    }
+
+    this.renderer.renderPixelSort(
+      this.video,
+      angle,
+      this.pixelSortThresholdLowValue_state,
+      this.pixelSortThresholdHighValue_state,
+      this.pixelSortThresholdModeValue,
+      this.pixelSortKeyValue,
+      this.pixelSortOrderValue,
+      this.pixelSortAlgorithmValue,
+      this.pixelSortIterationsValue_state
+    );
+  }
+
+  renderKaleidoscope() {
+    this.renderer.renderKaleidoscope(
+      this.video,
+      this.kaleidoscopeSegments,
+      this.kaleidoscopeRotationSpeed
+    );
   }
 
   setStatus(text) {
