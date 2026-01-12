@@ -159,6 +159,10 @@ fn cannyEdge(tex: texture_2d<f32>, pos: vec2i) -> f32 {
 }
 
 // Apply edge thickness via dilation
+// TODO: Performance issue - this re-runs edge detection for every neighboring pixel
+// For better performance, consider a two-pass approach:
+//   1. First pass: compute edge magnitude and store in intermediate texture
+//   2. Second pass: apply dilation (max filter) on the edge texture
 fn applyThickness(tex: texture_2d<f32>, pos: vec2i, edgeValue: f32, thickness: f32) -> f32 {
   if (thickness <= 1.0) {
     return edgeValue;
