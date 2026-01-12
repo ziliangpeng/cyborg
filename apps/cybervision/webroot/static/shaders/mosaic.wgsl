@@ -66,8 +66,11 @@ fn averageSample(blockTopLeft: vec2i, blockSize: i32) -> vec3f {
   var sum = vec3f(0.0);
   var count = 0.0;
 
-  for (var dy = 0; dy < blockSize; dy++) {
-    for (var dx = 0; dx < blockSize; dx++) {
+  // Limit samples to prevent GPU timeout
+  let maxSamples = min(blockSize, 32);
+
+  for (var dy = 0; dy < maxSamples; dy++) {
+    for (var dx = 0; dx < maxSamples; dx++) {
       let pos = blockTopLeft + vec2i(dx, dy);
       let color = samplePixel(pos);
       sum += color;
@@ -83,8 +86,11 @@ fn minSample(blockTopLeft: vec2i, blockSize: i32) -> vec3f {
   var minColor = vec3f(1.0);
   var minLuminance = 1.0;
 
-  for (var dy = 0; dy < blockSize; dy++) {
-    for (var dx = 0; dx < blockSize; dx++) {
+  // Limit samples to prevent GPU timeout
+  let maxSamples = min(blockSize, 32);
+
+  for (var dy = 0; dy < maxSamples; dy++) {
+    for (var dx = 0; dx < maxSamples; dx++) {
       let pos = blockTopLeft + vec2i(dx, dy);
       let color = samplePixel(pos);
       let lum = luminance(color);
@@ -104,8 +110,11 @@ fn maxSample(blockTopLeft: vec2i, blockSize: i32) -> vec3f {
   var maxColor = vec3f(0.0);
   var maxLuminance = 0.0;
 
-  for (var dy = 0; dy < blockSize; dy++) {
-    for (var dx = 0; dx < blockSize; dx++) {
+  // Limit samples to prevent GPU timeout
+  let maxSamples = min(blockSize, 32);
+
+  for (var dy = 0; dy < maxSamples; dy++) {
+    for (var dx = 0; dx < maxSamples; dx++) {
       let pos = blockTopLeft + vec2i(dx, dy);
       let color = samplePixel(pos);
       let lum = luminance(color);
