@@ -102,6 +102,13 @@ class CyberVision {
     this.pixelSortIterationsValue = document.getElementById("pixelSortIterationsValue");
     this.pixelSortIterationsGroup = document.getElementById("pixelSortIterationsGroup");
 
+    // Kaleidoscope controls
+    this.kaleidoscopeControls = document.getElementById("kaleidoscopeControls");
+    this.segmentsSlider = document.getElementById("segmentsSlider");
+    this.segmentsValue = document.getElementById("segmentsValue");
+    this.rotationSpeedSlider = document.getElementById("rotationSpeedSlider");
+    this.rotationSpeedValue = document.getElementById("rotationSpeedValue");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -165,6 +172,10 @@ class CyberVision {
     this.pixelSortAlgorithmValue = "bitonic";
     this.pixelSortIterationsValue_state = 50;
 
+    // Kaleidoscope state
+    this.kaleidoscopeSegments = 8;
+    this.kaleidoscopeRotationSpeed = 0.0;
+
     // FPS tracking
     this.frameCount = 0;
     this.lastFpsTime = performance.now();
@@ -177,26 +188,60 @@ class CyberVision {
   }
 
   async init() {
+    console.log("=== CyberVision Initialization Starting ===");
+    
     // Probe both renderers to check availability
     await this.probeRenderers();
 
     // Check URL parameters for renderer control
     const urlParams = new URLSearchParams(window.location.search);
     const forceWebGL = urlParams.get('force-webgl') === 'true' || urlParams.get('disable-webgpu') === 'true';
+    console.log("Force WebGL:", forceWebGL);
+    console.log("WebGL toggle checked:", this.webglToggle.checked);
 
     // Initialize based on URL parameter or toggle state
     const useWebGL = forceWebGL || this.webglToggle.checked;
+    console.log("Will use WebGL:", useWebGL);
+    console.log("Available renderers - WebGPU:", this.webgpuAvailable, "WebGL:", this.webglAvailable);
 
-    if (useWebGL && this.webglAvailable) {
-      await this.switchToRenderer('webgl');
-    } else if (this.webgpuAvailable) {
-      await this.switchToRenderer('webgpu');
-    } else if (this.webglAvailable) {
-      await this.switchToRenderer('webgl');
-    } else {
-      this.gpuStatus.textContent = "Not supported";
+    try {
+      if (useWebGL && this.webglAvailable) {
+        console.log("=== Path 1: Using WebGL (forced or toggled) ===");
+        await this.switchToRenderer('webgl');
+      } else if (this.webgpuAvailable) {
+        console.log("=== Path 2: Trying WebGPU first ===");
+        // Try WebGPU first
+        try {
+          await this.switchToRenderer('webgpu');
+        } catch (webgpuErr) {
+          console.warn("WebGPU initialization failed, falling back to WebGL:", webgpuErr);
+          // Fall back to WebGL if WebGPU fails
+          if (this.webglAvailable) {
+            console.log("Falling back to WebGL...");
+            await this.switchToRenderer('webgl');
+            this.webgpuAvailable = false; // Mark WebGPU as unavailable
+          } else {
+            console.error("WebGL not available, cannot fall back");
+            throw webgpuErr; // Re-throw if WebGL not available
+          }
+        }
+      } else if (this.webglAvailable) {
+        console.log("=== Path 3: Using WebGL (WebGPU not available) ===");
+        await this.switchToRenderer('webgl');
+      } else {
+        console.error("=== Path 4: No renderers available ===");
+        this.gpuStatus.textContent = "Not supported";
+        this.gpuStatus.style.color = "#f87171";
+        this.setStatus("Error: Neither WebGPU nor WebGL2 is available.");
+        this.startBtn.disabled = true;
+        this.webglToggle.disabled = true;
+        return;
+      }
+    } catch (err) {
+      console.error("=== Renderer initialization failed ===", err);
+      this.gpuStatus.textContent = "Error";
       this.gpuStatus.style.color = "#f87171";
-      this.setStatus("Error: Neither WebGPU nor WebGL2 is available.");
+      this.setStatus(`Error: Failed to initialize renderer: ${err.message}`);
       this.startBtn.disabled = true;
       this.webglToggle.disabled = true;
       return;
@@ -212,14 +257,17 @@ class CyberVision {
 
   async probeRenderers() {
     // Test WebGPU availability (check if navigator.gpu exists)
-    console.log("Probing WebGPU availability...");
+    console.log("=== Probing WebGPU availability ===");
+    console.log("navigator.gpu exists:", !!navigator.gpu);
     if (navigator.gpu) {
       try {
+        console.log("Requesting WebGPU adapter...");
         const adapter = await navigator.gpu.requestAdapter();
+        console.log("Adapter received:", adapter);
         this.webgpuAvailable = !!adapter;
         console.log(this.webgpuAvailable ? "✓ WebGPU is available" : "✗ WebGPU adapter not available");
       } catch (err) {
-        console.log("✗ WebGPU not available:", err.message);
+        console.log("✗ WebGPU not available:", err);
         this.webgpuAvailable = false;
       }
     } else {
@@ -228,18 +276,22 @@ class CyberVision {
     }
 
     // Test WebGL availability (check if WebGL2 context can be created)
-    console.log("Probing WebGL availability...");
+    console.log("=== Probing WebGL availability ===");
     const testCanvas = document.createElement('canvas');
+    console.log("Test canvas created:", testCanvas);
     const gl = testCanvas.getContext('webgl2');
+    console.log("WebGL2 context:", gl);
     this.webglAvailable = !!gl;
     console.log(this.webglAvailable ? "✓ WebGL2 is available" : "✗ WebGL2 not available");
+    console.log("=== Probe complete: WebGPU=" + this.webgpuAvailable + ", WebGL=" + this.webglAvailable + " ===");
   }
 
   async switchToRenderer(type) {
-    console.log(`Switching to ${type.toUpperCase()}...`);
+    console.log(`=== Switching to ${type.toUpperCase()} ===`);
 
     // Cleanup old renderer if exists
     if (this.renderer && this.renderer.cleanup) {
+      console.log("Cleaning up old renderer");
       this.renderer.cleanup();
     }
 
@@ -247,6 +299,7 @@ class CyberVision {
     // Save canvas dimensions
     const width = this.canvas.width;
     const height = this.canvas.height;
+    console.log("Canvas dimensions:", width, "x", height);
 
     // Replace canvas
     const newCanvas = document.createElement('canvas');
@@ -256,22 +309,27 @@ class CyberVision {
     newCanvas.height = height;
     this.canvas.parentNode.replaceChild(newCanvas, this.canvas);
     this.canvas = newCanvas;
+    console.log("Canvas replaced");
 
     try {
       if (type === 'webgpu') {
+        console.log("Calling initGPU...");
         this.renderer = await initGPU(this.canvas);
         this.rendererType = 'webgpu';
         this.gpuStatus.textContent = "WebGPU ✓";
         this.gpuStatus.style.color = "#34d399";
-        console.log("✓ WebGPU initialized");
+        console.log("✓ WebGPU initialized successfully");
       } else {
+        console.log("Calling initWebGL...");
         this.renderer = await initWebGL(this.canvas);
         this.rendererType = 'webgl';
         this.gpuStatus.textContent = "WebGL";
         this.gpuStatus.style.color = "#60a5fa";
-        console.log("✓ WebGL initialized");
+        console.log("✓ WebGL initialized successfully");
       }
+      console.log("Renderer object:", this.renderer);
     } catch (err) {
+      console.error("Renderer initialization error:", err);
       this.gpuStatus.textContent = "Error";
       this.gpuStatus.style.color = "#f87171";
       throw err;
@@ -480,6 +538,17 @@ class CyberVision {
       this.pixelSortIterationsValue.textContent = this.pixelSortIterationsValue_state;
     });
 
+    // Kaleidoscope event listeners
+    this.segmentsSlider.addEventListener("input", (e) => {
+      this.kaleidoscopeSegments = parseInt(e.target.value, 10);
+      this.segmentsValue.textContent = this.kaleidoscopeSegments;
+    });
+
+    this.rotationSpeedSlider.addEventListener("input", (e) => {
+      this.kaleidoscopeRotationSpeed = parseFloat(e.target.value);
+      this.rotationSpeedValue.textContent = this.kaleidoscopeRotationSpeed.toFixed(2);
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -530,6 +599,7 @@ class CyberVision {
     this.glitchControls.style.display = this.currentEffect === "glitch" ? "block" : "none";
     this.thermalControls.style.display = this.currentEffect === "thermal" ? "block" : "none";
     this.pixelSortControls.style.display = this.currentEffect === "pixelsort" ? "block" : "none";
+    this.kaleidoscopeControls.style.display = this.currentEffect === "kaleidoscope" ? "block" : "none";
 
     // Update mosaic info when mosaic effect is shown
     if (this.currentEffect === "mosaic") {
@@ -667,6 +737,8 @@ class CyberVision {
         this.renderThermal();
       } else if (this.currentEffect === "pixelsort") {
         this.renderPixelSort();
+      } else if (this.currentEffect === "kaleidoscope") {
+        this.renderKaleidoscope();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -813,6 +885,14 @@ class CyberVision {
       this.frameLatencies = [];
       this.lastLatencyUpdate = now;
     }
+  }
+
+  renderKaleidoscope() {
+    this.renderer.renderKaleidoscope(
+      this.video,
+      this.kaleidoscopeSegments,
+      this.kaleidoscopeRotationSpeed
+    );
   }
 
   setStatus(text) {

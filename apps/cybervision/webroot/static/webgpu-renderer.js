@@ -24,6 +24,7 @@ export class WebGPURenderer {
     this.pixelSortSegmentPipeline = null;
     this.pixelSortPipeline = null;
     this.rotatePipeline = null;
+    this.kaleidoscopePipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
@@ -38,6 +39,7 @@ export class WebGPURenderer {
     this.pixelSortBindGroup = null;
     this.rotateBindGroup = null;
     this.rotateBackBindGroup = null;
+    this.kaleidoscopeBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
@@ -52,6 +54,7 @@ export class WebGPURenderer {
     this.pixelSortSegmentUniformBuffer = null;
     this.pixelSortUniformBuffer = null;
     this.rotateUniformBuffer = null;
+    this.kaleidoscopeUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
@@ -65,6 +68,7 @@ export class WebGPURenderer {
     this.pixelSortSegmentShader = null;
     this.pixelSortShader = null;
     this.rotateShader = null;
+    this.kaleidoscopeShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -197,6 +201,13 @@ export class WebGPURenderer {
       code: rotateShaderCode,
     });
 
+    // Load and create kaleidoscope shader
+    const kaleidoscopeShaderResponse = await fetch("/static/shaders/kaleidoscope.wgsl");
+    const kaleidoscopeShaderCode = await kaleidoscopeShaderResponse.text();
+    this.kaleidoscopeShader = this.device.createShaderModule({
+      code: kaleidoscopeShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -323,6 +334,15 @@ export class WebGPURenderer {
       0,  // padding
     ]);
     this.rotateUniformBuffer = this.createUniformBuffer(rotateUniformData);
+
+    // Create kaleidoscope uniform buffer
+    const kaleidoscopeUniformData = new Float32Array([
+      8.0,   // segments
+      0.0,   // rotationSpeed
+      0.0,   // time
+      0.0,   // padding
+    ]);
+    this.kaleidoscopeUniformBuffer = this.createUniformBuffer(kaleidoscopeUniformData);
 
     // Create textures
     this.inputTexture = this.device.createTexture({
@@ -756,6 +776,36 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.rotateUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create kaleidoscope compute pipeline
+    this.kaleidoscopePipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.kaleidoscopeShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create kaleidoscope bind group
+    this.kaleidoscopeBindGroup = this.device.createBindGroup({
+      layout: this.kaleidoscopePipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.kaleidoscopeUniformBuffer,
           },
         },
       ],
@@ -1558,6 +1608,52 @@ export class WebGPURenderer {
     renderPass.end();
 
     this.device.queue.submit([blitCommandEncoder.finish()]);
+  }
+
+  renderKaleidoscope(video, segments, rotationSpeed) {
+    const time = performance.now() / 1000;
+
+    const uniformData = new Float32Array([
+      segments,
+      rotationSpeed,
+      time,
+      0.0,
+    ]);
+    this.updateUniformBuffer(this.kaleidoscopeUniformBuffer, uniformData);
+
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.kaleidoscopePipeline);
+    computePass.setBindGroup(0, this.kaleidoscopeBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
   }
 
   createUniformBuffer(data) {

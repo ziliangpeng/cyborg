@@ -11,10 +11,13 @@ export class WebGLRenderer {
     this.chromaticProgram = null;
     this.glitchProgram = null;
     this.thermalProgram = null;
+    this.kaleidoscopeProgram = null;
     this.passthroughProgram = null;
     this.videoTexture = null;
     this.positionBuffer = null;
     this.texCoordBuffer = null;
+    // Cached shader locations for performance
+    this.kaleidoscopeLocations = null;
   }
 
   async init(canvas) {
@@ -60,6 +63,7 @@ export class WebGLRenderer {
     const chromaticFragmentSource = await this.loadShader("/static/shaders/chromatic.frag.glsl");
     const glitchFragmentSource = await this.loadShader("/static/shaders/glitch.frag.glsl");
     const thermalFragmentSource = await this.loadShader("/static/shaders/thermal.frag.glsl");
+    const kaleidoscopeFragmentSource = await this.loadShader("/static/shaders/kaleidoscope.frag.glsl");
     const passthroughFragmentSource = await this.loadShader("/static/shaders/passthrough.frag.glsl");
 
     /* OLD INLINE SHADERS - NOW LOADED FROM FILES
@@ -285,6 +289,7 @@ export class WebGLRenderer {
     const chromaticFragment = this.compileShader(gl.FRAGMENT_SHADER, chromaticFragmentSource);
     const glitchFragment = this.compileShader(gl.FRAGMENT_SHADER, glitchFragmentSource);
     const thermalFragment = this.compileShader(gl.FRAGMENT_SHADER, thermalFragmentSource);
+    const kaleidoscopeFragment = this.compileShader(gl.FRAGMENT_SHADER, kaleidoscopeFragmentSource);
     const passthroughFragment = this.compileShader(gl.FRAGMENT_SHADER, passthroughFragmentSource);
 
     // Create programs
@@ -295,6 +300,7 @@ export class WebGLRenderer {
     this.chromaticProgram = this.createProgram(vertexShader, chromaticFragment);
     this.glitchProgram = this.createProgram(vertexShader, glitchFragment);
     this.thermalProgram = this.createProgram(vertexShader, thermalFragment);
+    this.kaleidoscopeProgram = this.createProgram(vertexShader, kaleidoscopeFragment);
     this.passthroughProgram = this.createProgram(vertexShader, passthroughFragment);
 
     console.log("WebGL shaders compiled");
@@ -772,6 +778,48 @@ export class WebGLRenderer {
     gl.uniform1f(invertLoc, invert ? 1.0 : 0.0);
 
     // Draw
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  renderKaleidoscope(video, segments, rotationSpeed) {
+    const gl = this.gl;
+    const program = this.kaleidoscopeProgram;
+
+    // Cache locations on first render
+    if (!this.kaleidoscopeLocations) {
+      this.kaleidoscopeLocations = {
+        position: gl.getAttribLocation(program, "a_position"),
+        texCoord: gl.getAttribLocation(program, "a_texCoord"),
+        video: gl.getUniformLocation(program, "u_video"),
+        segments: gl.getUniformLocation(program, "u_segments"),
+        rotationSpeed: gl.getUniformLocation(program, "u_rotationSpeed"),
+        time: gl.getUniformLocation(program, "u_time"),
+      };
+    }
+    const locations = this.kaleidoscopeLocations;
+
+    this.updateVideoTexture(video);
+
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.enableVertexAttribArray(locations.position);
+    gl.vertexAttribPointer(locations.position, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.enableVertexAttribArray(locations.texCoord);
+    gl.vertexAttribPointer(locations.texCoord, 2, gl.FLOAT, false, 0, 0);
+
+    const time = performance.now() / 1000;
+
+    gl.uniform1i(locations.video, 0);
+    gl.uniform1f(locations.segments, segments);
+    gl.uniform1f(locations.rotationSpeed, rotationSpeed);
+    gl.uniform1f(locations.time, time);
+
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
