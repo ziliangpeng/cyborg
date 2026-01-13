@@ -16,6 +16,8 @@ export class WebGLRenderer {
     this.videoTexture = null;
     this.positionBuffer = null;
     this.texCoordBuffer = null;
+    // Cached shader locations for performance
+    this.kaleidoscopeLocations = null;
   }
 
   async init(canvas) {
@@ -786,34 +788,39 @@ export class WebGLRenderer {
     const gl = this.gl;
     const program = this.kaleidoscopeProgram;
 
+    // Cache locations on first render
+    if (!this.kaleidoscopeLocations) {
+      this.kaleidoscopeLocations = {
+        position: gl.getAttribLocation(program, "a_position"),
+        texCoord: gl.getAttribLocation(program, "a_texCoord"),
+        video: gl.getUniformLocation(program, "u_video"),
+        resolution: gl.getUniformLocation(program, "u_resolution"),
+        segments: gl.getUniformLocation(program, "u_segments"),
+        rotationSpeed: gl.getUniformLocation(program, "u_rotationSpeed"),
+        time: gl.getUniformLocation(program, "u_time"),
+      };
+    }
+    const locations = this.kaleidoscopeLocations;
+
     this.updateVideoTexture(video);
 
     gl.useProgram(program);
 
-    const positionLoc = gl.getAttribLocation(program, "a_position");
-    const texCoordLoc = gl.getAttribLocation(program, "a_texCoord");
-
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
-    gl.enableVertexAttribArray(positionLoc);
-    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(locations.position);
+    gl.vertexAttribPointer(locations.position, 2, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
-    gl.enableVertexAttribArray(texCoordLoc);
-    gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 0, 0);
-
-    const videoLoc = gl.getUniformLocation(program, "u_video");
-    const resolutionLoc = gl.getUniformLocation(program, "u_resolution");
-    const segmentsLoc = gl.getUniformLocation(program, "u_segments");
-    const rotationSpeedLoc = gl.getUniformLocation(program, "u_rotationSpeed");
-    const timeLoc = gl.getUniformLocation(program, "u_time");
+    gl.enableVertexAttribArray(locations.texCoord);
+    gl.vertexAttribPointer(locations.texCoord, 2, gl.FLOAT, false, 0, 0);
 
     const time = performance.now() / 1000;
 
-    gl.uniform1i(videoLoc, 0);
-    gl.uniform2f(resolutionLoc, video.videoWidth, video.videoHeight);
-    gl.uniform1f(segmentsLoc, segments);
-    gl.uniform1f(rotationSpeedLoc, rotationSpeed);
-    gl.uniform1f(timeLoc, time);
+    gl.uniform1i(locations.video, 0);
+    gl.uniform2f(locations.resolution, video.videoWidth, video.videoHeight);
+    gl.uniform1f(locations.segments, segments);
+    gl.uniform1f(locations.rotationSpeed, rotationSpeed);
+    gl.uniform1f(locations.time, time);
 
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0, 0, 0, 1);

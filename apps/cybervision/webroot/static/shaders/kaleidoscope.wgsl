@@ -30,7 +30,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let radius = length(delta);
     var angle = atan2(delta.y, delta.x);
 
-    let segmentAngle = 6.28318530718 / uniforms.segments;
+    let TWO_PI = 6.28318530718;
+    let segmentAngle = TWO_PI / uniforms.segments;
 
     let twiceSegment = segmentAngle * 2.0;
     // Use % operator instead of mod() function

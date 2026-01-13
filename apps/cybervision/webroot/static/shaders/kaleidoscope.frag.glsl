@@ -10,6 +10,8 @@ uniform float u_segments;
 uniform float u_rotationSpeed;
 uniform float u_time;
 
+const float TWO_PI = 6.28318530718;
+
 void main() {
     vec2 uv = v_texCoord;
 
@@ -19,7 +21,7 @@ void main() {
     float radius = length(delta);
     float angle = atan(delta.y, delta.x);
 
-    float segmentAngle = 6.28318530718 / u_segments;
+    float segmentAngle = TWO_PI / u_segments;
 
     angle = abs(mod(angle, segmentAngle * 2.0) - segmentAngle);
 
