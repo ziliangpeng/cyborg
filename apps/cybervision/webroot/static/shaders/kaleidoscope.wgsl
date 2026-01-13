@@ -3,9 +3,6 @@ struct Uniforms {
     rotationSpeed: f32,
     time: f32,
     padding: f32,
-    videoWidth: f32,
-    videoHeight: f32,
-    padding2: vec2<f32>,
 }
 
 @group(0) @binding(0) var srcTex: texture_2d<f32>;

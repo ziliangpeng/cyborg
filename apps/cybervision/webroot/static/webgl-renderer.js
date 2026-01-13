@@ -794,7 +794,6 @@ export class WebGLRenderer {
         position: gl.getAttribLocation(program, "a_position"),
         texCoord: gl.getAttribLocation(program, "a_texCoord"),
         video: gl.getUniformLocation(program, "u_video"),
-        resolution: gl.getUniformLocation(program, "u_resolution"),
         segments: gl.getUniformLocation(program, "u_segments"),
         rotationSpeed: gl.getUniformLocation(program, "u_rotationSpeed"),
         time: gl.getUniformLocation(program, "u_time"),
@@ -817,7 +816,6 @@ export class WebGLRenderer {
     const time = performance.now() / 1000;
 
     gl.uniform1i(locations.video, 0);
-    gl.uniform2f(locations.resolution, video.videoWidth, video.videoHeight);
     gl.uniform1f(locations.segments, segments);
     gl.uniform1f(locations.rotationSpeed, rotationSpeed);
     gl.uniform1f(locations.time, time);

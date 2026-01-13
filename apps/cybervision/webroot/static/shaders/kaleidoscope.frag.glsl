@@ -5,7 +5,6 @@ in vec2 v_texCoord;
 out vec4 fragColor;
 
 uniform sampler2D u_video;
-uniform vec2 u_resolution;
 uniform float u_segments;
 uniform float u_rotationSpeed;
 uniform float u_time;

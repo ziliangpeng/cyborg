@@ -341,9 +341,6 @@ export class WebGPURenderer {
       0.0,   // rotationSpeed
       0.0,   // time
       0.0,   // padding
-      this.videoWidth,
-      this.videoHeight,
-      0.0, 0.0,  // padding
     ]);
     this.kaleidoscopeUniformBuffer = this.createUniformBuffer(kaleidoscopeUniformData);
 
@@ -1621,9 +1618,6 @@ export class WebGPURenderer {
       rotationSpeed,
       time,
       0.0,
-      this.videoWidth,
-      this.videoHeight,
-      0.0, 0.0,
     ]);
     this.updateUniformBuffer(this.kaleidoscopeUniformBuffer, uniformData);
 
