@@ -887,35 +887,6 @@ class CyberVision {
     }
   }
 
-  renderPixelSort() {
-    const directionMode = this.pixelSortAngleModeValue;
-    let angle = 0;
-
-    if (directionMode === "preset") {
-      const presetAngles = {
-        horizontal: 0,
-        vertical: 90,
-        diagonal_right: 45,
-        diagonal_left: 135,
-      };
-      angle = presetAngles[this.pixelSortDirectionValue] || 0;
-    } else {
-      angle = this.pixelSortAngleValue_state;
-    }
-
-    this.renderer.renderPixelSort(
-      this.video,
-      angle,
-      this.pixelSortThresholdLowValue_state,
-      this.pixelSortThresholdHighValue_state,
-      this.pixelSortThresholdModeValue,
-      this.pixelSortKeyValue,
-      this.pixelSortOrderValue,
-      this.pixelSortAlgorithmValue,
-      this.pixelSortIterationsValue_state
-    );
-  }
-
   renderKaleidoscope() {
     this.renderer.renderKaleidoscope(
       this.video,
