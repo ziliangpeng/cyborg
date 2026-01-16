@@ -19,5 +19,8 @@ experimental/crypto/eth_uniswap_wbtc_usdc_swap_events/
 # Bazel symlinks (created at repo root)
 /bazel-*
 
+# User-local Bazel configuration
+.bazelrc.user
+
 # Local halftone web logs
 halftone_web.log

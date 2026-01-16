@@ -1,0 +1,7 @@
+.idea/
+.vscode/
+venv/
+.venv/
+node_modules/
+dist/
+build/
