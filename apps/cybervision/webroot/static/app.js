@@ -4,6 +4,7 @@
 
 import { initGPU } from "./webgpu-renderer.js";
 import { initWebGL } from "./webgl-renderer.js";
+import { calculateFPS, hexToRGB, average } from "./utils.js";
 
 class CyberVision {
   constructor() {
@@ -782,10 +783,7 @@ class CyberVision {
 
   renderEdges() {
     // Parse edge color from hex to RGB
-    const hex = this.edgeColorValue.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16) / 255;
-    const g = parseInt(hex.substring(2, 4), 16) / 255;
-    const b = parseInt(hex.substring(4, 6), 16) / 255;
+    const rgb = hexToRGB(this.edgeColorValue);
 
     this.renderer.renderEdges(
       this.video,
@@ -793,7 +791,7 @@ class CyberVision {
       this.edgeThresholdValue_state,
       this.edgeOverlayValue,
       this.edgeInvertValue,
-      [r, g, b],
+      rgb,
       this.edgeThicknessValue_state
     );
   }
@@ -872,7 +870,7 @@ class CyberVision {
 
     // Update FPS once per second
     if (elapsed >= 1000) {
-      const fps = Math.round((this.frameCount / elapsed) * 1000);
+      const fps = calculateFPS(this.frameCount, elapsed);
       this.fpsValue.textContent = fps;
       this.frameCount = 0;
       this.lastFpsTime = now;
@@ -880,7 +878,7 @@ class CyberVision {
 
     // Update latency once per second (average of collected samples)
     if (latencyElapsed >= 1000 && this.frameLatencies.length > 0) {
-      const avgLatency = this.frameLatencies.reduce((sum, lat) => sum + lat, 0) / this.frameLatencies.length;
+      const avgLatency = average(this.frameLatencies);
       this.latencyValue.textContent = `${avgLatency.toFixed(2)} ms`;
       this.frameLatencies = [];
       this.lastLatencyUpdate = now;
@@ -902,7 +900,9 @@ class CyberVision {
 
 // Initialize app when DOM is ready
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => new CyberVision());
+  document.addEventListener("DOMContentLoaded", () => {
+    window.cyberVisionApp = new CyberVision();
+  });
 } else {
-  new CyberVision();
+  window.cyberVisionApp = new CyberVision();
 }
