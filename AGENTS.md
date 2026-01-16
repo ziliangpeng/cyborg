@@ -8,4 +8,4 @@
 
 ## Build System
 
-- This monorepo is officially managed by **Bazel** for build and dependency management
+- This monorepo uses [**Bazel**](https://bazel.build) for building and managing dependencies.
