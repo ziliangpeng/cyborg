@@ -20,6 +20,16 @@ jobs:
       - name: Run Bazel coverage (non-CUDA)
         run: bazel coverage --config=ci --combined_report=lcov //...
 
+      - name: Check coverage file exists
+        run: |
+          ls -lh bazel-out/_coverage/_coverage_report.dat || echo "Coverage file not found"
+          if [ -f bazel-out/_coverage/_coverage_report.dat ]; then
+            echo "Coverage file size:"
+            wc -l bazel-out/_coverage/_coverage_report.dat
+            echo "First 20 lines of coverage file:"
+            head -20 bazel-out/_coverage/_coverage_report.dat
+          fi
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
