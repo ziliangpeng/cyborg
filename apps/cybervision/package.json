@@ -1,0 +1,22 @@
+{
+  "name": "cybervision",
+  "version": "1.0.0",
+  "description": "Real-time video effects with WebGPU and WebGL",
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:ci",
+    "test:unit": "vitest run",
+    "test:ci": "playwright test --project=ci",
+    "test:local": "playwright test --project=local",
+    "test:all": "npm run test:unit && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "vitest": "^2.1.0",
+    "pixelmatch": "^6.0.0",
+    "pngjs": "^7.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
+}
