@@ -278,6 +278,34 @@ body {
   min-height: 40px;
 }
 
+.info-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-top: 12px;
+  border-radius: 8px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.info-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(96, 165, 250, 0.3);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
 /* Responsive: stack vertically on smaller screens */
 @media (max-width: 1024px) {
   .main-content {

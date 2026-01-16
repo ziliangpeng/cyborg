@@ -100,7 +100,7 @@ def _tokenize_text(text: str, tokenizer_name: str) -> list[dict[str, Any]]:
         token_ids = encoded["input_ids"]
         offsets = encoded["offset_mapping"]
 
-        for i, (token_id, (start, end)) in enumerate(zip(token_ids, offsets)):
+        for i, (token_id, (start, end)) in enumerate(zip(token_ids, offsets, strict=True)):
             token_text = tokenizer.decode([token_id])
             result.append(
                 {
@@ -116,15 +116,12 @@ def _tokenize_text(text: str, tokenizer_name: str) -> list[dict[str, Any]]:
         token_ids = tokenizer.encode(text)
         decoded_text, offsets = tokenizer.decode_with_offsets(token_ids)
 
-        for i, (token_id, start) in enumerate(zip(token_ids, offsets)):
+        for i, (token_id, start) in enumerate(zip(token_ids, offsets, strict=True)):
             # Decode this single token to get its text
             token_text = tokenizer.decode([token_id])
 
             # Calculate end position as start of next token, or end of text for last token
-            if i + 1 < len(offsets):
-                end = offsets[i + 1]
-            else:
-                end = len(decoded_text)
+            end = offsets[i + 1] if i + 1 < len(offsets) else len(decoded_text)
 
             result.append(
                 {
