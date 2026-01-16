@@ -18,26 +18,30 @@ build --disk_cache=~/.cache/bazel
 build --spawn_strategy=sandboxed
 
 # ============================================================================
+# Platform Configurations
+# ============================================================================
+
 # CI Configuration (for GitHub Actions without GPU/CUDA)
-# ============================================================================
-
-# Exclude CUDA targets from CI builds (no GPU available)
 # Usage: bazel test --config=ci //...
-build:ci --build_tag_filters=-gpu,-cuda
-test:ci --test_tag_filters=-gpu,-cuda
-build:ci --deleted_packages=cuda,cuda/matmul,cuda/softmax
-test:ci --deleted_packages=cuda,cuda/matmul,cuda/softmax
+# Skip incompatible targets (those with target_compatible_with constraints that don't match)
+build:ci --skip_incompatible_explicit_targets
+test:ci --skip_incompatible_explicit_targets
 
-# ============================================================================
-# Local Development Configuration (for machines with GPU)
-# ============================================================================
+# macOS Configuration (for local development on macOS)
+# Usage: bazel test --config=macos //...
+build:macos --skip_incompatible_explicit_targets
+test:macos --skip_incompatible_explicit_targets
 
-# Include all targets including GPU/CUDA
-# Usage: bazel test --config=local //...  (or just: bazel test //...)
-build:local --build_tag_filters=
-test:local --test_tag_filters=
-
-# CUDA architecture settings for WMMA support (Volta+ / SM 7.0+)
+# CUDA Configuration (for local development with GPU)
+# Usage: bazel test --config=cuda //...
+# No special flags needed - all targets should be compatible
 
 # CUDA architecture settings for WMMA support (Volta+ / SM 7.0+)
 build --@rules_cuda//cuda:archs=sm_70,sm_75,sm_80,sm_86,sm_89,sm_90
+
+# ============================================================================
+# User-Local Configuration (optional, git-ignored)
+# ============================================================================
+
+# Import user-specific settings (e.g., local overrides)
+try-import %workspace%/.bazelrc.user
