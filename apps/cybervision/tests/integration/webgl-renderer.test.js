@@ -58,8 +58,11 @@ test.describe('WebGL Renderer Integration', () => {
   test('should have all WebGL effect render methods', async ({ page }) => {
     await page.goto('/?force-webgl=true');
 
-    // Wait for app to initialize
-    await page.waitForFunction(() => window.cyberVisionApp != null, { timeout: 5000 });
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
+
+    // Wait for app to be available
+    await page.waitForFunction(() => window.cyberVisionApp != null && window.cyberVisionApp.renderer != null, { timeout: 5000 });
 
     // Check that renderer has required methods
     const hasRenderMethods = await page.evaluate(() => {
@@ -110,7 +113,7 @@ test.describe('WebGL Renderer Integration', () => {
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Wait for app to be available
-    await page.waitForFunction(() => window.cyberVisionApp != null, { timeout: 5000 });
+    await page.waitForFunction(() => window.cyberVisionApp != null && window.cyberVisionApp.renderer != null, { timeout: 5000 });
 
     // Try rendering with a mock video source
     const renderResult = await page.evaluate(() => {

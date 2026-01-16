@@ -176,8 +176,14 @@ test.describe('CyberVision E2E - WebGL Path', () => {
   test('should display mosaic info when using dominant mode with WebGL', async ({ page }) => {
     await page.goto('/?force-webgl=true');
 
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
+
     // Select mosaic effect
     await page.locator('input[value="mosaic"]').check();
+
+    // Wait for mosaic controls to be visible
+    await expect(page.locator('#mosaicControls')).toBeVisible();
 
     // Initially should be hidden (default is center mode)
     await expect(page.locator('#mosaicInfo')).not.toBeVisible();
