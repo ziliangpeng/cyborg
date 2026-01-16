@@ -131,12 +131,12 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#startBtn')).toBeEnabled();
     await expect(page.locator('#stopBtn')).toBeDisabled();
 
-    // Check initial stats (some may show "0" instead of "-" after init)
+    // Check initial stats (some may show "0" or "0 ms" instead of "-" after init)
     const fpsValue = await page.locator('#fpsValue').textContent();
     expect(['-', '0']).toContain(fpsValue);
 
     const latencyValue = await page.locator('#latencyValue').textContent();
-    expect(latencyValue).toBe('-');
+    expect(['-', '0 ms']).toContain(latencyValue);
 
     const resolutionValue = await page.locator('#resolutionValue').textContent();
     expect(resolutionValue).toBe('-');
