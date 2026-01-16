@@ -129,22 +129,21 @@ test.describe('WebGL Renderer Integration', () => {
           ctx.fillStyle = 'blue';
           ctx.fillRect(0, 0, 640, 480);
 
-          try {
-            // Test each render method with mock video
-            app.renderer.renderPassthrough(mockVideo);
-            app.renderer.renderHalftone(mockVideo, 8, false);
-            app.renderer.renderClustering(mockVideo, 'quantization-kmeans', 8, 0.1);
-            app.renderer.renderEdges(mockVideo, 'sobel', 0.1, false, false, [1, 1, 1], 1);
-            app.renderer.renderMosaic(mockVideo, 8, 'center');
-            app.renderer.renderChromatic(mockVideo, 10, 'radial', 0.5, 0.5);
-            app.renderer.renderGlitch(mockVideo, 'slices', 12, 24, 4, 0.15, 0.3);
-            app.renderer.renderThermal(mockVideo, 'classic', 1.0, false);
+        try {
+          // Test each render method with mock video
+          app.renderer.renderPassthrough(mockVideo);
+          app.renderer.renderHalftone(mockVideo, 8, false);
+          app.renderer.renderClustering(mockVideo, 'quantization-kmeans', 8, 0.1);
+          app.renderer.renderEdges(mockVideo, 'sobel', 0.1, false, false, [1, 1, 1], 1);
+          app.renderer.renderMosaic(mockVideo, 8, 'center');
+          app.renderer.renderChromatic(mockVideo, 10, 'radial', 0.5, 0.5);
+          app.renderer.renderGlitch(mockVideo, 'slices', 12, 24, 4, 0.15, 0.3);
+          app.renderer.renderThermal(mockVideo, 'classic', 1.0, false);
 
-            resolve({ success: true });
-          } catch (err) {
-            resolve({ success: false, error: err.message });
-          }
-        }, 1000);
+          resolve({ success: true });
+        } catch (err) {
+          resolve({ success: false, error: err.message });
+        }
       });
     });
 

@@ -18,20 +18,12 @@ py_binary(
 )
 
 # Unit tests (vitest)
-js_test(
-    name = "unit_tests",
-    data = [
-        "package.json",
-        "vitest.config.js",
-        "webroot/static/utils.js",
-        ":node_modules/vitest",
-    ] + glob([
-        "webroot/static/shaders/**",
-        "tests/unit/**/*.test.js",
-    ]),
-    entry_point = ":node_modules/vitest/vitest.mjs",
-    args = ["run"],
-)
+# NOTE: Disabled in Bazel due to entry_point/data conflicts with aspect_rules_js
+# Run via: npm run test:unit
+# js_test(
+#     name = "unit_tests",
+#     tags = ["manual"],
+# )
 
 # WebGL integration tests (Playwright)
 # Tagged as manual - runs via cybervision_tests.yml GitHub Action (npm), not bazel_ci
@@ -65,10 +57,9 @@ js_test(
 # )
 
 # Test suite for local development
-# NOTE: Playwright tests disabled in Bazel - run via npm instead
-test_suite(
-    name = "local_tests",
-    tests = [
-        ":unit_tests",
-    ],
-)
+# NOTE: All tests disabled in Bazel due to aspect_rules_js conflicts
+# Run via npm: npm test (unit + CI tests) or npm run test:local (all tests)
+# test_suite(
+#     name = "local_tests",
+#     tests = [],
+# )
