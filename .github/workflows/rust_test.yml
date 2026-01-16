@@ -1,5 +1,10 @@
 name: Rust Tests
 
+# TODO: Migrate Rust tests to Bazel CI workflow
+# These Rust package tests (packages/data-structures, packages/math) should be
+# integrated into the main Bazel build system and run via bazel_ci.yml instead
+# of maintaining a separate Cargo-based test workflow.
+
 on:
   push:
     branches: [ "main" ]
