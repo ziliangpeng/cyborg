@@ -17,5 +17,12 @@ jobs:
       - name: Set up Bazelisk
         uses: bazelbuild/setup-bazelisk@v3
 
-      - name: Run Bazel tests (non-CUDA)
-        run: bazel test --config=ci //...
+      - name: Run Bazel coverage (non-CUDA)
+        run: bazel coverage --config=ci --combined_report=lcov //...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: bazel-out/_coverage/_coverage_report.dat
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
