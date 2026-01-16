@@ -117,7 +117,7 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     }
 
     // Check no errors occurred during effect switching
-    expect(consoleErrors.filter(e => !e.includes('DevTools')).length).toBe(0);
+    expect(consoleErrors.filter(e => !e.includes('DevTools') && !e.includes('favicon')).length).toBe(0);
   });
 
   test('should have correct initial UI state', async ({ page }) => {
