@@ -24,11 +24,13 @@ js_test(
         "package.json",
         "vitest.config.js",
         "webroot/static/utils.js",
-        "webroot/static/shaders",
         ":node_modules/vitest",
-    ] + glob(["tests/unit/**/*.test.js"]),
+    ] + glob([
+        "webroot/static/shaders/**",
+        "tests/unit/**/*.test.js",
+    ]),
     entry_point = ":node_modules/vitest/vitest.mjs",
-    args = ["run", "--dir", "$(location tests/unit)"],
+    args = ["run"],
 )
 
 # WebGL integration tests (Playwright)

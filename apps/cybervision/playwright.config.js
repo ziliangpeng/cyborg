@@ -15,8 +15,8 @@ export default defineConfig({
   projects: [
     {
       name: 'ci',
-      testMatch: /.*\.(integration|e2e).*\.test\.js/,
-      testIgnore: /.*webgpu.*\.test\.js/,
+      testMatch: /.*\.test\.js/,
+      testIgnore: [/.*webgpu.*\.test\.js/, /unit\//],
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
@@ -31,7 +31,8 @@ export default defineConfig({
     },
     {
       name: 'local',
-      testMatch: /.*\.(integration|e2e|visual).*\.test\.js/,
+      testMatch: /.*\.test\.js/,
+      testIgnore: /unit\//,
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
