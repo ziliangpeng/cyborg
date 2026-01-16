@@ -70,6 +70,9 @@ test.describe('CyberVision E2E - WebGL Path', () => {
   test('should show/hide effect controls when switching effects', async ({ page }) => {
     await page.goto('/?force-webgl=true');
 
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
+
     // Select halftone effect
     await page.locator('input[value="halftone"]').check();
     await expect(page.locator('#halftoneControls')).toBeVisible();
@@ -145,8 +148,14 @@ test.describe('CyberVision E2E - WebGL Path', () => {
   test('should update slider values when interacting with controls', async ({ page }) => {
     await page.goto('/?force-webgl=true');
 
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
+
     // Select halftone effect
     await page.locator('input[value="halftone"]').check();
+
+    // Wait for halftone controls to be visible
+    await expect(page.locator('#halftoneControls')).toBeVisible();
 
     // Check initial dot size value
     const dotSizeValue = page.locator('#dotSizeValue');
