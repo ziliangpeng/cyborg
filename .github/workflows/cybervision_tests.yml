@@ -1,4 +1,7 @@
-name: CyberVision Tests
+# TODO: Merge Playwright tests into bazel_ci.yml once we figure out browser installation in Bazel CI.
+# Currently kept separate because Playwright requires Chrome/Chromium installation which is not
+# set up in the main Bazel CI workflow. Unit tests run via Bazel CI, Playwright tests run here.
+name: CyberVision Playwright Tests
 
 on:
   push:
@@ -11,7 +14,7 @@ on:
       - '.github/workflows/cybervision_tests.yml'
 
 jobs:
-  test:
+  playwright:
     runs-on: ubuntu-latest
 
     steps:
@@ -33,11 +36,7 @@ jobs:
         working-directory: apps/cybervision
         run: npx playwright install chromium --with-deps
 
-      - name: Run unit tests
-        working-directory: apps/cybervision
-        run: npm run test:unit
-
-      - name: Run CI tests (WebGL)
+      - name: Run Playwright tests (WebGL)
         working-directory: apps/cybervision
         run: npm run test:ci
 
