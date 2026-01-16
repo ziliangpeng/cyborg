@@ -4,14 +4,13 @@ test.describe('WebGL Renderer Integration', () => {
   test('should initialize WebGL2 context', async ({ page }) => {
     await page.goto('/?force-webgl=true');
 
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
+
     // Check that page loads without "not supported" error
     const statusText = await page.locator('#status').textContent();
     expect(statusText).not.toContain('Not supported');
     expect(statusText).not.toContain('Error');
-
-    // Check GPU status shows WebGL
-    const gpuStatus = await page.locator('#gpuStatus').textContent();
-    expect(gpuStatus).toBe('WebGL');
   });
 
   test('should compile all WebGL shaders without errors', async ({ page }) => {
@@ -110,20 +109,17 @@ test.describe('WebGL Renderer Integration', () => {
 
     await page.goto('/?force-webgl=true');
 
-    // Expose app instance for testing
-    await page.evaluate(() => {
-      window.cyberVisionApp = document.querySelector('body').__cyberVisionInstance;
-    });
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Try rendering with a mock video source
     const renderResult = await page.evaluate(() => {
       return new Promise((resolve) => {
-        setTimeout(() => {
-          const app = window.cyberVisionApp;
-          if (!app || !app.renderer) {
-            resolve({ success: false, error: 'App not initialized' });
-            return;
-          }
+        const app = window.cyberVisionApp;
+        if (!app || !app.renderer) {
+          resolve({ success: false, error: 'App not initialized' });
+          return;
+        }
 
           // Create a mock video element
           const mockVideo = document.createElement('canvas');

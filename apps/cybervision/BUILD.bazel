@@ -35,69 +35,40 @@ js_test(
 
 # WebGL integration tests (Playwright)
 # Tagged as manual - runs via cybervision_tests.yml GitHub Action (npm), not bazel_ci
-js_test(
-    name = "webgl_integration_tests",
-    data = [
-        "package.json",
-        "playwright.config.js",
-        "webroot",
-        ":node_modules/@playwright/test",
-    ] + glob(["tests/integration/webgl-*.test.js"]),
-    entry_point = ":node_modules/@playwright/test/cli.js",
-    args = ["test", "--project=ci", "tests/integration/webgl-renderer.test.js"],
-    tags = ["manual", "requires-network"],
-)
+# NOTE: Disabled in Bazel due to entry_point/data conflicts with aspect_rules_js
+# Run via: npm run test:ci
+# js_test(
+#     name = "webgl_integration_tests",
+#     tags = ["manual", "requires-network"],
+# )
 
 # E2E WebGL tests (Playwright)
 # Tagged as manual - runs via cybervision_tests.yml GitHub Action (npm), not bazel_ci
-js_test(
-    name = "webgl_e2e_tests",
-    data = [
-        "package.json",
-        "playwright.config.js",
-        "webroot",
-        ":node_modules/@playwright/test",
-    ] + glob(["tests/e2e/app-webgl.test.js"]),
-    entry_point = ":node_modules/@playwright/test/cli.js",
-    args = ["test", "--project=ci", "tests/e2e/app-webgl.test.js"],
-    tags = ["manual", "requires-network"],
-)
+# NOTE: Disabled in Bazel due to entry_point/data conflicts with aspect_rules_js
+# Run via: npm run test:ci
+# js_test(
+#     name = "webgl_e2e_tests",
+#     tags = ["manual", "requires-network"],
+# )
 
 # WebGPU tests (local only - requires real GPU)
-js_test(
-    name = "webgpu_integration_tests",
-    data = [
-        "package.json",
-        "playwright.config.js",
-        "webroot",
-        ":node_modules/@playwright/test",
-    ] + glob(["tests/integration/webgpu-*.test.js"]),
-    entry_point = ":node_modules/@playwright/test/cli.js",
-    args = ["test", "--project=local", "tests/integration/webgpu-renderer.test.js"],
-    tags = ["manual", "requires-gpu"],
-)
+# NOTE: Disabled in Bazel due to entry_point/data conflicts with aspect_rules_js
+# Run via: npm run test:local
+# js_test(
+#     name = "webgpu_integration_tests",
+#     tags = ["manual", "requires-gpu"],
+# )
 
-js_test(
-    name = "webgpu_e2e_tests",
-    data = [
-        "package.json",
-        "playwright.config.js",
-        "webroot",
-        ":node_modules/@playwright/test",
-    ] + glob(["tests/e2e/app-webgpu.test.js"]),
-    entry_point = ":node_modules/@playwright/test/cli.js",
-    args = ["test", "--project=local", "tests/e2e/app-webgpu.test.js"],
-    tags = ["manual", "requires-gpu"],
-)
+# js_test(
+#     name = "webgpu_e2e_tests",
+#     tags = ["manual", "requires-gpu"],
+# )
 
-# Test suite for local development (all tests including WebGPU)
+# Test suite for local development
+# NOTE: Playwright tests disabled in Bazel - run via npm instead
 test_suite(
     name = "local_tests",
     tests = [
         ":unit_tests",
-        ":webgl_integration_tests",
-        ":webgl_e2e_tests",
-        ":webgpu_integration_tests",
-        ":webgpu_e2e_tests",
     ],
 )
