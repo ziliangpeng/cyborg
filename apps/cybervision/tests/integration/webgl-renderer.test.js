@@ -23,8 +23,8 @@ test.describe('WebGL Renderer Integration', () => {
 
     await page.goto('/?force-webgl=true');
 
-    // Wait for initialization
-    await page.waitForTimeout(1000);
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Check for shader compilation errors
     const shaderErrors = consoleErrors.filter(err =>
@@ -44,8 +44,8 @@ test.describe('WebGL Renderer Integration', () => {
 
     await page.goto('/?force-webgl=true');
 
-    // Wait for all shader files to load
-    await page.waitForTimeout(2000);
+    // Wait for initialization to complete (ensures all shaders are loaded)
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Check for 404s on shader files
     const shaderNotFound = failedRequests.filter(url =>

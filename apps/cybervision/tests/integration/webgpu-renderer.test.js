@@ -13,8 +13,8 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
   test('should initialize WebGPU context', async ({ page }) => {
     await page.goto('/');
 
-    // Wait for initialization
-    await page.waitForTimeout(1000);
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Check that page loads without "not supported" error
     const statusText = await page.locator('#status').textContent();
@@ -40,8 +40,8 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
 
     await page.goto('/');
 
-    // Wait for initialization
-    await page.waitForTimeout(2000);
+    // Wait for initialization to complete (ensures shaders are compiled)
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Check for shader compilation errors
     const shaderErrors = consoleErrors.filter(err =>
@@ -63,8 +63,8 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
 
     await page.goto('/');
 
-    // Wait for initialization
-    await page.waitForTimeout(2000);
+    // Wait for initialization to complete (ensures pipelines are created)
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Check for pipeline creation errors
     const pipelineErrors = consoleErrors.filter(err =>
@@ -77,39 +77,37 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
   test('should have all WebGPU effect render methods', async ({ page }) => {
     await page.goto('/');
 
+    // Wait for app to initialize
+    await page.waitForFunction(() => window.cyberVisionApp != null, { timeout: 5000 });
+
     // Check that renderer has required methods
     const hasRenderMethods = await page.evaluate(() => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const app = window.cyberVisionApp;
-          if (!app || !app.renderer) {
-            resolve({ success: false, error: 'App or renderer not initialized' });
-            return;
-          }
+      const app = window.cyberVisionApp;
+      if (!app || !app.renderer) {
+        return { success: false, error: 'App or renderer not initialized' };
+      }
 
-          const requiredMethods = [
-            'renderHalftone',
-            'renderClustering',
-            'renderEdges',
-            'renderMosaic',
-            'renderChromatic',
-            'renderGlitch',
-            'renderThermal',
-            'renderPixelSort',
-            'renderKaleidoscope',
-            'renderPassthrough'
-          ];
+      const requiredMethods = [
+        'renderHalftone',
+        'renderClustering',
+        'renderEdges',
+        'renderMosaic',
+        'renderChromatic',
+        'renderGlitch',
+        'renderThermal',
+        'renderPixelSort',
+        'renderKaleidoscope',
+        'renderPassthrough'
+      ];
 
-          const missingMethods = requiredMethods.filter(
-            method => typeof app.renderer[method] !== 'function'
-          );
+      const missingMethods = requiredMethods.filter(
+        method => typeof app.renderer[method] !== 'function'
+      );
 
-          resolve({
-            success: missingMethods.length === 0,
-            missing: missingMethods
-          });
-        }, 1500);
-      });
+      return {
+        success: missingMethods.length === 0,
+        missing: missingMethods
+      };
     });
 
     expect(hasRenderMethods.success, `Missing methods: ${hasRenderMethods.missing?.join(', ')}`).toBe(true);
@@ -128,48 +126,45 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
     });
 
     await page.goto('/');
-    await page.waitForTimeout(1500);
+
+    // Wait for app to be available
+    await page.waitForFunction(() => window.cyberVisionApp != null, { timeout: 5000 });
 
     // Try rendering with a mock video source
-    const renderResult = await page.evaluate(() => {
-      return new Promise((resolve) => {
-        const app = window.cyberVisionApp;
-        if (!app || !app.renderer) {
-          resolve({ success: false, error: 'App not initialized' });
-          return;
-        }
+    const renderResult = await page.evaluate(async () => {
+      const app = window.cyberVisionApp;
+      if (!app || !app.renderer) {
+        return { success: false, error: 'App not initialized' };
+      }
 
-        // Create a mock video element
-        const mockVideo = document.createElement('canvas');
-        mockVideo.width = 640;
-        mockVideo.height = 480;
-        const ctx = mockVideo.getContext('2d');
-        ctx.fillStyle = 'blue';
-        ctx.fillRect(0, 0, 640, 480);
+      // Create a mock video element
+      const mockVideo = document.createElement('canvas');
+      mockVideo.width = 640;
+      mockVideo.height = 480;
+      const ctx = mockVideo.getContext('2d');
+      ctx.fillStyle = 'blue';
+      ctx.fillRect(0, 0, 640, 480);
 
-        // Setup pipeline first for WebGPU
-        app.renderer.setupPipeline(mockVideo, 8).then(() => {
-          try {
-            // Test each render method with mock video
-            app.renderer.renderPassthrough(mockVideo);
-            app.renderer.renderHalftone(mockVideo, false);
-            app.renderer.renderClustering(mockVideo, 'quantization-kmeans', 8, 0.1);
-            app.renderer.renderEdges(mockVideo, 'sobel', 0.1, false, false, [1, 1, 1], 1);
-            app.renderer.renderMosaic(mockVideo, 8, 'center');
-            app.renderer.renderChromatic(mockVideo, 10, 'radial', 0.5, 0.5);
-            app.renderer.renderGlitch(mockVideo, 'slices', 12, 24, 4, 0.15, 0.3);
-            app.renderer.renderThermal(mockVideo, 'classic', 1.0, false);
-            app.renderer.renderPixelSort(mockVideo, 'preset', 'horizontal', 0, 0.25, 0.75, 'brightness', 'luminance', 'ascending', 'bitonic', 50);
-            app.renderer.renderKaleidoscope(mockVideo, 8, 0.0);
+      try {
+        // Setup pipeline first for WebGPU and await its completion
+        await app.renderer.setupPipeline(mockVideo, 8);
 
-            resolve({ success: true });
-          } catch (err) {
-            resolve({ success: false, error: err.message, stack: err.stack });
-          }
-        }).catch(err => {
-          resolve({ success: false, error: 'Pipeline setup failed: ' + err.message });
-        });
-      });
+        // Test each render method with mock video
+        app.renderer.renderPassthrough(mockVideo);
+        app.renderer.renderHalftone(mockVideo, false);
+        app.renderer.renderClustering(mockVideo, 'quantization-kmeans', 8, 0.1);
+        app.renderer.renderEdges(mockVideo, 'sobel', 0.1, false, false, [1, 1, 1], 1);
+        app.renderer.renderMosaic(mockVideo, 8, 'center');
+        app.renderer.renderChromatic(mockVideo, 10, 'radial', 0.5, 0.5);
+        app.renderer.renderGlitch(mockVideo, 'slices', 12, 24, 4, 0.15, 0.3);
+        app.renderer.renderThermal(mockVideo, 'classic', 1.0, false);
+        app.renderer.renderPixelSort(mockVideo, 'preset', 'horizontal', 0, 0.25, 0.75, 'brightness', 'luminance', 'ascending', 'bitonic', 50);
+        app.renderer.renderKaleidoscope(mockVideo, 8, 0.0);
+
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: err.message, stack: err.stack };
+      }
     });
 
     expect(renderResult.success, `Render error: ${renderResult.error}`).toBe(true);

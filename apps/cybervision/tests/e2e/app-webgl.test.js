@@ -38,8 +38,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
   test('should have start button enabled', async ({ page }) => {
     await page.goto('/?force-webgl=true');
 
-    // Wait for initialization
-    await page.waitForTimeout(1000);
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Check start button is enabled
     const startBtn = page.locator('#startBtn');
@@ -110,7 +110,7 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     for (const effect of effects) {
       await page.locator(`input[value="${effect}"]`).check();
-      await page.waitForTimeout(100); // Small delay to allow any async errors
+      // No need to wait - effect switching is synchronous in WebGL
     }
 
     // Check no errors occurred during effect switching
