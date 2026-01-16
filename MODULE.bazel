@@ -72,3 +72,18 @@ pip.parse(
 )
 
 use_repo(pip, "pip")
+
+# ============================================================================
+# JavaScript/Node.js Rules
+# ============================================================================
+
+bazel_dep(name = "aspect_rules_js", version = "2.1.0")
+
+npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm", dev_dependency = True)
+
+npm.npm_translate_lock(
+    name = "npm_cybervision",
+    pnpm_lock = "//apps/cybervision:pnpm-lock.yaml",
+)
+
+use_repo(npm, "npm_cybervision")

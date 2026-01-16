@@ -1,3 +1,8 @@
+load("@aspect_rules_js//js:defs.bzl", "js_test")
+load("@npm_cybervision//:defs.bzl", "npm_link_all_packages")
+
+npm_link_all_packages(name = "node_modules")
+
 py_binary(
     name = "cybervision",
     srcs = [
@@ -9,5 +14,96 @@ py_binary(
     data = glob(["webroot/**"]),
     deps = [
         "@pip//click",
+    ],
+)
+
+# Unit tests (vitest)
+js_test(
+    name = "unit_tests",
+    data = [
+        "package.json",
+        "vitest.config.js",
+        "webroot/static/utils.js",
+        "webroot/static/shaders",
+        ":node_modules/vitest",
+    ] + glob(["tests/unit/**/*.test.js"]),
+    entry_point = ":node_modules/vitest/vitest.mjs",
+    args = ["run", "--dir", "$(location tests/unit)"],
+)
+
+# WebGL integration tests (Playwright - CI compatible)
+js_test(
+    name = "webgl_integration_tests",
+    data = [
+        "package.json",
+        "playwright.config.js",
+        "webroot",
+        ":node_modules/@playwright/test",
+    ] + glob(["tests/integration/webgl-*.test.js"]),
+    entry_point = ":node_modules/@playwright/test/cli.js",
+    args = ["test", "--project=ci", "tests/integration/webgl-renderer.test.js"],
+    tags = ["requires-network"],
+)
+
+# E2E WebGL tests (Playwright - CI compatible)
+js_test(
+    name = "webgl_e2e_tests",
+    data = [
+        "package.json",
+        "playwright.config.js",
+        "webroot",
+        ":node_modules/@playwright/test",
+    ] + glob(["tests/e2e/app-webgl.test.js"]),
+    entry_point = ":node_modules/@playwright/test/cli.js",
+    args = ["test", "--project=ci", "tests/e2e/app-webgl.test.js"],
+    tags = ["requires-network"],
+)
+
+# Test suite for CI (all CI-compatible tests)
+test_suite(
+    name = "ci_tests",
+    tests = [
+        ":unit_tests",
+        ":webgl_integration_tests",
+        ":webgl_e2e_tests",
+    ],
+)
+
+# WebGPU tests (local only - requires real GPU)
+js_test(
+    name = "webgpu_integration_tests",
+    data = [
+        "package.json",
+        "playwright.config.js",
+        "webroot",
+        ":node_modules/@playwright/test",
+    ] + glob(["tests/integration/webgpu-*.test.js"]),
+    entry_point = ":node_modules/@playwright/test/cli.js",
+    args = ["test", "--project=local", "tests/integration/webgpu-renderer.test.js"],
+    tags = ["manual", "requires-gpu"],
+)
+
+js_test(
+    name = "webgpu_e2e_tests",
+    data = [
+        "package.json",
+        "playwright.config.js",
+        "webroot",
+        ":node_modules/@playwright/test",
+    ] + glob(["tests/e2e/app-webgpu.test.js"]),
+    entry_point = ":node_modules/@playwright/test/cli.js",
+    args = ["test", "--project=local", "tests/e2e/app-webgpu.test.js"],
+    tags = ["manual", "requires-gpu"],
+)
+
+# Test suite for local development (all tests including WebGPU)
+test_suite(
+    name = "local_tests",
+    tests = [
+        ":unit_tests",
+        ":webgl_integration_tests",
+        ":webgl_e2e_tests",
+        ":webgpu_integration_tests",
+        ":webgpu_e2e_tests",
     ],
 )
