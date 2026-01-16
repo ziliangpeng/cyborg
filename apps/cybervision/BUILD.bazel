@@ -17,35 +17,62 @@ py_binary(
     ],
 )
 
+# ============================================================================
+# Test Targets - Currently Disabled in Bazel
+# ============================================================================
+#
+# All test targets are temporarily disabled due to technical conflicts with
+# aspect_rules_js. Tests run via npm scripts instead.
+#
+# Technical Issue:
+#   The js_test rule from aspect_rules_js requires an 'entry_point' parameter
+#   that references a file within a package in the 'data' parameter. However,
+#   when the entry_point references @playwright/test or vitest executables
+#   within node_modules, and those same packages are also in the data array,
+#   Bazel reports conflicts.
+#
+#   Error example:
+#   "entry_point label references a file within <package> but that package
+#    is also in data. This will cause Bazel to fail."
+#
+# Current Solution:
+#   - All tests run via npm scripts (package.json)
+#   - Unit tests: npm run test:unit (vitest)
+#   - CI tests (WebGL): npm run test:ci (playwright --project=ci)
+#   - Local tests (WebGPU): npm run test:local (playwright --project=local)
+#
+# GitHub Actions:
+#   - Unit tests: Run as part of bazel_ci.yml via 'bazel test //apps/cybervision:unit_tests'
+#     (once re-enabled)
+#   - Playwright tests: Run via cybervision_tests.yml using npm commands
+#     TODO: Merge into bazel_ci.yml once browser installation is configured
+#
+# Future Work:
+#   - Resolve aspect_rules_js entry_point/data conflicts
+#   - Re-enable js_test targets below
+#   - Consolidate GitHub Actions workflows
+#
+# ============================================================================
+
 # Unit tests (vitest)
-# NOTE: Disabled in Bazel due to entry_point/data conflicts with aspect_rules_js
-# Run via: npm run test:unit
 # js_test(
 #     name = "unit_tests",
 #     tags = ["manual"],
 # )
 
 # WebGL integration tests (Playwright)
-# Tagged as manual - runs via cybervision_tests.yml GitHub Action (npm), not bazel_ci
-# NOTE: Disabled in Bazel due to entry_point/data conflicts with aspect_rules_js
-# Run via: npm run test:ci
 # js_test(
 #     name = "webgl_integration_tests",
 #     tags = ["manual", "requires-network"],
 # )
 
 # E2E WebGL tests (Playwright)
-# Tagged as manual - runs via cybervision_tests.yml GitHub Action (npm), not bazel_ci
-# NOTE: Disabled in Bazel due to entry_point/data conflicts with aspect_rules_js
-# Run via: npm run test:ci
 # js_test(
 #     name = "webgl_e2e_tests",
 #     tags = ["manual", "requires-network"],
 # )
 
 # WebGPU tests (local only - requires real GPU)
-# NOTE: Disabled in Bazel due to entry_point/data conflicts with aspect_rules_js
-# Run via: npm run test:local
 # js_test(
 #     name = "webgpu_integration_tests",
 #     tags = ["manual", "requires-gpu"],
@@ -57,8 +84,6 @@ py_binary(
 # )
 
 # Test suite for local development
-# NOTE: All tests disabled in Bazel due to aspect_rules_js conflicts
-# Run via npm: npm test (unit + CI tests) or npm run test:local (all tests)
 # test_suite(
 #     name = "local_tests",
 #     tests = [],

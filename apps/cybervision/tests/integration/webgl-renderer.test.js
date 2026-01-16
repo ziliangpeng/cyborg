@@ -58,38 +58,35 @@ test.describe('WebGL Renderer Integration', () => {
   test('should have all WebGL effect render methods', async ({ page }) => {
     await page.goto('/?force-webgl=true');
 
+    // Wait for app to initialize
+    await page.waitForFunction(() => window.cyberVisionApp != null, { timeout: 5000 });
+
     // Check that renderer has required methods
     const hasRenderMethods = await page.evaluate(() => {
-      return new Promise((resolve) => {
-        // Wait for app to initialize
-        setTimeout(() => {
-          const app = window.cyberVisionApp;
-          if (!app || !app.renderer) {
-            resolve({ success: false, error: 'App or renderer not initialized' });
-            return;
-          }
+      const app = window.cyberVisionApp;
+      if (!app || !app.renderer) {
+        return { success: false, error: 'App or renderer not initialized' };
+      }
 
-          const requiredMethods = [
-            'renderHalftone',
-            'renderClustering',
-            'renderEdges',
-            'renderMosaic',
-            'renderChromatic',
-            'renderGlitch',
-            'renderThermal',
-            'renderPassthrough'
-          ];
+      const requiredMethods = [
+        'renderHalftone',
+        'renderClustering',
+        'renderEdges',
+        'renderMosaic',
+        'renderChromatic',
+        'renderGlitch',
+        'renderThermal',
+        'renderPassthrough'
+      ];
 
-          const missingMethods = requiredMethods.filter(
-            method => typeof app.renderer[method] !== 'function'
-          );
+      const missingMethods = requiredMethods.filter(
+        method => typeof app.renderer[method] !== 'function'
+      );
 
-          resolve({
-            success: missingMethods.length === 0,
-            missing: missingMethods
-          });
-        }, 1000);
-      });
+      return {
+        success: missingMethods.length === 0,
+        missing: missingMethods
+      };
     });
 
     expect(hasRenderMethods.success, `Missing methods: ${hasRenderMethods.missing?.join(', ')}`).toBe(true);
@@ -112,39 +109,39 @@ test.describe('WebGL Renderer Integration', () => {
     // Wait for initialization to complete
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
+    // Wait for app to be available
+    await page.waitForFunction(() => window.cyberVisionApp != null, { timeout: 5000 });
+
     // Try rendering with a mock video source
     const renderResult = await page.evaluate(() => {
-      return new Promise((resolve) => {
-        const app = window.cyberVisionApp;
-        if (!app || !app.renderer) {
-          resolve({ success: false, error: 'App not initialized' });
-          return;
-        }
+      const app = window.cyberVisionApp;
+      if (!app || !app.renderer) {
+        return { success: false, error: 'App not initialized' };
+      }
 
-          // Create a mock video element
-          const mockVideo = document.createElement('canvas');
-          mockVideo.width = 640;
-          mockVideo.height = 480;
-          const ctx = mockVideo.getContext('2d');
-          ctx.fillStyle = 'blue';
-          ctx.fillRect(0, 0, 640, 480);
+      // Create a mock video element
+      const mockVideo = document.createElement('canvas');
+      mockVideo.width = 640;
+      mockVideo.height = 480;
+      const ctx = mockVideo.getContext('2d');
+      ctx.fillStyle = 'blue';
+      ctx.fillRect(0, 0, 640, 480);
 
-        try {
-          // Test each render method with mock video
-          app.renderer.renderPassthrough(mockVideo);
-          app.renderer.renderHalftone(mockVideo, 8, false);
-          app.renderer.renderClustering(mockVideo, 'quantization-kmeans', 8, 0.1);
-          app.renderer.renderEdges(mockVideo, 'sobel', 0.1, false, false, [1, 1, 1], 1);
-          app.renderer.renderMosaic(mockVideo, 8, 'center');
-          app.renderer.renderChromatic(mockVideo, 10, 'radial', 0.5, 0.5);
-          app.renderer.renderGlitch(mockVideo, 'slices', 12, 24, 4, 0.15, 0.3);
-          app.renderer.renderThermal(mockVideo, 'classic', 1.0, false);
+      try {
+        // Test each render method with mock video
+        app.renderer.renderPassthrough(mockVideo);
+        app.renderer.renderHalftone(mockVideo, 8, false);
+        app.renderer.renderClustering(mockVideo, 'quantization-kmeans', 8, 0.1);
+        app.renderer.renderEdges(mockVideo, 'sobel', 0.1, false, false, [1, 1, 1], 1);
+        app.renderer.renderMosaic(mockVideo, 8, 'center');
+        app.renderer.renderChromatic(mockVideo, 10, 'radial', 0.5, 0.5);
+        app.renderer.renderGlitch(mockVideo, 'slices', 12, 24, 4, 0.15, 0.3);
+        app.renderer.renderThermal(mockVideo, 'classic', 1.0, false);
 
-          resolve({ success: true });
-        } catch (err) {
-          resolve({ success: false, error: err.message });
-        }
-      });
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
     });
 
     expect(renderResult.success, `Render error: ${renderResult.error}`).toBe(true);

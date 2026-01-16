@@ -30,8 +30,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     await page.goto('/');
 
-    // Wait for initialization
-    await page.waitForTimeout(1500);
+    // Wait for initialization to complete (gpuStatus changes from "Checking..." to "WebGPU")
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Check page loaded successfully
     await expect(page.locator('h1')).toContainText('CyberVision');
@@ -55,7 +55,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
   test('should have pixelsort effect available (WebGPU only)', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+
+    // Wait for initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Pixelsort is only available on WebGPU
     const pixelsortRadio = page.locator('input[value="pixelsort"]');
@@ -70,7 +72,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
   test('should have kaleidoscope effect available', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+
+    // Wait for initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     const kaleidoscopeRadio = page.locator('input[value="kaleidoscope"]');
     await expect(kaleidoscopeRadio).toBeVisible();
@@ -84,7 +88,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
   test('should be able to select all WebGPU effects', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+
+    // Wait for initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     const effects = [
       'original',
@@ -108,7 +114,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
   test('should switch between WebGPU and WebGL renderers', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1500);
+
+    // Wait for initial WebGPU initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Initially should be WebGPU
     let gpuStatus = await page.locator('#gpuStatus').textContent();
@@ -118,8 +126,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     const webglToggle = page.locator('#webglToggle');
     await webglToggle.check();
 
-    // Wait for renderer switch
-    await page.waitForTimeout(1000);
+    // Wait for renderer switch to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 3000 });
 
     // Should now be WebGL
     gpuStatus = await page.locator('#gpuStatus').textContent();
@@ -128,8 +136,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     // Toggle back to WebGPU
     await webglToggle.uncheck();
 
-    // Wait for renderer switch
-    await page.waitForTimeout(1000);
+    // Wait for renderer switch back to WebGPU
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 3000 });
 
     // Should be WebGPU again
     gpuStatus = await page.locator('#gpuStatus').textContent();
@@ -149,7 +157,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     });
 
     await page.goto('/');
-    await page.waitForTimeout(1500);
+
+    // Wait for initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     const effects = [
       'original',
@@ -166,6 +176,7 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     for (const effect of effects) {
       await page.locator(`input[value="${effect}"]`).check();
+      // Small delay to allow effect to be applied
       await page.waitForTimeout(100);
     }
 
@@ -178,7 +189,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
   test('should show pixel sort iterations control only for bubble sort', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+
+    // Wait for initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Select pixelsort effect
     await page.locator('input[value="pixelsort"]').check();
@@ -201,7 +214,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
   test('should update kaleidoscope controls', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+
+    // Wait for initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Select kaleidoscope effect
     await page.locator('input[value="kaleidoscope"]').check();
@@ -224,7 +239,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
   test('should not show mosaic info when using dominant mode with WebGPU', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
+
+    // Wait for initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Select mosaic effect
     await page.locator('input[value="mosaic"]').check();
