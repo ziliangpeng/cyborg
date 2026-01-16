@@ -28,7 +28,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: apps/cybervision
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright browsers
         working-directory: apps/cybervision
