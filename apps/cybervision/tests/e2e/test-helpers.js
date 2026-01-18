@@ -11,6 +11,7 @@ const effectToTab = {
   'mosaic': 'artistic',
   'kaleidoscope': 'artistic',
   'pixelsort': 'artistic',
+  'segmentation': 'artistic',
   'original': 'distortion',
   'edges': 'distortion',
   'chromatic': 'distortion',

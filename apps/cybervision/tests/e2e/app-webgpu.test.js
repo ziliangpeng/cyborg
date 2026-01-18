@@ -105,7 +105,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
       'glitch',
       'thermal',
       'pixelsort',
-      'kaleidoscope'
+      'kaleidoscope',
+      'segmentation'
     ];
 
     for (const effect of effects) {
@@ -175,7 +176,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
       'glitch',
       'thermal',
       'pixelsort',
-      'kaleidoscope'
+      'kaleidoscope',
+      'segmentation'
     ];
 
     for (const effect of effects) {

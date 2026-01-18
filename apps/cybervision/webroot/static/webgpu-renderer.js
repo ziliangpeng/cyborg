@@ -422,7 +422,7 @@ export class WebGPURenderer {
     // Create mask texture for segmentation (256x256, will be upsampled in shader)
     this.maskTexture = this.device.createTexture({
       size: [256, 256],
-      format: "r8unorm",
+      format: "rgba8unorm",
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
     });
 
@@ -1765,11 +1765,20 @@ export class WebGPURenderer {
    * @param {Uint8Array} maskData - Binary mask data (256x256)
    */
   updateSegmentationMask(maskData) {
-    // Write grayscale data directly to r8unorm texture
+    // Convert Uint8Array to RGBA format
+    const rgbaData = new Uint8Array(256 * 256 * 4);
+    for (let i = 0; i < maskData.length; i++) {
+      const value = maskData[i];
+      rgbaData[i * 4] = value;     // R
+      rgbaData[i * 4 + 1] = value; // G
+      rgbaData[i * 4 + 2] = value; // B
+      rgbaData[i * 4 + 3] = 255;   // A
+    }
+
     this.device.queue.writeTexture(
       { texture: this.maskTexture },
-      maskData,
-      { bytesPerRow: 256, rowsPerImage: 256 },
+      rgbaData,
+      { bytesPerRow: 256 * 4, rowsPerImage: 256 },
       { width: 256, height: 256 }
     );
   }

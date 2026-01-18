@@ -20,7 +20,8 @@ describe('Shader file existence', () => {
       'pixelsort.wgsl',
       'pixelsort-segment.wgsl',
       'kaleidoscope.wgsl',
-      'rotate.wgsl'
+      'rotate.wgsl',
+      'segmentation.wgsl'
     ];
 
     wgslShaders.forEach(shaderFile => {

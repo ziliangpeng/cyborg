@@ -56,7 +56,7 @@ fn sampleMaskSoft(pos: vec2<i32>) -> f32 {
   if (params.softEdges == 0u) {
     // Standard nearest-neighbor sampling
     let maskPos = vec2<i32>(
-      vec2<f32>(pos) * 256.0 / vec2<f32>(params.width, params.height)
+      vec2<f32>(pos) * 256.0 / vec2<f32>(f32(params.width), f32(params.height))
     );
     let maskColor = textureLoad(maskTexture, maskPos, 0);
     return maskColor.r;
@@ -91,7 +91,7 @@ fn detectEdge(pos: vec2<i32>, maskValue: f32) -> f32 {
 
   // Sample mask at multiple offsets to detect edges
   let maskPos = vec2<i32>(
-    vec2<f32>(pos) * 256.0 / vec2<f32>(params.width, params.height)
+    vec2<f32>(pos) * 256.0 / vec2<f32>(f32(params.width), f32(params.height))
   );
 
   var edgeStrength = 0.0;

@@ -100,7 +100,8 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
         'renderThermal',
         'renderPixelSort',
         'renderKaleidoscope',
-        'renderPassthrough'
+        'renderPassthrough',
+        'renderSegmentation'
       ];
 
       const missingMethods = requiredMethods.filter(
