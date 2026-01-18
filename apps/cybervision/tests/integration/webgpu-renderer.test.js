@@ -168,6 +168,10 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
         app.renderer.renderPixelSort(mockVideo, 'preset', 'horizontal', 0, 0.25, 0.75, 'brightness', 'luminance', 'ascending', 'bitonic', 50);
         app.renderer.renderKaleidoscope(mockVideo, 8, 0.0);
 
+        // Test segmentation with mock mask data
+        const maskData = new Uint8Array(256 * 256).fill(128);
+        app.renderer.renderSegmentation(mockVideo, 'blur', 10, maskData, false, false);
+
         return { success: true };
       } catch (err) {
         return { success: false, error: err.message, stack: err.stack };

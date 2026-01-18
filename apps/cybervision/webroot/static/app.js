@@ -137,7 +137,7 @@ class CyberVision {
     this.animationFrame = null;
 
     // Effect state
-    this.currentEffect = "original";
+    this.currentEffect = "segmentation";
     this.dotSize = 8;
     this.useRandomColors = false;
 
@@ -282,6 +282,7 @@ class CyberVision {
     this.webglToggle.disabled = !this.webgpuAvailable; // Disable if WebGPU not available
 
     this.setupEventListeners();
+    this.updateEffectControls();  // Initialize controls for default effect
     this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
   }
 

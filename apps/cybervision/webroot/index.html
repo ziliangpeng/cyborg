@@ -34,26 +34,26 @@
 
             <!-- Tab buttons -->
             <div class="effect-tabs">
-              <button class="tab-button" data-tab="artistic" title="Artistic">ART</button>
-              <button class="tab-button active" data-tab="distortion" title="Distortion">DIST</button>
+              <button class="tab-button active" data-tab="artistic" title="Artistic">ART</button>
+              <button class="tab-button" data-tab="distortion" title="Distortion">DIST</button>
             </div>
 
             <!-- Tab content: Artistic -->
-            <div class="tab-content" id="tab-artistic">
+            <div class="tab-content active" id="tab-artistic">
               <div class="effect-grid" role="radiogroup" aria-label="Artistic effects">
                 <button class="effect-btn" data-effect="halftone" title="Halftone" role="radio" aria-checked="false">HT</button>
                 <button class="effect-btn" data-effect="clustering" title="Clustering" role="radio" aria-checked="false">CL</button>
                 <button class="effect-btn" data-effect="mosaic" title="Mosaic" role="radio" aria-checked="false">MO</button>
                 <button class="effect-btn" data-effect="kaleidoscope" title="Kaleidoscope" role="radio" aria-checked="false">KA</button>
                 <button class="effect-btn" data-effect="pixelsort" title="Pixel Sort" role="radio" aria-checked="false">PS</button>
-                <button class="effect-btn" data-effect="segmentation" title="Portrait Segmentation (ML)" role="radio" aria-checked="false">SE</button>
+                <button class="effect-btn selected" data-effect="segmentation" title="Portrait Segmentation (ML)" role="radio" aria-checked="true">SE</button>
               </div>
             </div>
 
             <!-- Tab content: Distortion -->
-            <div class="tab-content active" id="tab-distortion">
+            <div class="tab-content" id="tab-distortion">
               <div class="effect-grid" role="radiogroup" aria-label="Distortion effects">
-                <button class="effect-btn selected" data-effect="original" title="Original" role="radio" aria-checked="true">OR</button>
+                <button class="effect-btn" data-effect="original" title="Original" role="radio" aria-checked="false">OR</button>
                 <button class="effect-btn" data-effect="edges" title="Edge Detection" role="radio" aria-checked="false">ED</button>
                 <button class="effect-btn" data-effect="chromatic" title="Chromatic Aberration" role="radio" aria-checked="false">CA</button>
                 <button class="effect-btn" data-effect="glitch" title="Glitch" role="radio" aria-checked="false">GL</button>

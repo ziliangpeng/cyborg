@@ -16,7 +16,7 @@ export default defineConfig({
     {
       name: 'ci',
       testMatch: /.*\.test\.js/,
-      testIgnore: [/.*webgpu.*\.test\.js/, /unit\//],
+      testIgnore: [/.*webgpu.*\.test\.js/, /unit\//, /visual\//],
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
@@ -32,7 +32,17 @@ export default defineConfig({
     {
       name: 'local',
       testMatch: /.*\.test\.js/,
-      testIgnore: /unit\//,
+      testIgnore: [/unit\//, /visual\//],
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--enable-features=Vulkan'],
+        },
+      },
+    },
+    {
+      name: 'visual',
+      testMatch: /visual\/.*\.test\.js/,
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {

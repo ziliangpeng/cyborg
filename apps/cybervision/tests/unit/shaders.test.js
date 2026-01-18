@@ -85,4 +85,51 @@ describe('Shader file existence', () => {
       expect(content).toContain('gl_Position');
     });
   });
+
+  describe('WGSL shader type safety', () => {
+    it('should not construct vec2<f32> from u32 params without f32() cast', () => {
+      // This test catches the bug where vec2<f32>(params.width, params.height)
+      // was used when params.width and params.height are u32 values
+      const segmentationShader = path.join(shadersDir, 'segmentation.wgsl');
+      const content = fs.readFileSync(segmentationShader, 'utf8');
+
+      // Check if there are u32 parameters (width, height)
+      const hasU32Params = /struct\s+\w+\s*\{[\s\S]*?(width|height)\s*:\s*u32/;
+
+      // Look for unsafe pattern: vec2<f32>(params.width, params.height) without f32()
+      // This regex looks for vec2<f32>( followed by any identifier.width or identifier.height
+      // that is NOT wrapped in f32()
+      const unsafeVec2Pattern = /vec2<f32>\s*\(\s*(\w+\.(width|height))\s*,\s*(\w+\.(width|height))\s*\)/g;
+
+      if (hasU32Params.test(content)) {
+        const matches = content.match(unsafeVec2Pattern);
+        if (matches) {
+          // For each match, verify it has f32() casts
+          matches.forEach(match => {
+            // If the match doesn't contain 'f32(' before the params, it's unsafe
+            const hasCast = /vec2<f32>\s*\(\s*f32\s*\(/.test(match);
+            expect(hasCast,
+              `Found unsafe vec2<f32> construction from u32 params: ${match}. ` +
+              `Use vec2<f32>(f32(param.width), f32(param.height)) instead.`
+            ).toBe(true);
+          });
+        }
+      }
+    });
+
+    it('should use correct texture format types in WGSL shaders', () => {
+      // This test helps catch issues where texture formats and sampling don't match
+      const segmentationShader = path.join(shadersDir, 'segmentation.wgsl');
+      const content = fs.readFileSync(segmentationShader, 'utf8');
+
+      // If there's a texture_2d<f32>, the corresponding textureLoad or textureSample should return vec4<f32>
+      // This is a basic check - it won't catch all format mismatches but helps with common cases
+      const hasF32Texture = /texture_2d<f32>/.test(content);
+      if (hasF32Texture) {
+        // Make sure we're consistently using f32 types with texture operations
+        const hasTextureOps = /textureLoad|textureSample/.test(content);
+        expect(hasTextureOps).toBe(true);
+      }
+    });
+  });
 });

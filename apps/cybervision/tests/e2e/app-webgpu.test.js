@@ -262,4 +262,60 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     // Info should NOT be visible with WebGPU (only shows with WebGL fallback)
     await expect(page.locator('#mosaicInfo')).not.toBeVisible();
   });
+
+  test('should have segmentation as default effect on page load', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
+
+    // Verify ART tab is active by default
+    const artTab = page.locator('button[data-tab="artistic"]');
+    await expect(artTab).toHaveClass(/active/);
+
+    // Verify SE button is selected by default
+    const segButton = page.locator('button[data-effect="segmentation"]');
+    await expect(segButton).toHaveClass(/selected/);
+
+    // Verify segmentation controls are visible
+    await expect(page.locator('#segmentationControls')).toBeVisible();
+
+    // Verify other controls are hidden
+    await expect(page.locator('#halftoneControls')).not.toBeVisible();
+  });
+
+  test('should have segmentation effect available', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
+
+    await switchToEffectTab(page, 'segmentation');
+    const segButton = page.locator('button[data-effect="segmentation"]');
+    await expect(segButton).toBeVisible();
+    await segButton.click();
+    await expect(segButton).toHaveClass(/selected/);
+  });
+
+  test('should update segmentation controls', async ({ page }) => {
+    await page.goto('/');
+
+    // Wait for initialization
+    await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
+
+    // Select segmentation effect
+    await switchToEffectTab(page, 'segmentation');
+    await page.locator('button[data-effect="segmentation"]').click();
+
+    // Update blur amount slider
+    const blurSlider = page.locator('#segmentationBlurAmount');
+    const blurValue = page.locator('#segmentationBlurValue');
+
+    await blurSlider.fill('20');
+    await expect(blurValue).toHaveText('20');
+
+    // Update segmentation mode
+    const modeSelect = page.locator('#segmentationMode');
+    await modeSelect.selectOption('blackout');
+
+    // Verify mode is set
+    const selectedMode = await modeSelect.inputValue();
+    expect(selectedMode).toBe('blackout');
+  });
 });
