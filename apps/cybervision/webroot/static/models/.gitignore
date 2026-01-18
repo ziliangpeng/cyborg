@@ -1,0 +1,21 @@
+# Ignore ML model files (they are large binary files)
+*.onnx
+*.tflite
+*.pb
+*.h5
+*.pth
+*.pt
+
+# Ignore downloaded archives
+*.tar.gz
+*.zip
+
+# Ignore extracted model directories
+saved_model_*/
+resources/
+
+# Keep documentation and download scripts
+!README.md
+!DOWNLOAD_MODEL.md
+!download_model.sh
+!.gitignore

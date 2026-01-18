@@ -35,25 +35,26 @@
 
             <!-- Tab buttons -->
             <div class="effect-tabs">
-              <button class="tab-button" data-tab="artistic" title="Artistic">ART</button>
-              <button class="tab-button active" data-tab="distortion" title="Distortion">DIST</button>
+              <button class="tab-button active" data-tab="artistic" title="Artistic">ART</button>
+              <button class="tab-button" data-tab="distortion" title="Distortion">DIST</button>
             </div>
 
             <!-- Tab content: Artistic -->
-            <div class="tab-content" id="tab-artistic">
+            <div class="tab-content active" id="tab-artistic">
               <div class="effect-grid" role="radiogroup" aria-label="Artistic effects">
                 <button class="effect-btn" data-effect="halftone" title="Halftone" role="radio" aria-checked="false">HT</button>
                 <button class="effect-btn" data-effect="clustering" title="Clustering" role="radio" aria-checked="false">CL</button>
                 <button class="effect-btn" data-effect="mosaic" title="Mosaic" role="radio" aria-checked="false">MO</button>
                 <button class="effect-btn" data-effect="kaleidoscope" title="Kaleidoscope" role="radio" aria-checked="false">KA</button>
                 <button class="effect-btn" data-effect="pixelsort" title="Pixel Sort" role="radio" aria-checked="false">PS</button>
+                <button class="effect-btn selected" data-effect="segmentation" title="Portrait Segmentation (ML)" role="radio" aria-checked="true">SE</button>
               </div>
             </div>
 
             <!-- Tab content: Distortion -->
-            <div class="tab-content active" id="tab-distortion">
+            <div class="tab-content" id="tab-distortion">
               <div class="effect-grid" role="radiogroup" aria-label="Distortion effects">
-                <button class="effect-btn selected" data-effect="original" title="Original" role="radio" aria-checked="true">OR</button>
+                <button class="effect-btn" data-effect="original" title="Original" role="radio" aria-checked="false">OR</button>
                 <button class="effect-btn" data-effect="edges" title="Edge Detection" role="radio" aria-checked="false">ED</button>
                 <button class="effect-btn" data-effect="chromatic" title="Chromatic Aberration" role="radio" aria-checked="false">CA</button>
                 <button class="effect-btn" data-effect="glitch" title="Glitch" role="radio" aria-checked="false">GL</button>
@@ -556,6 +557,69 @@
                 />
               </div>
             </div>
+
+            <div class="effect-controls segmentation-controls" id="segmentationControls" style="display: none;">
+              <div id="segmentationLoading" class="info-text">
+                <span class="info-icon">⏳</span>
+                <span id="segmentationLoadingText">Loading ML model...</span>
+              </div>
+
+              <div class="control-group">
+                <label for="segmentationMode">Mode</label>
+                <select id="segmentationMode" class="select">
+                  <option value="blur">Blur Background</option>
+                  <option value="replace">Replace Background</option>
+                  <option value="blackout" selected>Blackout Person</option>
+                </select>
+              </div>
+
+              <div class="control-group" id="segmentationBlurGroup">
+                <label for="segmentationBlurRadius">
+                  Blur Radius: <span id="segmentationBlurRadiusValue">10</span>px
+                </label>
+                <input
+                  id="segmentationBlurRadius"
+                  type="range"
+                  min="0"
+                  max="30"
+                  value="10"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="segmentationSoftEdges" checked />
+                  <span>Soft Edges</span>
+                </label>
+              </div>
+
+              <div class="control-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="segmentationGlow" />
+                  <span>Glow Effect</span>
+                </label>
+              </div>
+
+              <div class="control-group" id="segmentationBackgroundGroup" style="display: none;">
+                <label for="segmentationBackgroundUpload">Background Image</label>
+                <input
+                  id="segmentationBackgroundUpload"
+                  type="file"
+                  accept="image/*"
+                  class="file-input"
+                />
+                <div id="backgroundPreview" style="display: none; margin-top: 8px;">
+                  <img id="backgroundPreviewImg" style="max-width: 100%; max-height: 100px; border-radius: 4px;" />
+                </div>
+              </div>
+
+              <div id="segmentationInfo" class="info-text">
+                <span class="info-icon">i</span>
+                <span>First use will download a ~5MB ML model. Requires WebGPU for best performance.</span>
+              </div>
+            </div>
           </section>
 
 
@@ -590,6 +654,21 @@
         </aside>
       </div>
     </main>
+
+    <!-- ONNX Runtime Web for ML inference -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+
+    <!-- Initialize ONNX Runtime paths -->
+    <script>
+      // Configure ONNX Runtime Web WASM paths
+      if (window.ort) {
+        // Set the path for WASM files
+        window.ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+
+        // ONNX Runtime configured with WASM fallback paths
+        console.log('ONNX Runtime configured with WASM fallback paths');
+      }
+    </script>
 
     <script type="module" src="/static/app.js"></script>
   </body>

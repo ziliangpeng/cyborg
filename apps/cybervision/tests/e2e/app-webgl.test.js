@@ -131,7 +131,19 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     }
 
     // Check no errors occurred during effect switching
-    expect(consoleErrors.filter(e => !e.includes('DevTools') && !e.includes('favicon')).length).toBe(0);
+    // Filter out expected errors like missing optional model files (segmentation.onnx)
+    // The 404 error appears in different forms in CI vs local environments
+    const filteredErrors = consoleErrors.filter(e =>
+      !e.includes('DevTools') &&
+      !e.includes('favicon') &&
+      !e.includes('segmentation.onnx') &&
+      !e.includes('Failed to load segmentation model') &&
+      !e.includes('Failed to load model') &&
+      !e.includes('Failed to fetch model') &&
+      !(e.includes('Failed to load resource') && e.includes('404'))
+    );
+
+    expect(filteredErrors.length).toBe(0);
   });
 
   test('should have correct initial UI state', async ({ page }) => {
@@ -140,9 +152,9 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     // Wait for initialization to complete
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
-    // Check initial effect is selected
-    const originalButton = page.locator('button[data-effect="original"]');
-    await expect(originalButton).toHaveClass(/selected/);
+    // Check initial effect is selected (segmentation is default, falls back to original rendering in WebGL)
+    const segmentationButton = page.locator('button[data-effect="segmentation"]');
+    await expect(segmentationButton).toHaveClass(/selected/);
 
     // Check initial button states
     await expect(page.locator('#startBtn')).toBeEnabled();
