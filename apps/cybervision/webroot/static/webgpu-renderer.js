@@ -373,7 +373,7 @@ export class WebGPURenderer {
       this.videoHeight,
     ]);
 
-    // Combine all data into one buffer (struct layout: u32 mode, f32 blurRadius, f32 threshold, f32 feather, u32 width, u32 height)
+    // Combine all data into one buffer (struct layout: u32 mode, f32 blurRadius, f32 threshold, f32 feather, u32 width, u32 height, u32 softEdges, u32 glow)
     const segmentationBufferData = new ArrayBuffer(32);  // 8 * 4 bytes = 32 bytes
     const segmentationView = new DataView(segmentationBufferData);
     segmentationView.setUint32(0, segmentationUniformData[0], true);  // mode
@@ -382,12 +382,19 @@ export class WebGPURenderer {
     segmentationView.setFloat32(12, segmentationFloatData[2], true);  // feather
     segmentationView.setUint32(16, segmentationDimensionsData[0], true);  // width
     segmentationView.setUint32(20, segmentationDimensionsData[1], true);  // height
+    segmentationView.setUint32(24, 1, true);  // softEdges (default on)
+    segmentationView.setUint32(28, 0, true);  // glow (default off)
 
     this.segmentationUniformBuffer = this.device.createBuffer({
       size: 32,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     this.device.queue.writeBuffer(this.segmentationUniformBuffer, 0, segmentationBufferData);
+
+    // Create reusable buffer for uniform updates (avoids per-frame allocations)
+    this.segmentationUniformsArrayBuffer = new ArrayBuffer(32);
+    this.segmentationUniformsU32 = new Uint32Array(this.segmentationUniformsArrayBuffer);
+    this.segmentationUniformsF32 = new Float32Array(this.segmentationUniformsArrayBuffer);
 
     // Create textures
     this.inputTexture = this.device.createTexture({
@@ -415,7 +422,7 @@ export class WebGPURenderer {
     // Create mask texture for segmentation (256x256, will be upsampled in shader)
     this.maskTexture = this.device.createTexture({
       size: [256, 256],
-      format: "rgba8unorm",
+      format: "r8unorm",
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
     });
 
@@ -1758,20 +1765,11 @@ export class WebGPURenderer {
    * @param {Uint8Array} maskData - Binary mask data (256x256)
    */
   updateSegmentationMask(maskData) {
-    // Convert Uint8Array to RGBA format
-    const rgbaData = new Uint8Array(256 * 256 * 4);
-    for (let i = 0; i < maskData.length; i++) {
-      const value = maskData[i];
-      rgbaData[i * 4] = value;     // R
-      rgbaData[i * 4 + 1] = value; // G
-      rgbaData[i * 4 + 2] = value; // B
-      rgbaData[i * 4 + 3] = 255;   // A
-    }
-
+    // Write grayscale data directly to r8unorm texture
     this.device.queue.writeTexture(
       { texture: this.maskTexture },
-      rgbaData,
-      { bytesPerRow: 256 * 4, rowsPerImage: 256 },
+      maskData,
+      { bytesPerRow: 256, rowsPerImage: 256 },
       { width: 256, height: 256 }
     );
   }
@@ -1839,19 +1837,17 @@ export class WebGPURenderer {
       this.updateSegmentationMask(maskData);
     }
 
-    // Update uniform buffer with current parameters
-    const segmentationBufferData = new ArrayBuffer(32);
-    const segmentationView = new DataView(segmentationBufferData);
-    segmentationView.setUint32(0, modeMap[mode] || 0, true);  // mode
-    segmentationView.setFloat32(4, blurRadius, true);         // blurRadius
-    segmentationView.setFloat32(8, 0.5, true);                // threshold
-    segmentationView.setFloat32(12, 0.05, true);              // feather
-    segmentationView.setUint32(16, this.videoWidth, true);    // width
-    segmentationView.setUint32(20, this.videoHeight, true);   // height
-    segmentationView.setUint32(24, softEdges ? 1 : 0, true);  // softEdges
-    segmentationView.setUint32(28, glow ? 1 : 0, true);       // glow
+    // Update uniform buffer with current parameters (reuse buffer to avoid allocations)
+    this.segmentationUniformsU32[0] = modeMap[mode] || 0;  // mode
+    this.segmentationUniformsF32[1] = blurRadius;          // blurRadius
+    this.segmentationUniformsF32[2] = 0.5;                 // threshold
+    this.segmentationUniformsF32[3] = 0.05;                // feather
+    this.segmentationUniformsU32[4] = this.videoWidth;     // width
+    this.segmentationUniformsU32[5] = this.videoHeight;    // height
+    this.segmentationUniformsU32[6] = softEdges ? 1 : 0;   // softEdges
+    this.segmentationUniformsU32[7] = glow ? 1 : 0;        // glow
 
-    this.device.queue.writeBuffer(this.segmentationUniformBuffer, 0, segmentationBufferData);
+    this.device.queue.writeBuffer(this.segmentationUniformBuffer, 0, this.segmentationUniformsArrayBuffer);
 
     // Copy video frame to input texture
     this.device.queue.copyExternalImageToTexture(

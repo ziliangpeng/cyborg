@@ -18,17 +18,8 @@ struct Params {
 @group(0) @binding(3) var outputTexture: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(4) var<uniform> params: Params;
 
-// Gaussian blur weights for 5x5 kernel
-const GAUSSIAN_5x5: array<f32, 25> = array<f32, 25>(
-  0.003765, 0.015019, 0.023792, 0.015019, 0.003765,
-  0.015019, 0.059912, 0.094907, 0.059912, 0.015019,
-  0.023792, 0.094907, 0.150342, 0.094907, 0.023792,
-  0.015019, 0.059912, 0.094907, 0.059912, 0.015019,
-  0.003765, 0.015019, 0.023792, 0.015019, 0.003765
-);
-
-// Apply Gaussian blur to a texture at given coordinates
-fn gaussianBlur(pos: vec2<i32>) -> vec4<f32> {
+// Apply box blur to a texture at given coordinates
+fn boxBlur(pos: vec2<i32>) -> vec4<f32> {
   var blurredColor = vec4<f32>(0.0);
   let radius = i32(params.blurRadius);
 
@@ -60,26 +51,12 @@ fn gaussianBlur(pos: vec2<i32>) -> vec4<f32> {
   return blurredColor / totalWeight;
 }
 
-// Apply edge feathering to mask
-fn featherMask(maskValue: f32) -> f32 {
-  if (params.feather <= 0.0) {
-    return maskValue;
-  }
-
-  // Smooth step for edge feathering
-  let lower = params.threshold - params.feather;
-  let upper = params.threshold + params.feather;
-
-  return smoothstep(lower, upper, maskValue);
-}
-
 // Sample mask with bilinear interpolation for soft edges
 fn sampleMaskSoft(pos: vec2<i32>) -> f32 {
   if (params.softEdges == 0u) {
     // Standard nearest-neighbor sampling
     let maskPos = vec2<i32>(
-      pos.x * 256 / i32(params.width),
-      pos.y * 256 / i32(params.height)
+      vec2<f32>(pos) * 256.0 / vec2<f32>(params.width, params.height)
     );
     let maskColor = textureLoad(maskTexture, maskPos, 0);
     return maskColor.r;
@@ -171,7 +148,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
   // Mode 0: Blur background
   if (params.mode == 0u) {
-    let blurredColor = gaussianBlur(pos);
+    let blurredColor = boxBlur(pos);
     // Blend: person (mask=1) = original, background (mask=0) = blurred
     outputColor = mix(blurredColor, originalColor, maskValue);
   }
