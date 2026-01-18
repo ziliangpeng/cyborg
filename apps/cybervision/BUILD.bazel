@@ -4,6 +4,12 @@ load("@npm_cybervision//apps/cybervision:@playwright/test/package_json.bzl", pla
 
 npm_link_all_packages(name = "node_modules")
 
+# Shared test data to avoid conflicting actions
+filegroup(
+    name = "webroot_files",
+    srcs = glob(["webroot/**"]),
+)
+
 py_binary(
     name = "cybervision",
     srcs = [
@@ -34,10 +40,11 @@ vitest_bin.vitest_test(
     data = [
         "vitest.config.js",
         ":node_modules/vitest",
+        ":webroot_files",  # shaders.test.js reads shader files
     ] + glob([
         "tests/unit/**/*.test.js",
-        "webroot/**",  # shaders.test.js reads shader files
     ]),
+    tags = ["requires-network"],  # needed for consistent execution metadata
 )
 
 # WebGL tests (Playwright) - CI compatible with SwiftShader
@@ -55,11 +62,11 @@ playwright_bin.playwright_test(
         ":node_modules/@playwright/test",
         ":node_modules/pixelmatch",
         ":node_modules/pngjs",
+        ":webroot_files",
     ] + glob([
         "tests/integration/**/*.test.js",
         "tests/e2e/**/*.test.js",
         "tests/e2e/**/*.js",  # Include test helpers
-        "webroot/**",
     ]),
     tags = ["requires-network"],  # needs to start http server
 )
