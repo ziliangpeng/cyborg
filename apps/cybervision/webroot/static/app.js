@@ -13,6 +13,7 @@ class CyberVision {
     this.canvas = document.getElementById("canvas");
     this.startBtn = document.getElementById("startBtn");
     this.stopBtn = document.getElementById("stopBtn");
+    this.screenshotBtn = document.getElementById("screenshotBtn");
     this.statusEl = document.getElementById("status");
     this.effectButtons = document.querySelectorAll('.effect-btn');
     this.tabButtons = document.querySelectorAll('.tab-button');
@@ -343,6 +344,7 @@ class CyberVision {
     // Event listeners
     this.startBtn.addEventListener("click", () => this.startCamera());
     this.stopBtn.addEventListener("click", () => this.stopCamera());
+    this.screenshotBtn.addEventListener("click", () => this.takeScreenshot());
 
     // Tab switching event listeners
     this.tabButtons.forEach((button) => {
@@ -707,6 +709,7 @@ class CyberVision {
       // Update UI
       this.startBtn.disabled = true;
       this.stopBtn.disabled = false;
+      this.screenshotBtn.disabled = false;
       this.isRunning = true;
 
       this.setStatus(`Camera running with ${this.rendererType.toUpperCase()}.`);
@@ -735,6 +738,7 @@ class CyberVision {
 
     this.startBtn.disabled = false;
     this.stopBtn.disabled = true;
+    this.screenshotBtn.disabled = true;
     this.resolutionValue.textContent = "-";
     this.setStatus("Camera stopped.");
   }
@@ -918,6 +922,40 @@ class CyberVision {
 
   setStatus(text) {
     this.statusEl.textContent = text;
+  }
+
+  takeScreenshot() {
+    if (!this.isRunning) return;
+
+    this.canvas.toBlob((blob) => {
+      if (!blob) {
+        this.setStatus('Screenshot error: Failed to create image blob.');
+        console.error('Screenshot error: toBlob returned null');
+        return;
+      }
+
+      try {
+        const now = new Date();
+        const timestamp = now.toLocaleString('sv').replace(' ', '-').replace(/:/g, '');
+        const filename = `cybervision-screenshot-${timestamp}.png`;
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up the object URL to avoid memory leaks
+        URL.revokeObjectURL(url);
+
+        this.setStatus(`Screenshot saved: ${filename}`);
+      } catch (err) {
+        this.setStatus(`Screenshot error: ${err.message}`);
+        console.error('Screenshot error:', err);
+      }
+    }, 'image/png');
   }
 }
 
