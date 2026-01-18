@@ -132,12 +132,19 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     // Check no errors occurred during effect switching
     // Filter out expected errors like missing optional model files (segmentation.onnx)
-    expect(consoleErrors.filter(e =>
+    const filteredErrors = consoleErrors.filter(e =>
       !e.includes('DevTools') &&
       !e.includes('favicon') &&
       !e.includes('segmentation.onnx') &&
       !e.includes('Failed to load segmentation model')
-    ).length).toBe(0);
+    );
+
+    // Log errors for debugging if any remain
+    if (filteredErrors.length > 0) {
+      console.log('Unexpected console errors:', filteredErrors);
+    }
+
+    expect(filteredErrors.length).toBe(0);
   });
 
   test('should have correct initial UI state', async ({ page }) => {
