@@ -13,6 +13,7 @@ class CyberVision {
     this.canvas = document.getElementById("canvas");
     this.startBtn = document.getElementById("startBtn");
     this.stopBtn = document.getElementById("stopBtn");
+    this.screenshotBtn = document.getElementById("screenshotBtn");
     this.statusEl = document.getElementById("status");
     this.effectButtons = document.querySelectorAll('.effect-btn');
     this.tabButtons = document.querySelectorAll('.tab-button');
@@ -343,6 +344,7 @@ class CyberVision {
     // Event listeners
     this.startBtn.addEventListener("click", () => this.startCamera());
     this.stopBtn.addEventListener("click", () => this.stopCamera());
+    this.screenshotBtn.addEventListener("click", () => this.takeScreenshot());
 
     // Tab switching event listeners
     this.tabButtons.forEach((button) => {
@@ -707,6 +709,7 @@ class CyberVision {
       // Update UI
       this.startBtn.disabled = true;
       this.stopBtn.disabled = false;
+      this.screenshotBtn.disabled = false;
       this.isRunning = true;
 
       this.setStatus(`Camera running with ${this.rendererType.toUpperCase()}.`);
@@ -735,6 +738,7 @@ class CyberVision {
 
     this.startBtn.disabled = false;
     this.stopBtn.disabled = true;
+    this.screenshotBtn.disabled = true;
     this.resolutionValue.textContent = "-";
     this.setStatus("Camera stopped.");
   }
@@ -918,6 +922,28 @@ class CyberVision {
 
   setStatus(text) {
     this.statusEl.textContent = text;
+  }
+
+  takeScreenshot() {
+    if (!this.isRunning) return;
+
+    try {
+      const dataURL = this.canvas.toDataURL("image/png");
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, "-").split("T")[0] + "-" +
+                       now.toTimeString().split(" ")[0].replace(/:/g, "");
+      const filename = `cybervision-screenshot-${timestamp}.png`;
+
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = dataURL;
+      link.click();
+
+      this.setStatus(`Screenshot saved: ${filename}`);
+    } catch (err) {
+      this.setStatus(`Screenshot error: ${err.message}`);
+      console.error("Screenshot error:", err);
+    }
   }
 }
 

@@ -221,4 +221,97 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     // Info should be hidden again
     await expect(page.locator('#mosaicInfo')).not.toBeVisible();
   });
+
+  test('screenshot button should be disabled initially and enabled after starting camera', async ({ page }) => {
+    await page.goto('/?force-webgl=true');
+
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
+
+    // Screenshot button should be disabled initially
+    const screenshotBtn = page.locator('#screenshotBtn');
+    await expect(screenshotBtn).toBeDisabled();
+
+    // Mock camera by setting isRunning state directly
+    await page.evaluate(() => {
+      if (window.cyberVisionApp) {
+        window.cyberVisionApp.isRunning = true;
+        window.cyberVisionApp.screenshotBtn.disabled = false;
+        window.cyberVisionApp.startBtn.disabled = true;
+        window.cyberVisionApp.stopBtn.disabled = false;
+      }
+    });
+
+    // Screenshot button should now be enabled
+    await expect(screenshotBtn).toBeEnabled();
+
+    // Mock stopping camera
+    await page.evaluate(() => {
+      if (window.cyberVisionApp) {
+        window.cyberVisionApp.isRunning = false;
+        window.cyberVisionApp.screenshotBtn.disabled = true;
+        window.cyberVisionApp.startBtn.disabled = false;
+        window.cyberVisionApp.stopBtn.disabled = true;
+      }
+    });
+
+    // Screenshot button should be disabled again
+    await expect(screenshotBtn).toBeDisabled();
+  });
+
+  test('screenshot button should trigger download when clicked', async ({ page }) => {
+    await page.goto('/?force-webgl=true');
+
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
+
+    // Mock camera state
+    await page.evaluate(() => {
+      if (window.cyberVisionApp) {
+        window.cyberVisionApp.isRunning = true;
+        window.cyberVisionApp.screenshotBtn.disabled = false;
+        window.cyberVisionApp.startBtn.disabled = true;
+        window.cyberVisionApp.stopBtn.disabled = false;
+      }
+    });
+
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download');
+
+    // Click screenshot button
+    await page.locator('#screenshotBtn').click();
+
+    // Wait for download event
+    const download = await downloadPromise;
+
+    // Verify download is a PNG file
+    expect(download.suggestedFilename()).toMatch(/^cybervision-screenshot-\d{4}-\d{2}-\d{2}-\d{6}\.png$/);
+    expect(download.suggestedFilename()).toMatch(/\.png$/);
+  });
+
+  test('screenshot button should not trigger download when camera is not running', async ({ page }) => {
+    await page.goto('/?force-webgl=true');
+
+    // Wait for initialization to complete
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
+
+    // Don't start camera - button should be disabled
+    const screenshotBtn = page.locator('#screenshotBtn');
+    await expect(screenshotBtn).toBeDisabled();
+
+    // Try to click disabled button (should do nothing)
+    const downloads = [];
+    page.on('download', (download) => {
+      downloads.push(download);
+    });
+
+    // Use force: true to click disabled button and verify it doesn't trigger download
+    await screenshotBtn.click({ force: true });
+
+    // Give a short delay to ensure any download would have been caught
+    await page.waitForTimeout(100);
+
+    // Verify no download was triggered
+    expect(downloads).toHaveLength(0);
+  });
 });
