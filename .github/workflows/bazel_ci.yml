@@ -17,6 +17,10 @@ jobs:
       - name: Set up Bazelisk
         uses: bazelbuild/setup-bazelisk@v3
 
+      - name: Install Playwright browsers
+        working-directory: apps/cybervision
+        run: npx playwright install chromium --with-deps
+
       - name: Run Bazel coverage (non-CUDA)
         run: bazel coverage --config=ci --combined_report=lcov //...
 
