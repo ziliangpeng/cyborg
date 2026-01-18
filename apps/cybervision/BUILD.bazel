@@ -44,7 +44,7 @@ vitest_bin.vitest_test(
     ] + glob([
         "tests/unit/**/*.test.js",
     ]),
-    tags = ["requires-network"],  # Match playwright_tests tags to avoid Bazel action conflicts on shared data
+    tags = ["requires-network"],  # Workaround: matching tags prevent Bazel action conflicts when multiple targets depend on :webroot_files
 )
 
 # WebGL tests (Playwright) - CI compatible with SwiftShader
@@ -65,7 +65,8 @@ playwright_bin.playwright_test(
         ":webroot_files",
     ] + glob([
         "tests/integration/**/*.test.js",
-        "tests/e2e/**/*.js",  # Includes *.test.js and test helpers
+        "tests/e2e/**/*.test.js",
+        "tests/e2e/test-helpers.js",
     ]),
     tags = ["requires-network"],  # needs to start http server
 )
