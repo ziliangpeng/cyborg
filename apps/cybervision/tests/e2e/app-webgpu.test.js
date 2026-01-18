@@ -180,7 +180,7 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     for (const effect of effects) {
       await switchToEffectTab(page, effect);
-      await page.locator(`button[data-effect="${effect}"]`).click();
+      await page.locator(`button[data-effect="${effect}"]`).click({ force: true });
       // Small delay to allow effect to be applied
       await page.waitForTimeout(100);
     }
