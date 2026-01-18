@@ -62,11 +62,11 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     // Pixelsort is only available on WebGPU
     await switchToEffectTab(page, 'pixelsort');
-    const pixelsortRadio = page.locator('input[value="pixelsort"]');
-    await expect(pixelsortRadio).toBeVisible();
+    const pixelsortButton = page.locator('button[data-effect="pixelsort"]');
+    await expect(pixelsortButton).toBeVisible();
 
-    await pixelsortRadio.check({ force: true });
-    await expect(pixelsortRadio).toBeChecked();
+    await pixelsortButton.click();
+    await expect(pixelsortButton).toHaveClass(/selected/);
 
     // Controls should be visible
     await expect(page.locator('#pixelSortControls')).toBeVisible();
@@ -79,11 +79,11 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     await switchToEffectTab(page, 'kaleidoscope');
-    const kaleidoscopeRadio = page.locator('input[value="kaleidoscope"]');
-    await expect(kaleidoscopeRadio).toBeVisible();
+    const kaleidoscopeButton = page.locator('button[data-effect="kaleidoscope"]');
+    await expect(kaleidoscopeButton).toBeVisible();
 
-    await kaleidoscopeRadio.check({ force: true });
-    await expect(kaleidoscopeRadio).toBeChecked();
+    await kaleidoscopeButton.click();
+    await expect(kaleidoscopeButton).toHaveClass(/selected/);
 
     // Controls should be visible
     await expect(page.locator('#kaleidoscopeControls')).toBeVisible();
@@ -110,9 +110,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     for (const effect of effects) {
       await switchToEffectTab(page, effect);
-      const radio = page.locator(`input[value="${effect}"]`);
-      await radio.check({ force: true });
-      await expect(radio).toBeChecked();
+      const button = page.locator(`button[data-effect="${effect}"]`);
+      await button.click({ force: true });
+      await expect(button).toHaveClass(/selected/);
     }
   });
 
@@ -128,7 +128,7 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     // Toggle to WebGL
     const webglToggle = page.locator('#webglToggle');
-    await webglToggle.check({ force: true });
+    await webglToggle.click();
 
     // Wait for renderer switch to complete
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 3000 });
@@ -180,7 +180,7 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     for (const effect of effects) {
       await switchToEffectTab(page, effect);
-      await page.locator(`input[value="${effect}"]`).check({ force: true });
+      await page.locator(`button[data-effect="${effect}"]`).click();
       // Small delay to allow effect to be applied
       await page.waitForTimeout(100);
     }
@@ -200,7 +200,7 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     // Select pixelsort effect
     await switchToEffectTab(page, 'pixelsort');
-    await page.locator('input[value="pixelsort"]').check({ force: true });
+    await page.locator('button[data-effect="pixelsort"]').click();
 
     const iterationsGroup = page.locator('#pixelSortIterationsGroup');
     const algorithmSelect = page.locator('#pixelSortAlgorithm');
@@ -226,7 +226,7 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     // Select kaleidoscope effect
     await switchToEffectTab(page, 'kaleidoscope');
-    await page.locator('input[value="kaleidoscope"]').check({ force: true });
+    await page.locator('button[data-effect="kaleidoscope"]').click();
 
     // Update segments slider
     const segmentsSlider = page.locator('#segmentsSlider');
@@ -252,7 +252,7 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     // Select mosaic effect
     await switchToEffectTab(page, 'mosaic');
-    await page.locator('input[value="mosaic"]').check({ force: true });
+    await page.locator('button[data-effect="mosaic"]').click();
 
     // Switch to dominant mode
     await page.locator('#mosaicMode').selectOption('dominant');
