@@ -16,6 +16,10 @@ build --disk_cache=~/.cache/bazel
 
 # Use sandboxing for reproducible builds
 build --spawn_strategy=sandboxed
+# Fix for CopyFile action failing in darwin-sandbox (macOS-specific issue)
+# See: https://github.com/bazelbuild/bazel/issues/7480
+build --strategy=CopyFile=local
+test --strategy=CopyFile=local
 
 # ============================================================================
 # Platform Configurations

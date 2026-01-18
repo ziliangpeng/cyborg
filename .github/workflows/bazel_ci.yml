@@ -22,7 +22,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Run Bazel coverage (non-CUDA)
-        run: bazel coverage --config=ci --combined_report=lcov --spawn_strategy=local //...
+        run: bazel coverage --config=ci --combined_report=lcov //...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
