@@ -91,8 +91,7 @@ fn detectEdge(pos: vec2<i32>, maskValue: f32) -> f32 {
 
   // Sample mask at multiple offsets to detect edges
   let maskPos = vec2<i32>(
-    pos.x * 256 / i32(params.width),
-    pos.y * 256 / i32(params.height)
+    vec2<f32>(pos) * 256.0 / vec2<f32>(params.width, params.height)
   );
 
   var edgeStrength = 0.0;
