@@ -109,25 +109,36 @@ def _load_pytorch_bin(cache_dir: Path) -> dict[str, Any]:
     """
     Load all PyTorch bin files in directory and return as numpy arrays.
 
+    Uses tinygrad's torch_load which parses PyTorch checkpoint files
+    (ZIP archives with pickle metadata + raw tensor data) without requiring torch.
+
     Args:
         cache_dir: Directory containing .bin files
 
     Returns:
         Dict mapping weight names to numpy arrays
     """
-    # TODO: Remove torch dependency by implementing custom pickle-based loader.
-    # PyTorch .bin files are ZIP archives with pickle metadata + raw tensor data.
-    # We can parse them without torch using zipfile + pickle + numpy.
-    import torch
+    from tinygrad.nn.state import torch_load
 
     weights = {}
 
     # Find all .bin files
     bin_files = sorted(cache_dir.glob("*.bin"))
 
-    # Load each file with torch
+    # Load each file with tinygrad's torch_load (no torch dependency)
+    # We need to pass a Tensor created from bytes to avoid disk device permission issues
     for file in bin_files:
-        state_dict = torch.load(file, map_location="cpu", weights_only=True)
+        # Read file into memory first to avoid permission issues with disk tensors
+        with open(file, "rb") as f:
+            file_bytes = f.read()
+        # Create in-memory tensor from bytes and pass to torch_load
+        # Use bytearray to create a writable buffer (np.frombuffer is read-only)
+        from tinygrad import Tensor
+        import numpy as np
+
+        file_array = np.array(bytearray(file_bytes), dtype=np.uint8)
+        file_tensor = Tensor(file_array)
+        state_dict = torch_load(file_tensor)
         for key, tensor in state_dict.items():
             weights[key] = tensor.numpy()
 
