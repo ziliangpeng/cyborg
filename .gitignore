@@ -25,5 +25,6 @@ experimental/crypto/eth_uniswap_wbtc_usdc_swap_events/
 # Local halftone web logs
 halftone_web.log
 
-# Playwright test reports
+# Playwright test reports and artifacts
 **/playwright-report/
+**/test-results/
