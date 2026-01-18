@@ -1,33 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-// Helper function to switch to the tab containing a specific effect
-async function switchToEffectTab(page, effectValue) {
-  const effectToTab = {
-    'halftone': 'artistic',
-    'clustering': 'artistic',
-    'mosaic': 'artistic',
-    'kaleidoscope': 'artistic',
-    'pixelsort': 'artistic',
-    'original': 'distortion',
-    'edges': 'distortion',
-    'chromatic': 'distortion',
-    'glitch': 'distortion',
-    'thermal': 'distortion'
-  };
-
-  const tabName = effectToTab[effectValue];
-  if (tabName) {
-    const tabButton = page.locator(`button[data-tab="${tabName}"]`);
-    const isActive = await tabButton.evaluate(el => el.classList.contains('active'));
-
-    // Only click if tab is not already active
-    if (!isActive) {
-      await tabButton.click();
-      // Wait for tab content to become visible
-      await page.waitForTimeout(100);
-    }
-  }
-}
+import { switchToEffectTab } from './test-helpers.js';
 
 test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
   test.beforeEach(async ({ page }) => {

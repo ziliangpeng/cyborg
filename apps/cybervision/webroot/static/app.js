@@ -347,14 +347,14 @@ class CyberVision {
     // Tab switching event listeners
     this.tabButtons.forEach((button) => {
       button.addEventListener("click", (e) => {
-        const targetTab = e.target.dataset.tab;
+        const targetTab = e.currentTarget.dataset.tab;
 
         // Remove active class from all tabs and content
         this.tabButtons.forEach((btn) => btn.classList.remove("active"));
         this.tabContents.forEach((content) => content.classList.remove("active"));
 
         // Add active class to clicked tab and corresponding content
-        e.target.classList.add("active");
+        e.currentTarget.classList.add("active");
         document.getElementById(`tab-${targetTab}`).classList.add("active");
       });
     });
