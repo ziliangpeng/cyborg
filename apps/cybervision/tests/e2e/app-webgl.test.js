@@ -50,6 +50,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
   test('should be able to select all effect radio buttons', async ({ page }) => {
     await page.goto('/?force-webgl=true');
 
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 10000 });
+
     const effects = [
       'original',
       'halftone',
@@ -116,6 +118,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     });
 
     await page.goto('/?force-webgl=true');
+
+    await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 10000 });
 
     const effects = ['original', 'halftone', 'clustering', 'edges', 'mosaic', 'chromatic', 'glitch', 'thermal'];
 

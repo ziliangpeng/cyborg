@@ -27,13 +27,16 @@ export async function switchToEffectTab(page, effectValue) {
   const tabName = effectToTab[effectValue];
   if (tabName) {
     const tabButton = page.locator(`button[data-tab="${tabName}"]`);
+    const tabContent = page.locator(`#tab-${tabName}`);
     const isActive = await tabButton.evaluate(el => el.classList.contains('active'));
 
-    // Only click if tab is not already active
     if (!isActive) {
       await tabButton.click();
-      // Wait for tab content to become visible
-      await page.waitForTimeout(100);
+      await tabContent.waitFor({ state: 'visible', timeout: 2000 });
     }
   }
+}
+
+export async function waitForAppInit(page) {
+  await expect(page.locator('#gpuStatus')).toHaveText(/WebGL|WebGPU|No support/, { timeout: 10000 });
 }
