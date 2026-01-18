@@ -362,9 +362,8 @@ class CyberVision {
     // Effect button event listeners
     this.effectButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
-        // Remove selected from all buttons in same tab
-        const container = btn.closest('.effect-grid');
-        container.querySelectorAll('.effect-btn').forEach(b => {
+        // Remove selected from all effect buttons across all tabs
+        this.effectButtons.forEach(b => {
           b.classList.remove('selected');
           b.setAttribute('aria-checked', 'false');
         });
