@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { switchToEffectTab } from './test-helpers.js';
 
 test.describe('CyberVision E2E - WebGL Path', () => {
   test('should load page with WebGL fallback', async ({ page }) => {
@@ -61,8 +62,12 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     ];
 
     for (const effect of effects) {
+      await switchToEffectTab(page, effect);
       const radio = page.locator(`input[value="${effect}"]`);
-      await radio.check();
+      // Use evaluate() instead of check({ force: true }) because Playwright's
+      // check() still attempts to scroll into view even with force: true,
+      // which fails for elements in inactive tabs with display: none
+      await radio.evaluate(el => el.click());
       await expect(radio).toBeChecked();
     }
   });
@@ -74,22 +79,26 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Select halftone effect
-    await page.locator('input[value="halftone"]').check();
+    await switchToEffectTab(page, 'halftone');
+    await page.locator('input[value="halftone"]').check({ force: true });
     await expect(page.locator('#halftoneControls')).toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
 
     // Select clustering effect
-    await page.locator('input[value="clustering"]').check();
+    await switchToEffectTab(page, 'clustering');
+    await page.locator('input[value="clustering"]').check({ force: true });
     await expect(page.locator('#clusteringControls')).toBeVisible();
     await expect(page.locator('#halftoneControls')).not.toBeVisible();
 
     // Select edges effect
-    await page.locator('input[value="edges"]').check();
+    await switchToEffectTab(page, 'edges');
+    await page.locator('input[value="edges"]').check({ force: true });
     await expect(page.locator('#edgesControls')).toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
 
     // Select original (no controls should be visible)
-    await page.locator('input[value="original"]').check();
+    await switchToEffectTab(page, 'original');
+    await page.locator('input[value="original"]').check({ force: true });
     await expect(page.locator('#halftoneControls')).not.toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
     await expect(page.locator('#edgesControls')).not.toBeVisible();
@@ -112,7 +121,11 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     const effects = ['original', 'halftone', 'clustering', 'edges', 'mosaic', 'chromatic', 'glitch', 'thermal'];
 
     for (const effect of effects) {
-      await page.locator(`input[value="${effect}"]`).check();
+      await switchToEffectTab(page, effect);
+      // Use evaluate() instead of check({ force: true }) because Playwright's
+      // check() still attempts to scroll into view even with force: true,
+      // which fails for elements in inactive tabs with display: none
+      await page.locator(`input[value="${effect}"]`).evaluate(el => el.click());
       // No need to wait - effect switching is synchronous in WebGL
     }
 
@@ -152,7 +165,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Select halftone effect
-    await page.locator('input[value="halftone"]').check();
+    await switchToEffectTab(page, 'halftone');
+    await page.locator('input[value="halftone"]').check({ force: true });
 
     // Wait for halftone controls to be visible
     await expect(page.locator('#halftoneControls')).toBeVisible();
@@ -189,7 +203,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Select mosaic effect
-    await page.locator('input[value="mosaic"]').check();
+    await switchToEffectTab(page, 'mosaic');
+    await page.locator('input[value="mosaic"]').check({ force: true });
 
     // Wait for mosaic controls to be visible
     await expect(page.locator('#mosaicControls')).toBeVisible();

@@ -219,6 +219,42 @@ body {
   margin-bottom: 20px;
 }
 
+.effect-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tab-button.active {
+  background: rgba(96, 165, 250, 0.18);
+  border-color: var(--accent);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
 .radio-group {
   display: flex;
   flex-direction: column;
