@@ -75,10 +75,10 @@ def _load_weights_from_dir(cache_dir: Path) -> dict[str, Any]:
     if safetensors_files:
         return _load_safetensors(cache_dir)
 
-    # Fall back to PyTorch bin
+    # Fall back to pickle-based bin
     bin_files = sorted(cache_dir.glob("*.bin"))
     if bin_files:
-        return _load_pytorch_bin(cache_dir)
+        return _load_pickle_bin(cache_dir)
 
     raise FileNotFoundError(f"No weight files found in {cache_dir}. Expected .safetensors or .bin files.")
 
@@ -107,9 +107,9 @@ def _load_safetensors(cache_dir: Path) -> dict[str, Any]:
     return weights
 
 
-def _load_pytorch_bin(cache_dir: Path) -> dict[str, Any]:
+def _load_pickle_bin(cache_dir: Path) -> dict[str, Any]:
     """
-    Load all PyTorch bin files in directory and return as numpy arrays.
+    Load all pickle-based .bin files in directory and return as numpy arrays.
 
     Uses tinygrad's torch_load which parses PyTorch checkpoint files
     (ZIP archives with pickle metadata + raw tensor data) without requiring torch.
@@ -133,8 +133,9 @@ def _load_pytorch_bin(cache_dir: Path) -> dict[str, Any]:
             file_bytes = f.read()
         # Create in-memory tensor from bytes and pass to torch_load
         # Use bytearray to create a writable buffer (np.frombuffer is read-only)
+        # Keep on CPU to avoid GPU OOM for large models
         file_array = np.array(bytearray(file_bytes), dtype=np.uint8)
-        file_tensor = Tensor(file_array)
+        file_tensor = Tensor(file_array, device="CPU")
         state_dict = torch_load(file_tensor)
         for key, tensor in state_dict.items():
             weights[key] = tensor.numpy()
