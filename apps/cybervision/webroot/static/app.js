@@ -137,7 +137,7 @@ class CyberVision {
     this.animationFrame = null;
 
     // Effect state
-    this.currentEffect = "original";
+    this.currentEffect = "segmentation";
     this.dotSize = 8;
     this.useRandomColors = false;
 
@@ -197,7 +197,7 @@ class CyberVision {
     // Segmentation state
     this.segmentationML = null;  // ML inference instance
     this.segmentationModelLoaded = false;
-    this.segmentationMode_state = "blur";
+    this.segmentationMode_state = "blackout";
     this.segmentationBlurRadius_state = 10;
     this.segmentationSoftEdges_state = true;
     this.segmentationGlow_state = false;
