@@ -137,7 +137,7 @@ class CyberVision {
     this.animationFrame = null;
 
     // Effect state
-    this.currentEffect = "segmentation";
+    this.currentEffect = "original";
     this.dotSize = 8;
     this.useRandomColors = false;
 
