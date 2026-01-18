@@ -930,8 +930,7 @@ class CyberVision {
     try {
       const dataURL = this.canvas.toDataURL("image/png");
       const now = new Date();
-      const timestamp = now.toISOString().replace(/[:.]/g, "-").split("T")[0] + "-" +
-                       now.toTimeString().split(" ")[0].replace(/:/g, "");
+      const timestamp = now.toLocaleString('sv').replace(' ', '-').replace(/:/g, '');
       const filename = `cybervision-screenshot-${timestamp}.png`;
 
       const link = document.createElement("a");
