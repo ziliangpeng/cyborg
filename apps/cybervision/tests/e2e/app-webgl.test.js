@@ -141,6 +141,11 @@ test.describe('CyberVision E2E - WebGL Path', () => {
       !e.includes('Failed to fetch model')
     );
 
+    // Log errors for debugging
+    if (filteredErrors.length > 0) {
+      console.log('Unexpected console errors:', filteredErrors);
+    }
+
     expect(filteredErrors.length).toBe(0);
   });
 
