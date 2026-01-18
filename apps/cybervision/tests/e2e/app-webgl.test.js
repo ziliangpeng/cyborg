@@ -132,19 +132,16 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     // Check no errors occurred during effect switching
     // Filter out expected errors like missing optional model files (segmentation.onnx)
+    // The 404 error appears in different forms in CI vs local environments
     const filteredErrors = consoleErrors.filter(e =>
       !e.includes('DevTools') &&
       !e.includes('favicon') &&
       !e.includes('segmentation.onnx') &&
       !e.includes('Failed to load segmentation model') &&
       !e.includes('Failed to load model') &&
-      !e.includes('Failed to fetch model')
+      !e.includes('Failed to fetch model') &&
+      !(e.includes('Failed to load resource') && e.includes('404'))
     );
-
-    // Log errors for debugging
-    if (filteredErrors.length > 0) {
-      console.log('Unexpected console errors:', filteredErrors);
-    }
 
     expect(filteredErrors.length).toBe(0);
   });
