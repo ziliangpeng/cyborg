@@ -1,7 +1,14 @@
-load("@aspect_rules_js//js:defs.bzl", "js_test")
 load("@npm_cybervision//:defs.bzl", "npm_link_all_packages")
+load("@npm_cybervision//apps/cybervision:vitest/package_json.bzl", vitest_bin = "bin")
+load("@npm_cybervision//apps/cybervision:@playwright/test/package_json.bzl", playwright_bin = "bin")
 
 npm_link_all_packages(name = "node_modules")
+
+# Shared test data to avoid conflicting actions
+filegroup(
+    name = "webroot_files",
+    srcs = glob(["webroot/**"]),
+)
 
 py_binary(
     name = "cybervision",
@@ -18,73 +25,48 @@ py_binary(
 )
 
 # ============================================================================
-# Test Targets - Currently Disabled in Bazel
-# ============================================================================
-#
-# All test targets are temporarily disabled due to technical conflicts with
-# aspect_rules_js. Tests run via npm scripts instead.
-#
-# Technical Issue:
-#   The js_test rule from aspect_rules_js requires an 'entry_point' parameter
-#   that references a file within a package in the 'data' parameter. However,
-#   when the entry_point references @playwright/test or vitest executables
-#   within node_modules, and those same packages are also in the data array,
-#   Bazel reports conflicts.
-#
-#   Error example:
-#   "entry_point label references a file within <package> but that package
-#    is also in data. This will cause Bazel to fail."
-#
-# Current Solution:
-#   - All tests run via npm scripts (package.json)
-#   - Unit tests: npm run test:unit (vitest)
-#   - CI tests (WebGL): npm run test:ci (playwright --project=ci)
-#   - Local tests (WebGPU): npm run test:local (playwright --project=local)
-#
-# GitHub Actions:
-#   - Unit tests: Run as part of bazel_ci.yml via 'bazel test //apps/cybervision:unit_tests'
-#     (once re-enabled)
-#   - Playwright tests: Run via cybervision_tests.yml using npm commands
-#     TODO: Merge into bazel_ci.yml once browser installation is configured
-#
-# Future Work:
-#   - Resolve aspect_rules_js entry_point/data conflicts
-#   - Re-enable js_test targets below
-#   - Consolidate GitHub Actions workflows
-#
+# Test Targets
 # ============================================================================
 
 # Unit tests (vitest)
-# js_test(
-#     name = "unit_tests",
-#     tags = ["manual"],
-# )
+vitest_bin.vitest_test(
+    name = "unit_tests",
+    args = [
+        "run",
+        "--config",
+        "vitest.config.js",
+    ],
+    chdir = "apps/cybervision",
+    data = [
+        "vitest.config.js",
+        ":node_modules/vitest",
+        ":webroot_files",  # shaders.test.js reads shader files
+    ] + glob([
+        "tests/unit/**/*.test.js",
+    ]),
+    tags = ["requires-network"],  # Workaround: matching tags prevent Bazel action conflicts when multiple targets depend on :webroot_files
+)
 
-# WebGL integration tests (Playwright)
-# js_test(
-#     name = "webgl_integration_tests",
-#     tags = ["manual", "requires-network"],
-# )
-
-# E2E WebGL tests (Playwright)
-# js_test(
-#     name = "webgl_e2e_tests",
-#     tags = ["manual", "requires-network"],
-# )
-
-# WebGPU tests (local only - requires real GPU)
-# js_test(
-#     name = "webgpu_integration_tests",
-#     tags = ["manual", "requires-gpu"],
-# )
-
-# js_test(
-#     name = "webgpu_e2e_tests",
-#     tags = ["manual", "requires-gpu"],
-# )
-
-# Test suite for local development
-# test_suite(
-#     name = "local_tests",
-#     tests = [],
-# )
+# WebGL tests (Playwright) - CI compatible with SwiftShader
+playwright_bin.playwright_test(
+    name = "playwright_tests",
+    args = [
+        "test",
+        "--project=ci",
+        "--config",
+        "playwright.config.js",
+    ],
+    chdir = "apps/cybervision",
+    data = [
+        "playwright.config.js",
+        ":node_modules/@playwright/test",
+        ":node_modules/pixelmatch",
+        ":node_modules/pngjs",
+        ":webroot_files",
+    ] + glob([
+        "tests/integration/**/*.test.js",
+        "tests/e2e/**/*.test.js",
+        "tests/e2e/test-helpers.js",
+    ]),
+    tags = ["requires-network"],  # needs to start http server
+)
