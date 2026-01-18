@@ -118,6 +118,9 @@ def _load_pytorch_bin(cache_dir: Path) -> dict[str, Any]:
     Returns:
         Dict mapping weight names to numpy arrays
     """
+    import numpy as np
+
+    from tinygrad import Tensor
     from tinygrad.nn.state import torch_load
 
     weights = {}
@@ -133,9 +136,6 @@ def _load_pytorch_bin(cache_dir: Path) -> dict[str, Any]:
             file_bytes = f.read()
         # Create in-memory tensor from bytes and pass to torch_load
         # Use bytearray to create a writable buffer (np.frombuffer is read-only)
-        from tinygrad import Tensor
-        import numpy as np
-
         file_array = np.array(bytearray(file_bytes), dtype=np.uint8)
         file_tensor = Tensor(file_array)
         state_dict = torch_load(file_tensor)
