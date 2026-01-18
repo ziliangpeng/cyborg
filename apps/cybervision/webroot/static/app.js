@@ -927,24 +927,35 @@ class CyberVision {
   takeScreenshot() {
     if (!this.isRunning) return;
 
-    try {
-      const dataURL = this.canvas.toDataURL("image/png");
-      const now = new Date();
-      const timestamp = now.toLocaleString('sv').replace(' ', '-').replace(/:/g, '');
-      const filename = `cybervision-screenshot-${timestamp}.png`;
+    this.canvas.toBlob((blob) => {
+      if (!blob) {
+        this.setStatus('Screenshot error: Failed to create image blob.');
+        console.error('Screenshot error: toBlob returned null');
+        return;
+      }
 
-      const link = document.createElement("a");
-      link.download = filename;
-      link.href = dataURL;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      try {
+        const now = new Date();
+        const timestamp = now.toLocaleString('sv').replace(' ', '-').replace(/:/g, '');
+        const filename = `cybervision-screenshot-${timestamp}.png`;
 
-      this.setStatus(`Screenshot saved: ${filename}`);
-    } catch (err) {
-      this.setStatus(`Screenshot error: ${err.message}`);
-      console.error("Screenshot error:", err);
-    }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up the object URL to avoid memory leaks
+        URL.revokeObjectURL(url);
+
+        this.setStatus(`Screenshot saved: ${filename}`);
+      } catch (err) {
+        this.setStatus(`Screenshot error: ${err.message}`);
+        console.error('Screenshot error:', err);
+      }
+    }, 'image/png');
   }
 }
 
