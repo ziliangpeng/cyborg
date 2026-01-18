@@ -11,7 +11,6 @@ py_library(
         "@pip//safetensors",
         "@pip//tiktoken",
         "@pip//tinygrad",
-        "@pip//torch",  # For loading PyTorch bin format (some models don't have safetensors)
         "@pip//transformers",  # For OPT tokenizer
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
