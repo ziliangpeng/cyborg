@@ -70,9 +70,9 @@ torch.onnx.export(
 ## Model Requirements
 
 Your model MUST have:
-- **Input shape**: `[1, 3, 256, 256]` (NCHW format)
+- **Input shape**: `[1, 256, 256, 3]` (NHWC format)
 - **Input type**: float32
-- **Input range**: [-1, 1] (normalized RGB)
+- **Input range**: [0, 1] (normalized RGB)
 - **Output shape**: `[1, 1, 256, 256]` or `[1, 256, 256]`
 - **Output type**: float32
 - **Output range**: [0, 1] (probabilities) or logits (will apply sigmoid)

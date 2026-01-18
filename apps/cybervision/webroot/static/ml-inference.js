@@ -336,49 +336,6 @@ class PortraitSegmentation extends MLInference {
     return imageData;
   }
 
-  /**
-   * Upsample mask to target dimensions using bilinear interpolation
-   * @param {Uint8Array} mask - Input mask
-   * @param {number} targetWidth - Target width
-   * @param {number} targetHeight - Target height
-   * @returns {Uint8Array} Upsampled mask
-   */
-  upsampleMask(mask, targetWidth, targetHeight) {
-    const upsampled = new Uint8Array(targetWidth * targetHeight);
-
-    const xRatio = this.modelWidth / targetWidth;
-    const yRatio = this.modelHeight / targetHeight;
-
-    for (let y = 0; y < targetHeight; y++) {
-      for (let x = 0; x < targetWidth; x++) {
-        const srcX = x * xRatio;
-        const srcY = y * yRatio;
-
-        const x1 = Math.floor(srcX);
-        const y1 = Math.floor(srcY);
-        const x2 = Math.min(x1 + 1, this.modelWidth - 1);
-        const y2 = Math.min(y1 + 1, this.modelHeight - 1);
-
-        const dx = srcX - x1;
-        const dy = srcY - y1;
-
-        // Bilinear interpolation
-        const v11 = mask[y1 * this.modelWidth + x1];
-        const v12 = mask[y1 * this.modelWidth + x2];
-        const v21 = mask[y2 * this.modelWidth + x1];
-        const v22 = mask[y2 * this.modelWidth + x2];
-
-        const value = (1 - dx) * (1 - dy) * v11 +
-                      dx * (1 - dy) * v12 +
-                      (1 - dx) * dy * v21 +
-                      dx * dy * v22;
-
-        upsampled[y * targetWidth + x] = Math.round(value);
-      }
-    }
-
-    return upsampled;
-  }
 }
 
 // Export for use in other modules (ES6 modules for browser, CommonJS for Node.js)

@@ -779,7 +779,7 @@ class CyberVision {
       console.log("Segmentation model loaded successfully");
     } catch (error) {
       console.error("Failed to load segmentation model:", error);
-      this.segmentationLoadingText.textContent = `Error loading model: ${error.message}`;
+      this.segmentationLoadingText.textContent = "Error: Failed to load model.";
       // Keep loading indicator visible to show error
     }
   }

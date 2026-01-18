@@ -657,15 +657,15 @@
     <!-- ONNX Runtime Web for ML inference -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
 
-    <!-- Initialize ONNX Runtime with WebGPU backend -->
+    <!-- Initialize ONNX Runtime paths -->
     <script>
-      // Configure ONNX Runtime Web to use WebGPU
+      // Configure ONNX Runtime Web WASM paths
       if (window.ort) {
-        // Set the path for WASM files (needed for fallback)
+        // Set the path for WASM files
         window.ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
 
-        // Enable WebGPU backend (will fall back to WASM if not available)
-        console.log('ONNX Runtime configured with WebGPU support');
+        // ONNX Runtime configured with WASM fallback paths
+        console.log('ONNX Runtime configured with WASM fallback paths');
       }
     </script>
 

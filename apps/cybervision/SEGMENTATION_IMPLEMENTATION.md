@@ -29,7 +29,7 @@ apps/cybervision/webroot/static/models/segmentation.onnx
 See `apps/cybervision/webroot/static/models/README.md` for model recommendations and requirements.
 
 **Expected Model Specs:**
-- Input: `[1, 3, 256, 256]` - RGB image normalized to [-1, 1]
+- Input: `[1, 256, 256, 3]` - RGB image normalized to [0, 1] (NHWC format)
 - Output: `[1, 1, 256, 256]` - Single-channel mask [0, 1] or logits
 - Size: < 10MB preferred
 - Format: ONNX (opset 11+)

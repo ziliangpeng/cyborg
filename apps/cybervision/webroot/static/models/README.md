@@ -37,7 +37,7 @@ For portrait segmentation, you need a segmentation model that outputs person/bac
 
 ### Expected Input/Output:
 
-- **Input**: `[1, 3, 256, 256]` - RGB image normalized to [-1, 1]
+- **Input**: `[1, 256, 256, 3]` - RGB image normalized to [0, 1] (NHWC format)
 - **Output**: `[1, 1, 256, 256]` - Single-channel mask [0, 1] or logits
 
 ### Using the Model:
