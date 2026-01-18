@@ -936,7 +936,9 @@ class CyberVision {
       const link = document.createElement("a");
       link.download = filename;
       link.href = dataURL;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
 
       this.setStatus(`Screenshot saved: ${filename}`);
     } catch (err) {
