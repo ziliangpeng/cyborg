@@ -14,7 +14,7 @@ class CyberVision {
     this.startBtn = document.getElementById("startBtn");
     this.stopBtn = document.getElementById("stopBtn");
     this.statusEl = document.getElementById("status");
-    this.effectRadios = document.querySelectorAll('input[name="effect"]');
+    this.effectButtons = document.querySelectorAll('.effect-btn');
     this.tabButtons = document.querySelectorAll('.tab-button');
     this.tabContents = document.querySelectorAll('.tab-content');
     this.dotSizeSlider = document.getElementById("dotSizeSlider");
@@ -359,13 +359,16 @@ class CyberVision {
       });
     });
 
-    // Radio button event listeners
-    this.effectRadios.forEach((radio) => {
-      radio.addEventListener("change", (e) => {
-        if (e.target.checked) {
-          this.currentEffect = e.target.value;
-          this.updateEffectControls();
-        }
+    // Effect button event listeners
+    this.effectButtons.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        // Remove selected from all buttons in same tab
+        const container = btn.closest('.effect-grid');
+        container.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('selected'));
+        // Add selected to clicked button
+        btn.classList.add('selected');
+        this.currentEffect = btn.dataset.effect;
+        this.updateEffectControls();
       });
     });
 
