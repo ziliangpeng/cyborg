@@ -31,47 +31,63 @@
         <aside class="side-panel panel">
           <section class="effect-section">
             <h3>Effect</h3>
-            <div class="radio-group">
-              <label class="radio-label">
-                <input type="radio" name="effect" value="original" checked />
-                <span>Original</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="halftone" />
-                <span>Halftone</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="clustering" />
-                <span>Clustering</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="edges" />
-                <span>Edge Detection</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="mosaic" />
-                <span>Mosaic</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="chromatic" />
-                <span>Chromatic Aberration</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="glitch" />
-                <span>Glitch</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="thermal" />
-                <span>Thermal</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="pixelsort" />
-                <span>Pixel Sort</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="effect" value="kaleidoscope" />
-                <span>Kaleidoscope</span>
-              </label>
+
+            <!-- Tab buttons -->
+            <div class="effect-tabs">
+              <button class="tab-button" data-tab="artistic">Artistic</button>
+              <button class="tab-button active" data-tab="distortion">Distortion</button>
+            </div>
+
+            <!-- Tab content: Artistic -->
+            <div class="tab-content" id="tab-artistic">
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="halftone" />
+                  <span>Halftone</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="clustering" />
+                  <span>Clustering</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="mosaic" />
+                  <span>Mosaic</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="kaleidoscope" />
+                  <span>Kaleidoscope</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="pixelsort" />
+                  <span>Pixel Sort</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Tab content: Distortion -->
+            <div class="tab-content active" id="tab-distortion">
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="original" checked />
+                  <span>Original</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="edges" />
+                  <span>Edge Detection</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="chromatic" />
+                  <span>Chromatic Aberration</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="glitch" />
+                  <span>Glitch</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="effect" value="thermal" />
+                  <span>Thermal</span>
+                </label>
+              </div>
             </div>
 
             <div class="effect-controls halftone-controls" id="halftoneControls">

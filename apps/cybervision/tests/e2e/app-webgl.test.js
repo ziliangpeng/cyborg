@@ -1,5 +1,34 @@
 import { test, expect } from '@playwright/test';
 
+// Helper function to switch to the tab containing a specific effect
+async function switchToEffectTab(page, effectValue) {
+  const effectToTab = {
+    'halftone': 'artistic',
+    'clustering': 'artistic',
+    'mosaic': 'artistic',
+    'kaleidoscope': 'artistic',
+    'pixelsort': 'artistic',
+    'original': 'distortion',
+    'edges': 'distortion',
+    'chromatic': 'distortion',
+    'glitch': 'distortion',
+    'thermal': 'distortion'
+  };
+
+  const tabName = effectToTab[effectValue];
+  if (tabName) {
+    const tabButton = page.locator(`button[data-tab="${tabName}"]`);
+    const isActive = await tabButton.evaluate(el => el.classList.contains('active'));
+
+    // Only click if tab is not already active
+    if (!isActive) {
+      await tabButton.click();
+      // Wait for tab content to become visible
+      await page.waitForTimeout(100);
+    }
+  }
+}
+
 test.describe('CyberVision E2E - WebGL Path', () => {
   test('should load page with WebGL fallback', async ({ page }) => {
     // Monitor console for errors
@@ -61,8 +90,10 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     ];
 
     for (const effect of effects) {
+      await switchToEffectTab(page, effect);
       const radio = page.locator(`input[value="${effect}"]`);
-      await radio.check();
+      // Force the check using evaluate since radio is in a hidden tab
+      await radio.evaluate(el => el.click());
       await expect(radio).toBeChecked();
     }
   });
@@ -74,22 +105,26 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Select halftone effect
-    await page.locator('input[value="halftone"]').check();
+    await switchToEffectTab(page, 'halftone');
+    await page.locator('input[value="halftone"]').check({ force: true });
     await expect(page.locator('#halftoneControls')).toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
 
     // Select clustering effect
-    await page.locator('input[value="clustering"]').check();
+    await switchToEffectTab(page, 'clustering');
+    await page.locator('input[value="clustering"]').check({ force: true });
     await expect(page.locator('#clusteringControls')).toBeVisible();
     await expect(page.locator('#halftoneControls')).not.toBeVisible();
 
     // Select edges effect
-    await page.locator('input[value="edges"]').check();
+    await switchToEffectTab(page, 'edges');
+    await page.locator('input[value="edges"]').check({ force: true });
     await expect(page.locator('#edgesControls')).toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
 
     // Select original (no controls should be visible)
-    await page.locator('input[value="original"]').check();
+    await switchToEffectTab(page, 'original');
+    await page.locator('input[value="original"]').check({ force: true });
     await expect(page.locator('#halftoneControls')).not.toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
     await expect(page.locator('#edgesControls')).not.toBeVisible();
@@ -112,7 +147,9 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     const effects = ['original', 'halftone', 'clustering', 'edges', 'mosaic', 'chromatic', 'glitch', 'thermal'];
 
     for (const effect of effects) {
-      await page.locator(`input[value="${effect}"]`).check();
+      await switchToEffectTab(page, effect);
+      // Force the check using evaluate since radio is in a hidden tab
+      await page.locator(`input[value="${effect}"]`).evaluate(el => el.click());
       // No need to wait - effect switching is synchronous in WebGL
     }
 
@@ -152,7 +189,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Select halftone effect
-    await page.locator('input[value="halftone"]').check();
+    await switchToEffectTab(page, 'halftone');
+    await page.locator('input[value="halftone"]').check({ force: true });
 
     // Wait for halftone controls to be visible
     await expect(page.locator('#halftoneControls')).toBeVisible();
@@ -189,7 +227,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Select mosaic effect
-    await page.locator('input[value="mosaic"]').check();
+    await switchToEffectTab(page, 'mosaic');
+    await page.locator('input[value="mosaic"]').check({ force: true });
 
     // Wait for mosaic controls to be visible
     await expect(page.locator('#mosaicControls')).toBeVisible();

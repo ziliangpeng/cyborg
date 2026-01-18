@@ -1,5 +1,34 @@
 import { test, expect } from '@playwright/test';
 
+// Helper function to switch to the tab containing a specific effect
+async function switchToEffectTab(page, effectValue) {
+  const effectToTab = {
+    'halftone': 'artistic',
+    'clustering': 'artistic',
+    'mosaic': 'artistic',
+    'kaleidoscope': 'artistic',
+    'pixelsort': 'artistic',
+    'original': 'distortion',
+    'edges': 'distortion',
+    'chromatic': 'distortion',
+    'glitch': 'distortion',
+    'thermal': 'distortion'
+  };
+
+  const tabName = effectToTab[effectValue];
+  if (tabName) {
+    const tabButton = page.locator(`button[data-tab="${tabName}"]`);
+    const isActive = await tabButton.evaluate(el => el.classList.contains('active'));
+
+    // Only click if tab is not already active
+    if (!isActive) {
+      await tabButton.click();
+      // Wait for tab content to become visible
+      await page.waitForTimeout(100);
+    }
+  }
+}
+
 test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
   test.beforeEach(async ({ page }) => {
     // Check if WebGPU is available
@@ -60,10 +89,11 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Pixelsort is only available on WebGPU
+    await switchToEffectTab(page, 'pixelsort');
     const pixelsortRadio = page.locator('input[value="pixelsort"]');
     await expect(pixelsortRadio).toBeVisible();
 
-    await pixelsortRadio.check();
+    await pixelsortRadio.check({ force: true });
     await expect(pixelsortRadio).toBeChecked();
 
     // Controls should be visible
@@ -76,10 +106,11 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     // Wait for initialization
     await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
+    await switchToEffectTab(page, 'kaleidoscope');
     const kaleidoscopeRadio = page.locator('input[value="kaleidoscope"]');
     await expect(kaleidoscopeRadio).toBeVisible();
 
-    await kaleidoscopeRadio.check();
+    await kaleidoscopeRadio.check({ force: true });
     await expect(kaleidoscopeRadio).toBeChecked();
 
     // Controls should be visible
@@ -106,8 +137,9 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     ];
 
     for (const effect of effects) {
+      await switchToEffectTab(page, effect);
       const radio = page.locator(`input[value="${effect}"]`);
-      await radio.check();
+      await radio.check({ force: true });
       await expect(radio).toBeChecked();
     }
   });
@@ -124,7 +156,7 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
 
     // Toggle to WebGL
     const webglToggle = page.locator('#webglToggle');
-    await webglToggle.check();
+    await webglToggle.check({ force: true });
 
     // Wait for renderer switch to complete
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 3000 });
@@ -175,7 +207,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     ];
 
     for (const effect of effects) {
-      await page.locator(`input[value="${effect}"]`).check();
+      await switchToEffectTab(page, effect);
+      await page.locator(`input[value="${effect}"]`).check({ force: true });
       // Small delay to allow effect to be applied
       await page.waitForTimeout(100);
     }
@@ -194,7 +227,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Select pixelsort effect
-    await page.locator('input[value="pixelsort"]').check();
+    await switchToEffectTab(page, 'pixelsort');
+    await page.locator('input[value="pixelsort"]').check({ force: true });
 
     const iterationsGroup = page.locator('#pixelSortIterationsGroup');
     const algorithmSelect = page.locator('#pixelSortAlgorithm');
@@ -219,7 +253,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Select kaleidoscope effect
-    await page.locator('input[value="kaleidoscope"]').check();
+    await switchToEffectTab(page, 'kaleidoscope');
+    await page.locator('input[value="kaleidoscope"]').check({ force: true });
 
     // Update segments slider
     const segmentsSlider = page.locator('#segmentsSlider');
@@ -244,7 +279,8 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     await expect(page.locator('#gpuStatus')).toContain('WebGPU', { timeout: 5000 });
 
     // Select mosaic effect
-    await page.locator('input[value="mosaic"]').check();
+    await switchToEffectTab(page, 'mosaic');
+    await page.locator('input[value="mosaic"]').check({ force: true });
 
     // Switch to dominant mode
     await page.locator('#mosaicMode').selectOption('dominant');

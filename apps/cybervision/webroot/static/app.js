@@ -15,6 +15,8 @@ class CyberVision {
     this.stopBtn = document.getElementById("stopBtn");
     this.statusEl = document.getElementById("status");
     this.effectRadios = document.querySelectorAll('input[name="effect"]');
+    this.tabButtons = document.querySelectorAll('.tab-button');
+    this.tabContents = document.querySelectorAll('.tab-content');
     this.dotSizeSlider = document.getElementById("dotSizeSlider");
     this.dotSizeValue = document.getElementById("dotSizeValue");
     this.randomColorCheckbox = document.getElementById("randomColorCheckbox");
@@ -341,6 +343,21 @@ class CyberVision {
     // Event listeners
     this.startBtn.addEventListener("click", () => this.startCamera());
     this.stopBtn.addEventListener("click", () => this.stopCamera());
+
+    // Tab switching event listeners
+    this.tabButtons.forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const targetTab = e.target.dataset.tab;
+
+        // Remove active class from all tabs and content
+        this.tabButtons.forEach((btn) => btn.classList.remove("active"));
+        this.tabContents.forEach((content) => content.classList.remove("active"));
+
+        // Add active class to clicked tab and corresponding content
+        e.target.classList.add("active");
+        document.getElementById(`tab-${targetTab}`).classList.add("active");
+      });
+    });
 
     // Radio button event listeners
     this.effectRadios.forEach((radio) => {
