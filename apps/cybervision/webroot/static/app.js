@@ -361,12 +361,16 @@ class CyberVision {
 
     // Effect button event listeners
     this.effectButtons.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", () => {
         // Remove selected from all buttons in same tab
         const container = btn.closest('.effect-grid');
-        container.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('selected'));
+        container.querySelectorAll('.effect-btn').forEach(b => {
+          b.classList.remove('selected');
+          b.setAttribute('aria-checked', 'false');
+        });
         // Add selected to clicked button
         btn.classList.add('selected');
+        btn.setAttribute('aria-checked', 'true');
         this.currentEffect = btn.dataset.effect;
         this.updateEffectControls();
       });
