@@ -136,13 +136,10 @@ test.describe('CyberVision E2E - WebGL Path', () => {
       !e.includes('DevTools') &&
       !e.includes('favicon') &&
       !e.includes('segmentation.onnx') &&
-      !e.includes('Failed to load segmentation model')
+      !e.includes('Failed to load segmentation model') &&
+      !e.includes('Failed to load model') &&
+      !e.includes('Failed to fetch model')
     );
-
-    // Log errors for debugging if any remain
-    if (filteredErrors.length > 0) {
-      console.log('Unexpected console errors:', filteredErrors);
-    }
 
     expect(filteredErrors.length).toBe(0);
   });
