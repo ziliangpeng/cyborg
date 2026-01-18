@@ -33,6 +33,7 @@ vitest_bin.vitest_test(
     name = "unit_tests",
     args = [
         "run",
+        "--coverage",
         "--config",
         "vitest.config.js",
     ],
@@ -40,6 +41,7 @@ vitest_bin.vitest_test(
     data = [
         "vitest.config.js",
         ":node_modules/vitest",
+        ":node_modules/@vitest/coverage-v8",
         ":webroot_files",  # shaders.test.js reads shader files
     ] + glob([
         "tests/unit/**/*.test.js",

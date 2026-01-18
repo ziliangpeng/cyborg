@@ -28,3 +28,6 @@ halftone_web.log
 # Playwright test reports and artifacts
 **/playwright-report/
 **/test-results/
+
+# Test coverage reports
+**/coverage/
