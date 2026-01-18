@@ -3,9 +3,11 @@
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from huggingface_hub import snapshot_download
 from safetensors import safe_open
 from tinygrad import Tensor
+from tinygrad.nn.state import torch_load
 
 
 def load_weights(model_name: str) -> dict[str, Tensor]:
@@ -118,11 +120,6 @@ def _load_pytorch_bin(cache_dir: Path) -> dict[str, Any]:
     Returns:
         Dict mapping weight names to numpy arrays
     """
-    import numpy as np
-
-    from tinygrad import Tensor
-    from tinygrad.nn.state import torch_load
-
     weights = {}
 
     # Find all .bin files
