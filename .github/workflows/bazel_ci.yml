@@ -24,6 +24,11 @@ jobs:
       - name: Run Bazel coverage (non-CUDA)
         run: bazel coverage --config=ci --combined_report=lcov //...
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Generate JavaScript coverage
         working-directory: apps/cybervision
         run: |
