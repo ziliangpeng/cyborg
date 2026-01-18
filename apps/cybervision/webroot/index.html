@@ -34,59 +34,29 @@
 
             <!-- Tab buttons -->
             <div class="effect-tabs">
-              <button class="tab-button" data-tab="artistic">Artistic</button>
-              <button class="tab-button active" data-tab="distortion">Distortion</button>
+              <button class="tab-button" data-tab="artistic" title="Artistic">ART</button>
+              <button class="tab-button active" data-tab="distortion" title="Distortion">DIST</button>
             </div>
 
             <!-- Tab content: Artistic -->
             <div class="tab-content" id="tab-artistic">
-              <div class="radio-group">
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="halftone" />
-                  <span>Halftone</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="clustering" />
-                  <span>Clustering</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="mosaic" />
-                  <span>Mosaic</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="kaleidoscope" />
-                  <span>Kaleidoscope</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="pixelsort" />
-                  <span>Pixel Sort</span>
-                </label>
+              <div class="effect-grid" role="radiogroup" aria-label="Artistic effects">
+                <button class="effect-btn" data-effect="halftone" title="Halftone" role="radio" aria-checked="false">HT</button>
+                <button class="effect-btn" data-effect="clustering" title="Clustering" role="radio" aria-checked="false">CL</button>
+                <button class="effect-btn" data-effect="mosaic" title="Mosaic" role="radio" aria-checked="false">MO</button>
+                <button class="effect-btn" data-effect="kaleidoscope" title="Kaleidoscope" role="radio" aria-checked="false">KA</button>
+                <button class="effect-btn" data-effect="pixelsort" title="Pixel Sort" role="radio" aria-checked="false">PS</button>
               </div>
             </div>
 
             <!-- Tab content: Distortion -->
             <div class="tab-content active" id="tab-distortion">
-              <div class="radio-group">
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="original" checked />
-                  <span>Original</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="edges" />
-                  <span>Edge Detection</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="chromatic" />
-                  <span>Chromatic Aberration</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="glitch" />
-                  <span>Glitch</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="effect" value="thermal" />
-                  <span>Thermal</span>
-                </label>
+              <div class="effect-grid" role="radiogroup" aria-label="Distortion effects">
+                <button class="effect-btn selected" data-effect="original" title="Original" role="radio" aria-checked="true">OR</button>
+                <button class="effect-btn" data-effect="edges" title="Edge Detection" role="radio" aria-checked="false">ED</button>
+                <button class="effect-btn" data-effect="chromatic" title="Chromatic Aberration" role="radio" aria-checked="false">CA</button>
+                <button class="effect-btn" data-effect="glitch" title="Glitch" role="radio" aria-checked="false">GL</button>
+                <button class="effect-btn" data-effect="thermal" title="Thermal" role="radio" aria-checked="false">TH</button>
               </div>
             </div>
 

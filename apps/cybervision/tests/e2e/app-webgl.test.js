@@ -63,12 +63,11 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     for (const effect of effects) {
       await switchToEffectTab(page, effect);
-      const radio = page.locator(`input[value="${effect}"]`);
-      // Use evaluate() instead of check({ force: true }) because Playwright's
-      // check() still attempts to scroll into view even with force: true,
-      // which fails for elements in inactive tabs with display: none
-      await radio.evaluate(el => el.click());
-      await expect(radio).toBeChecked();
+      const button = page.locator(`button[data-effect="${effect}"]`);
+      // Click button - use force to work with tab switching
+      await button.click({ force: true });
+      // Verify button has selected class
+      await expect(button).toHaveClass(/selected/);
     }
   });
 
@@ -80,25 +79,25 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     // Select halftone effect
     await switchToEffectTab(page, 'halftone');
-    await page.locator('input[value="halftone"]').check({ force: true });
+    await page.locator('button[data-effect="halftone"]').click();
     await expect(page.locator('#halftoneControls')).toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
 
     // Select clustering effect
     await switchToEffectTab(page, 'clustering');
-    await page.locator('input[value="clustering"]').check({ force: true });
+    await page.locator('button[data-effect="clustering"]').click();
     await expect(page.locator('#clusteringControls')).toBeVisible();
     await expect(page.locator('#halftoneControls')).not.toBeVisible();
 
     // Select edges effect
     await switchToEffectTab(page, 'edges');
-    await page.locator('input[value="edges"]').check({ force: true });
+    await page.locator('button[data-effect="edges"]').click();
     await expect(page.locator('#edgesControls')).toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
 
     // Select original (no controls should be visible)
     await switchToEffectTab(page, 'original');
-    await page.locator('input[value="original"]').check({ force: true });
+    await page.locator('button[data-effect="original"]').click();
     await expect(page.locator('#halftoneControls')).not.toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
     await expect(page.locator('#edgesControls')).not.toBeVisible();
@@ -122,10 +121,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     for (const effect of effects) {
       await switchToEffectTab(page, effect);
-      // Use evaluate() instead of check({ force: true }) because Playwright's
-      // check() still attempts to scroll into view even with force: true,
-      // which fails for elements in inactive tabs with display: none
-      await page.locator(`input[value="${effect}"]`).evaluate(el => el.click());
+      const button = page.locator(`button[data-effect="${effect}"]`);
+      await button.click({ force: true });
       // No need to wait - effect switching is synchronous in WebGL
     }
 
@@ -140,8 +137,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 5000 });
 
     // Check initial effect is selected
-    const originalRadio = page.locator('input[value="original"]');
-    await expect(originalRadio).toBeChecked();
+    const originalButton = page.locator('button[data-effect="original"]');
+    await expect(originalButton).toHaveClass(/selected/);
 
     // Check initial button states
     await expect(page.locator('#startBtn')).toBeEnabled();
@@ -166,7 +163,7 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     // Select halftone effect
     await switchToEffectTab(page, 'halftone');
-    await page.locator('input[value="halftone"]').check({ force: true });
+    await page.locator('button[data-effect="halftone"]').click();
 
     // Wait for halftone controls to be visible
     await expect(page.locator('#halftoneControls')).toBeVisible();
@@ -204,7 +201,7 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     // Select mosaic effect
     await switchToEffectTab(page, 'mosaic');
-    await page.locator('input[value="mosaic"]').check({ force: true });
+    await page.locator('button[data-effect="mosaic"]').click();
 
     // Wait for mosaic controls to be visible
     await expect(page.locator('#mosaicControls')).toBeVisible();
