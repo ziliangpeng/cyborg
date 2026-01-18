@@ -286,7 +286,6 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     // Verify download is a PNG file
     expect(download.suggestedFilename()).toMatch(/^cybervision-screenshot-\d{4}-\d{2}-\d{2}-\d{6}\.png$/);
-    expect(download.suggestedFilename()).toMatch(/\.png$/);
   });
 
   test('screenshot button should not trigger download when camera is not running', async ({ page }) => {
