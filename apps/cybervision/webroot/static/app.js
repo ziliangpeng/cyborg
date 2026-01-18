@@ -112,6 +112,21 @@ class CyberVision {
     this.rotationSpeedSlider = document.getElementById("rotationSpeedSlider");
     this.rotationSpeedValue = document.getElementById("rotationSpeedValue");
 
+    // Segmentation controls
+    this.segmentationControls = document.getElementById("segmentationControls");
+    this.segmentationMode = document.getElementById("segmentationMode");
+    this.segmentationBlurRadius = document.getElementById("segmentationBlurRadius");
+    this.segmentationBlurRadiusValue = document.getElementById("segmentationBlurRadiusValue");
+    this.segmentationBlurGroup = document.getElementById("segmentationBlurGroup");
+    this.segmentationBackgroundGroup = document.getElementById("segmentationBackgroundGroup");
+    this.segmentationBackgroundUpload = document.getElementById("segmentationBackgroundUpload");
+    this.backgroundPreview = document.getElementById("backgroundPreview");
+    this.backgroundPreviewImg = document.getElementById("backgroundPreviewImg");
+    this.segmentationLoading = document.getElementById("segmentationLoading");
+    this.segmentationLoadingText = document.getElementById("segmentationLoadingText");
+    this.segmentationSoftEdges = document.getElementById("segmentationSoftEdges");
+    this.segmentationGlow = document.getElementById("segmentationGlow");
+
     // State
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
@@ -178,6 +193,18 @@ class CyberVision {
     // Kaleidoscope state
     this.kaleidoscopeSegments = 8;
     this.kaleidoscopeRotationSpeed = 0.0;
+
+    // Segmentation state
+    this.segmentationML = null;  // ML inference instance
+    this.segmentationModelLoaded = false;
+    this.segmentationMode_state = "blur";
+    this.segmentationBlurRadius_state = 10;
+    this.segmentationSoftEdges_state = true;
+    this.segmentationGlow_state = false;
+    this.segmentationMask = null;  // Current mask
+    this.segmentationBackgroundImage = null;  // Background image for replace mode
+    this.segmentationFrameSkip = 2;  // Run inference every N frames
+    this.segmentationFrameCounter = 0;
 
     // FPS tracking
     this.frameCount = 0;
@@ -573,6 +600,47 @@ class CyberVision {
       this.rotationSpeedValue.textContent = this.kaleidoscopeRotationSpeed.toFixed(2);
     });
 
+    // Segmentation event listeners
+    this.segmentationMode.addEventListener("change", (e) => {
+      this.segmentationMode_state = e.target.value;
+      this.updateSegmentationControlsVisibility();
+    });
+
+    this.segmentationBlurRadius.addEventListener("input", (e) => {
+      this.segmentationBlurRadius_state = parseInt(e.target.value, 10);
+      this.segmentationBlurRadiusValue.textContent = this.segmentationBlurRadius_state;
+    });
+
+    this.segmentationBackgroundUpload.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            this.segmentationBackgroundImage = img;
+            this.backgroundPreviewImg.src = event.target.result;
+            this.backgroundPreview.style.display = "block";
+            // Update background texture in renderer
+            if (this.renderer && this.renderer.updateBackgroundImage) {
+              this.renderer.updateBackgroundImage(img);
+            }
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Segmentation soft edges and glow checkboxes
+    this.segmentationSoftEdges.addEventListener("change", (e) => {
+      this.segmentationSoftEdges_state = e.target.checked;
+    });
+
+    this.segmentationGlow.addEventListener("change", (e) => {
+      this.segmentationGlow_state = e.target.checked;
+    });
+
     // Renderer toggle
     this.webglToggle.addEventListener("change", async (e) => {
       await this.handleRendererToggle(e.target.checked);
@@ -624,6 +692,7 @@ class CyberVision {
     this.thermalControls.style.display = this.currentEffect === "thermal" ? "block" : "none";
     this.pixelSortControls.style.display = this.currentEffect === "pixelsort" ? "block" : "none";
     this.kaleidoscopeControls.style.display = this.currentEffect === "kaleidoscope" ? "block" : "none";
+    this.segmentationControls.style.display = this.currentEffect === "segmentation" ? "block" : "none";
 
     // Update mosaic info when mosaic effect is shown
     if (this.currentEffect === "mosaic") {
@@ -633,6 +702,12 @@ class CyberVision {
     // Update pixel sort iterations visibility
     if (this.currentEffect === "pixelsort") {
       this.updatePixelSortIterationsVisibility();
+    }
+
+    // Load ML model when segmentation effect is shown
+    if (this.currentEffect === "segmentation") {
+      this.loadSegmentationModel();
+      this.updateSegmentationControlsVisibility();
     }
   }
 
@@ -651,6 +726,60 @@ class CyberVision {
       this.mosaicInfo.style.display = "flex";
     } else {
       this.mosaicInfo.style.display = "none";
+    }
+  }
+
+  updateSegmentationControlsVisibility() {
+    // Show/hide blur or background controls based on mode
+    if (this.segmentationMode_state === "blur") {
+      this.segmentationBlurGroup.style.display = "block";
+      this.segmentationBackgroundGroup.style.display = "none";
+    } else if (this.segmentationMode_state === "replace") {
+      this.segmentationBlurGroup.style.display = "none";
+      this.segmentationBackgroundGroup.style.display = "block";
+    } else {
+      // blackout mode
+      this.segmentationBlurGroup.style.display = "none";
+      this.segmentationBackgroundGroup.style.display = "none";
+    }
+  }
+
+  async loadSegmentationModel() {
+    // Only load once
+    if (this.segmentationModelLoaded || this.segmentationML) {
+      return;
+    }
+
+    try {
+      this.segmentationLoadingText.textContent = "Loading ML model...";
+      this.segmentationLoading.style.display = "flex";
+
+      // Dynamically import ML inference class
+      const { PortraitSegmentation } = await import("./ml-inference.js");
+      this.segmentationML = new PortraitSegmentation();
+
+      // Load model with progress callback
+      await this.segmentationML.loadModel(
+        "/static/models/segmentation.onnx",
+        (progress) => {
+          if (progress.stage === "downloading") {
+            const percent = Math.round(progress.progress * 100);
+            this.segmentationLoadingText.textContent = `Downloading model... ${percent}%`;
+          } else if (progress.stage === "initializing") {
+            this.segmentationLoadingText.textContent = "Initializing model...";
+          } else if (progress.stage === "ready") {
+            this.segmentationLoadingText.textContent = "Model ready!";
+            this.segmentationLoading.style.display = "none";
+          }
+        }
+      );
+
+      this.segmentationModelLoaded = true;
+      console.log("Segmentation model loaded successfully");
+    } catch (error) {
+      console.error("Failed to load segmentation model:", error);
+      this.segmentationLoadingText.textContent = `Error loading model: ${error.message}`;
+      // Keep loading indicator visible to show error
     }
   }
 
@@ -763,6 +892,8 @@ class CyberVision {
         this.renderPixelSort();
       } else if (this.currentEffect === "kaleidoscope") {
         this.renderKaleidoscope();
+      } else if (this.currentEffect === "segmentation") {
+        this.renderSegmentation();
       } else if (this.currentEffect === "original") {
         this.renderPassthrough();
       }
@@ -914,6 +1045,54 @@ class CyberVision {
       this.kaleidoscopeSegments,
       this.kaleidoscopeRotationSpeed
     );
+  }
+
+  async renderSegmentation() {
+    // Only render with WebGPU (segmentation not supported in WebGL yet)
+    if (this.rendererType !== "webgpu") {
+      // Fall back to passthrough
+      this.renderPassthrough();
+      return;
+    }
+
+    // Check if model is loaded
+    if (!this.segmentationModelLoaded || !this.segmentationML) {
+      // Show passthrough while loading
+      this.renderPassthrough();
+      return;
+    }
+
+    // Run inference with frame skipping for performance
+    this.segmentationFrameCounter++;
+    if (this.segmentationFrameCounter >= this.segmentationFrameSkip || !this.segmentationMask) {
+      try {
+        // Run segmentation inference
+        const maskData = await this.segmentationML.segmentFrame(this.video);
+
+        // Postprocess mask
+        this.segmentationMask = this.segmentationML.postprocessMask(maskData);
+
+        this.segmentationFrameCounter = 0;
+      } catch (error) {
+        console.error("Segmentation inference error:", error);
+        // Continue with old mask or passthrough
+      }
+    }
+
+    // Render with current mask
+    if (this.segmentationMask) {
+      this.renderer.renderSegmentation(
+        this.video,
+        this.segmentationMode_state,
+        this.segmentationBlurRadius_state,
+        this.segmentationMask,
+        this.segmentationSoftEdges_state,
+        this.segmentationGlow_state
+      );
+    } else {
+      // No mask yet, show passthrough
+      this.renderPassthrough();
+    }
   }
 
   setStatus(text) {

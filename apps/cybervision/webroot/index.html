@@ -46,6 +46,7 @@
                 <button class="effect-btn" data-effect="mosaic" title="Mosaic" role="radio" aria-checked="false">MO</button>
                 <button class="effect-btn" data-effect="kaleidoscope" title="Kaleidoscope" role="radio" aria-checked="false">KA</button>
                 <button class="effect-btn" data-effect="pixelsort" title="Pixel Sort" role="radio" aria-checked="false">PS</button>
+                <button class="effect-btn" data-effect="segmentation" title="Portrait Segmentation (ML)" role="radio" aria-checked="false">SE</button>
               </div>
             </div>
 
@@ -555,6 +556,69 @@
                 />
               </div>
             </div>
+
+            <div class="effect-controls segmentation-controls" id="segmentationControls" style="display: none;">
+              <div id="segmentationLoading" class="info-text">
+                <span class="info-icon">⏳</span>
+                <span id="segmentationLoadingText">Loading ML model...</span>
+              </div>
+
+              <div class="control-group">
+                <label for="segmentationMode">Mode</label>
+                <select id="segmentationMode" class="select">
+                  <option value="blur">Blur Background</option>
+                  <option value="replace">Replace Background</option>
+                  <option value="blackout">Blackout Person</option>
+                </select>
+              </div>
+
+              <div class="control-group" id="segmentationBlurGroup">
+                <label for="segmentationBlurRadius">
+                  Blur Radius: <span id="segmentationBlurRadiusValue">10</span>px
+                </label>
+                <input
+                  id="segmentationBlurRadius"
+                  type="range"
+                  min="0"
+                  max="30"
+                  value="10"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+
+              <div class="control-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="segmentationSoftEdges" checked />
+                  <span>Soft Edges</span>
+                </label>
+              </div>
+
+              <div class="control-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="segmentationGlow" />
+                  <span>Glow Effect</span>
+                </label>
+              </div>
+
+              <div class="control-group" id="segmentationBackgroundGroup" style="display: none;">
+                <label for="segmentationBackgroundUpload">Background Image</label>
+                <input
+                  id="segmentationBackgroundUpload"
+                  type="file"
+                  accept="image/*"
+                  class="file-input"
+                />
+                <div id="backgroundPreview" style="display: none; margin-top: 8px;">
+                  <img id="backgroundPreviewImg" style="max-width: 100%; max-height: 100px; border-radius: 4px;" />
+                </div>
+              </div>
+
+              <div id="segmentationInfo" class="info-text">
+                <span class="info-icon">i</span>
+                <span>First use will download a ~5MB ML model. Requires WebGPU for best performance.</span>
+              </div>
+            </div>
           </section>
 
 
@@ -589,6 +653,21 @@
         </aside>
       </div>
     </main>
+
+    <!-- ONNX Runtime Web for ML inference -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+
+    <!-- Initialize ONNX Runtime with WebGPU backend -->
+    <script>
+      // Configure ONNX Runtime Web to use WebGPU
+      if (window.ort) {
+        // Set the path for WASM files (needed for fallback)
+        window.ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+
+        // Enable WebGPU backend (will fall back to WASM if not available)
+        console.log('ONNX Runtime configured with WebGPU support');
+      }
+    </script>
 
     <script type="module" src="/static/app.js"></script>
   </body>

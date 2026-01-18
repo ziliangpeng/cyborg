@@ -12,6 +12,8 @@ export class WebGPURenderer {
     this.inputTexture = null;
     this.outputTexture = null;
     this.tempTexture = null;  // For rotation intermediate results
+    this.maskTexture = null;  // For segmentation mask
+    this.backgroundTexture = null;  // For background replacement
 
     // Pipelines
     this.halftonePipeline = null;
@@ -25,6 +27,7 @@ export class WebGPURenderer {
     this.pixelSortPipeline = null;
     this.rotatePipeline = null;
     this.kaleidoscopePipeline = null;
+    this.segmentationPipeline = null;
     this.blitPipeline = null;
 
     // Bind groups
@@ -40,6 +43,7 @@ export class WebGPURenderer {
     this.rotateBindGroup = null;
     this.rotateBackBindGroup = null;
     this.kaleidoscopeBindGroup = null;
+    this.segmentationBindGroup = null;
     this.blitBindGroup = null;
     this.passthroughBindGroup = null;
 
@@ -55,6 +59,7 @@ export class WebGPURenderer {
     this.pixelSortUniformBuffer = null;
     this.rotateUniformBuffer = null;
     this.kaleidoscopeUniformBuffer = null;
+    this.segmentationUniformBuffer = null;
     this.blitSampler = null;
 
     // Shader modules
@@ -69,6 +74,7 @@ export class WebGPURenderer {
     this.pixelSortShader = null;
     this.rotateShader = null;
     this.kaleidoscopeShader = null;
+    this.segmentationShader = null;
 
     // Video dimensions and effect params
     this.videoWidth = 0;
@@ -208,6 +214,13 @@ export class WebGPURenderer {
       code: kaleidoscopeShaderCode,
     });
 
+    // Load and create segmentation shader
+    const segmentationShaderResponse = await fetch("/static/shaders/segmentation.wgsl");
+    const segmentationShaderCode = await segmentationShaderResponse.text();
+    this.segmentationShader = this.device.createShaderModule({
+      code: segmentationShaderCode,
+    });
+
     // Create uniform buffer
     const time = Math.floor(performance.now() / 1000);
     const uniformData = new Float32Array([
@@ -344,6 +357,38 @@ export class WebGPURenderer {
     ]);
     this.kaleidoscopeUniformBuffer = this.createUniformBuffer(kaleidoscopeUniformData);
 
+    // Create segmentation uniform buffer
+    const segmentationUniformData = new Uint32Array([
+      0,  // mode (0=blur, 1=replace, 2=blackout)
+      0,  // padding
+    ]);
+    const segmentationFloatData = new Float32Array([
+      10.0,  // blurRadius
+      0.5,   // threshold
+      0.05,  // feather
+      0,     // padding
+    ]);
+    const segmentationDimensionsData = new Uint32Array([
+      this.videoWidth,
+      this.videoHeight,
+    ]);
+
+    // Combine all data into one buffer (struct layout: u32 mode, f32 blurRadius, f32 threshold, f32 feather, u32 width, u32 height)
+    const segmentationBufferData = new ArrayBuffer(32);  // 8 * 4 bytes = 32 bytes
+    const segmentationView = new DataView(segmentationBufferData);
+    segmentationView.setUint32(0, segmentationUniformData[0], true);  // mode
+    segmentationView.setFloat32(4, segmentationFloatData[0], true);   // blurRadius
+    segmentationView.setFloat32(8, segmentationFloatData[1], true);   // threshold
+    segmentationView.setFloat32(12, segmentationFloatData[2], true);  // feather
+    segmentationView.setUint32(16, segmentationDimensionsData[0], true);  // width
+    segmentationView.setUint32(20, segmentationDimensionsData[1], true);  // height
+
+    this.segmentationUniformBuffer = this.device.createBuffer({
+      size: 32,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    this.device.queue.writeBuffer(this.segmentationUniformBuffer, 0, segmentationBufferData);
+
     // Create textures
     this.inputTexture = this.device.createTexture({
       size: [this.videoWidth, this.videoHeight],
@@ -365,6 +410,20 @@ export class WebGPURenderer {
       size: [this.videoWidth, this.videoHeight],
       format: "rgba8unorm",
       usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST,
+    });
+
+    // Create mask texture for segmentation (256x256, will be upsampled in shader)
+    this.maskTexture = this.device.createTexture({
+      size: [256, 256],
+      format: "rgba8unorm",
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    });
+
+    // Create background texture for replacement mode (same size as video)
+    this.backgroundTexture = this.device.createTexture({
+      size: [this.videoWidth, this.videoHeight],
+      format: "rgba8unorm",
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
     });
 
     // Create compute pipeline
@@ -806,6 +865,44 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.kaleidoscopeUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create segmentation compute pipeline
+    this.segmentationPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.segmentationShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create segmentation bind group
+    this.segmentationBindGroup = this.device.createBindGroup({
+      layout: this.segmentationPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.maskTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: this.backgroundTexture.createView(),
+        },
+        {
+          binding: 3,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 4,
+          resource: {
+            buffer: this.segmentationUniformBuffer,
           },
         },
       ],
@@ -1638,6 +1735,144 @@ export class WebGPURenderer {
     computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
     computePass.end();
 
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  /**
+   * Update segmentation mask texture from ML inference result
+   * @param {Uint8Array} maskData - Binary mask data (256x256)
+   */
+  updateSegmentationMask(maskData) {
+    // Convert Uint8Array to RGBA format
+    const rgbaData = new Uint8Array(256 * 256 * 4);
+    for (let i = 0; i < maskData.length; i++) {
+      const value = maskData[i];
+      rgbaData[i * 4] = value;     // R
+      rgbaData[i * 4 + 1] = value; // G
+      rgbaData[i * 4 + 2] = value; // B
+      rgbaData[i * 4 + 3] = 255;   // A
+    }
+
+    this.device.queue.writeTexture(
+      { texture: this.maskTexture },
+      rgbaData,
+      { bytesPerRow: 256 * 4, rowsPerImage: 256 },
+      { width: 256, height: 256 }
+    );
+  }
+
+  /**
+   * Update background texture for replacement mode
+   * @param {HTMLImageElement|HTMLCanvasElement|ImageBitmap} image - Background image
+   */
+  updateBackgroundImage(image) {
+    // Create temporary canvas to resize/fit image
+    const canvas = document.createElement('canvas');
+    canvas.width = this.videoWidth;
+    canvas.height = this.videoHeight;
+    const ctx = canvas.getContext('2d');
+
+    // Draw image to fit (cover mode)
+    const imgAspect = image.width / image.height;
+    const canvasAspect = this.videoWidth / this.videoHeight;
+
+    let drawWidth, drawHeight, drawX, drawY;
+
+    if (imgAspect > canvasAspect) {
+      // Image is wider
+      drawHeight = this.videoHeight;
+      drawWidth = image.width * (this.videoHeight / image.height);
+      drawX = (this.videoWidth - drawWidth) / 2;
+      drawY = 0;
+    } else {
+      // Image is taller or same aspect
+      drawWidth = this.videoWidth;
+      drawHeight = image.height * (this.videoWidth / image.width);
+      drawX = 0;
+      drawY = (this.videoHeight - drawHeight) / 2;
+    }
+
+    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+    // Copy canvas to GPU texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: canvas, flipY: false },
+      { texture: this.backgroundTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+  }
+
+  /**
+   * Render segmentation effect
+   * @param {HTMLVideoElement} video - Video element
+   * @param {string} mode - Effect mode: "blur", "replace", "blackout"
+   * @param {number} blurRadius - Blur radius for blur mode
+   * @param {Uint8Array} maskData - Segmentation mask (256x256)
+   * @param {boolean} softEdges - Enable soft edges
+   * @param {boolean} glow - Enable glow effect
+   */
+  renderSegmentation(video, mode, blurRadius, maskData, softEdges, glow) {
+    // Map mode string to number
+    const modeMap = {
+      "blur": 0,
+      "replace": 1,
+      "blackout": 2,
+    };
+
+    // Update mask texture if provided
+    if (maskData) {
+      this.updateSegmentationMask(maskData);
+    }
+
+    // Update uniform buffer with current parameters
+    const segmentationBufferData = new ArrayBuffer(32);
+    const segmentationView = new DataView(segmentationBufferData);
+    segmentationView.setUint32(0, modeMap[mode] || 0, true);  // mode
+    segmentationView.setFloat32(4, blurRadius, true);         // blurRadius
+    segmentationView.setFloat32(8, 0.5, true);                // threshold
+    segmentationView.setFloat32(12, 0.05, true);              // feather
+    segmentationView.setUint32(16, this.videoWidth, true);    // width
+    segmentationView.setUint32(20, this.videoHeight, true);   // height
+    segmentationView.setUint32(24, softEdges ? 1 : 0, true);  // softEdges
+    segmentationView.setUint32(28, glow ? 1 : 0, true);       // glow
+
+    this.device.queue.writeBuffer(this.segmentationUniformBuffer, 0, segmentationBufferData);
+
+    // Copy video frame to input texture
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [this.videoWidth, this.videoHeight]
+    );
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    // Run compute shader
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.segmentationPipeline);
+    computePass.setBindGroup(0, this.segmentationBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    // Blit rgba texture to canvas (bgra format)
     const canvasTexture = this.canvasContext.getCurrentTexture();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [

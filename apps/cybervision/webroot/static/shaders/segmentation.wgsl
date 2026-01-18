@@ -8,6 +8,8 @@ struct Params {
   feather: f32,        // Edge feathering amount
   width: u32,
   height: u32,
+  softEdges: u32,      // 0=off, 1=on
+  glow: u32,           // 0=off, 1=on
 }
 
 @group(0) @binding(0) var inputTexture: texture_2d<f32>;
@@ -71,6 +73,73 @@ fn featherMask(maskValue: f32) -> f32 {
   return smoothstep(lower, upper, maskValue);
 }
 
+// Sample mask with bilinear interpolation for soft edges
+fn sampleMaskSoft(pos: vec2<i32>) -> f32 {
+  if (params.softEdges == 0u) {
+    // Standard nearest-neighbor sampling
+    let maskPos = vec2<i32>(
+      pos.x * 256 / i32(params.width),
+      pos.y * 256 / i32(params.height)
+    );
+    let maskColor = textureLoad(maskTexture, maskPos, 0);
+    return maskColor.r;
+  }
+
+  // Soft edges: sample neighbors and average
+  let maskPosF = vec2<f32>(
+    f32(pos.x) * 256.0 / f32(params.width),
+    f32(pos.y) * 256.0 / f32(params.height)
+  );
+
+  let maskPos = vec2<i32>(maskPosF);
+  let frac = maskPosF - vec2<f32>(maskPos);
+
+  // Sample 4 neighbors for bilinear interpolation
+  let s00 = textureLoad(maskTexture, clamp(maskPos + vec2<i32>(0, 0), vec2<i32>(0), vec2<i32>(255)), 0).r;
+  let s10 = textureLoad(maskTexture, clamp(maskPos + vec2<i32>(1, 0), vec2<i32>(0), vec2<i32>(255)), 0).r;
+  let s01 = textureLoad(maskTexture, clamp(maskPos + vec2<i32>(0, 1), vec2<i32>(0), vec2<i32>(255)), 0).r;
+  let s11 = textureLoad(maskTexture, clamp(maskPos + vec2<i32>(1, 1), vec2<i32>(0), vec2<i32>(255)), 0).r;
+
+  // Bilinear interpolation
+  let s0 = mix(s00, s10, frac.x);
+  let s1 = mix(s01, s11, frac.x);
+  return mix(s0, s1, frac.y);
+}
+
+// Detect edge proximity for glow effect
+fn detectEdge(pos: vec2<i32>, maskValue: f32) -> f32 {
+  if (params.glow == 0u) {
+    return 0.0;
+  }
+
+  // Sample mask at multiple offsets to detect edges
+  let maskPos = vec2<i32>(
+    pos.x * 256 / i32(params.width),
+    pos.y * 256 / i32(params.height)
+  );
+
+  var edgeStrength = 0.0;
+  let offsets = array<vec2<i32>, 8>(
+    vec2<i32>(-1, -1), vec2<i32>(0, -1), vec2<i32>(1, -1),
+    vec2<i32>(-1,  0),                   vec2<i32>(1,  0),
+    vec2<i32>(-1,  1), vec2<i32>(0,  1), vec2<i32>(1,  1)
+  );
+
+  for (var i = 0; i < 8; i = i + 1) {
+    let samplePos = clamp(
+      maskPos + offsets[i] * 2,
+      vec2<i32>(0),
+      vec2<i32>(255)
+    );
+    let neighborMask = textureLoad(maskTexture, samplePos, 0).r;
+    edgeStrength = max(edgeStrength, abs(maskValue - neighborMask));
+  }
+
+  // Convert edge strength to glow intensity
+  // Strong edges (sharp transitions) get more glow
+  return smoothstep(0.1, 0.5, edgeStrength) * 0.3;
+}
+
 @compute @workgroup_size(8, 8)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let pos = vec2<i32>(i32(global_id.x), i32(global_id.y));
@@ -83,17 +152,20 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   // Load original pixel
   let originalColor = textureLoad(inputTexture, pos, 0);
 
-  // Load mask value (grayscale, so we just use r channel)
-  // Scale video coordinates to mask coordinates (256x256)
-  let maskPos = vec2<i32>(
-    pos.x * 256 / i32(params.width),
-    pos.y * 256 / i32(params.height)
-  );
-  let maskColor = textureLoad(maskTexture, maskPos, 0);
-  let rawMaskValue = maskColor.r;
+  // Load mask value with optional soft edges
+  let rawMaskValue = sampleMaskSoft(pos);
 
-  // Apply feathering
-  let maskValue = featherMask(rawMaskValue);
+  // Apply feathering (adjust amount based on softEdges setting)
+  var featherAmount = params.feather;
+  if (params.softEdges == 1u) {
+    featherAmount = max(featherAmount, 0.15);  // Increase feathering for soft edges
+  }
+  let lower = params.threshold - featherAmount;
+  let upper = params.threshold + featherAmount;
+  let maskValue = smoothstep(lower, upper, rawMaskValue);
+
+  // Calculate edge glow
+  let glowIntensity = detectEdge(pos, rawMaskValue);
 
   var outputColor: vec4<f32>;
 
@@ -118,6 +190,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
   // Default: pass through
   else {
     outputColor = originalColor;
+  }
+
+  // Apply glow effect at edges
+  if (glowIntensity > 0.0) {
+    // Soft white/blue glow
+    let glowColor = vec4<f32>(0.9, 0.95, 1.0, 1.0);
+    outputColor = mix(outputColor, glowColor, glowIntensity);
   }
 
   // Write output
