@@ -24,9 +24,20 @@ jobs:
       - name: Run Bazel coverage (non-CUDA)
         run: bazel coverage --config=ci --combined_report=lcov //...
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Generate JavaScript coverage
+        working-directory: apps/cybervision
+        run: |
+          pnpm install
+          npm run test:unit -- --coverage
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: bazel-out/_coverage/_coverage_report.dat
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+          # Auto-discover coverage files (Python .dat and JS lcov.info)

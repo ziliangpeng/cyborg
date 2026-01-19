@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
+    "@vitest/coverage-v8": "^2.1.0",
     "vitest": "^2.1.0",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0"
