@@ -46,7 +46,7 @@ cuda_library(
 
 cuda_binary(
     name = "elementwise",
-    srcs = ["elementwise.cpp"],
+    srcs = ["elementwise.cu"],
     deps = [
         ":vector_add",
         ":vector_mul",
