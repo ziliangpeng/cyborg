@@ -47,6 +47,4 @@ jobs:
         with:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: |
-            bazel-out/_coverage/_coverage_report.dat
-            apps/cybervision/coverage/lcov.info
+          files: bazel-out/_coverage/_coverage_report.dat,apps/cybervision/coverage/lcov.info
