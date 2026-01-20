@@ -293,6 +293,9 @@ class VideoPlayer {
         document.getElementById("dot-size-slider")?.addEventListener("input", (e) => {
           this.dotSize = parseInt(e.target.value);
           document.getElementById("dot-size-value").textContent = this.dotSize;
+          if (this.renderer) {
+            this.renderer.updateDotSize(this.dotSize);
+          }
         });
         document.getElementById("random-colors")?.addEventListener("change", (e) => {
           this.useRandomColors = e.target.checked;
@@ -345,3 +348,6 @@ class VideoPlayer {
 document.addEventListener("DOMContentLoaded", () => {
   const player = new VideoPlayer();
 });
+
+// Export for testing
+export { VideoPlayer };
