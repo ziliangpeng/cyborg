@@ -1,8 +1,7 @@
 /* CyberVision Video Player - Main application */
 
-// Import renderers from shared library
+// Import renderer from shared library
 import { WebGPURenderer } from "/lib/webgpu-renderer.js";
-import { WebGLRenderer } from "/lib/webgl-renderer.js";
 
 class VideoPlayer {
   constructor() {
@@ -20,7 +19,6 @@ class VideoPlayer {
 
     // State
     this.renderer = null;
-    this.rendererType = null;
     this.isPlaying = false;
     this.isVideoLoaded = false;
     this.animationFrame = null;
@@ -114,25 +112,11 @@ class VideoPlayer {
   }
 
   async initRenderer() {
-    // Try WebGPU first, fallback to WebGL
-    try {
-      this.renderer = new WebGPURenderer();
-      await this.renderer.init(this.canvas);
-      await this.renderer.setupPipeline(this.videoElement, this.dotSize);
-      this.rendererType = "webgpu";
-      console.log("Using WebGPU renderer");
-    } catch (error) {
-      console.warn("WebGPU not available, falling back to WebGL:", error);
-      try {
-        this.renderer = new WebGLRenderer();
-        await this.renderer.init(this.canvas);
-        await this.renderer.setupPipeline(this.videoElement);
-        this.rendererType = "webgl";
-        console.log("Using WebGL renderer");
-      } catch (webglError) {
-        throw new Error("Neither WebGPU nor WebGL available");
-      }
-    }
+    // WebGPU only
+    this.renderer = new WebGPURenderer();
+    await this.renderer.init(this.canvas);
+    await this.renderer.setupPipeline(this.videoElement, this.dotSize);
+    console.log("Using WebGPU renderer");
   }
 
   togglePlayPause() {
