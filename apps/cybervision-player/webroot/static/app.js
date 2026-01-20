@@ -239,7 +239,7 @@ class VideoPlayer {
         this.renderer.renderClustering(this.videoElement, this.clusteringAlgorithm, this.colorCount, 0.1);
         break;
       case "edges":
-        this.renderer.renderEdges(this.videoElement, "sobel", 0.3, false, false, [0, 0, 0], 1);
+        this.renderer.renderEdges(this.videoElement, "sobel", 0.3, false, false, [1, 1, 1], 1);
         break;
       case "mosaic":
         this.renderer.renderMosaic(this.videoElement, 16, "average");
