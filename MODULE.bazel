@@ -93,4 +93,9 @@ npm.npm_translate_lock(
     pnpm_lock = "//apps/cybervision:pnpm-lock.yaml",
 )
 
-use_repo(npm, "npm_cybervision")
+npm.npm_translate_lock(
+    name = "npm_cybervision_player",
+    pnpm_lock = "//apps/cybervision-player:pnpm-lock.yaml",
+)
+
+use_repo(npm, "npm_cybervision", "npm_cybervision_player")
