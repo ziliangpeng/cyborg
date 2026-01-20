@@ -18,7 +18,10 @@ py_binary(
         "server.py",
     ],
     main = "main.py",
-    data = glob(["webroot/**"]),
+    data = glob(["webroot/**"]) + [
+        "//libs/cybervision-core:shaders",
+        "//libs/cybervision-core:renderers",
+    ],
     deps = [
         "@pip//click",
     ],

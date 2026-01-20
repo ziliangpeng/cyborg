@@ -1,0 +1,28 @@
+filegroup(
+    name = "shaders",
+    srcs = glob([
+        "shaders/*.glsl",
+        "shaders/*.wgsl",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "renderers",
+    srcs = [
+        "webgl-renderer.js",
+        "webgpu-renderer.js",
+        "ml-inference.js",
+        "utils.js",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "cybervision-core",
+    srcs = [
+        ":shaders",
+        ":renderers",
+    ],
+    visibility = ["//visibility:public"],
+)

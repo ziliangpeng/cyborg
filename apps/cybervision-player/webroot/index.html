@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberVision Video Player</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CyberVision Video Player</h1>
+        </header>
+
+        <div class="video-input-section">
+            <label for="video-path">Video File Path:</label>
+            <input
+                type="text"
+                id="video-path"
+                value="/Users/victor.peng/Downloads/IMG_1985.MOV"
+                placeholder="/Users/username/Movies/video.mp4"
+                autocomplete="off"
+            >
+            <button id="load-video-btn">Load Video</button>
+        </div>
+
+        <div class="player-section">
+            <div class="video-container">
+                <canvas id="video-canvas"></canvas>
+                <video id="video-element" style="display: none;"></video>
+            </div>
+
+            <div class="controls">
+                <button id="play-pause-btn" disabled>Play</button>
+                <input
+                    type="range"
+                    id="seek-slider"
+                    min="0"
+                    max="100"
+                    value="0"
+                    disabled
+                >
+                <span id="time-display">0:00 / 0:00</span>
+            </div>
+        </div>
+
+        <div class="effects-section">
+            <div class="effect-selector">
+                <label for="effect-select">Effect:</label>
+                <select id="effect-select">
+                    <option value="original">Original</option>
+                    <optgroup label="Artistic">
+                        <option value="halftone">Halftone</option>
+                        <option value="clustering">Clustering</option>
+                        <option value="mosaic">Mosaic</option>
+                        <option value="kaleidoscope">Kaleidoscope</option>
+                        <option value="pixelsort">Pixel Sort</option>
+                        <option value="segmentation">Segmentation</option>
+                    </optgroup>
+                    <optgroup label="Distortion">
+                        <option value="edges">Edges</option>
+                        <option value="chromatic">Chromatic Aberration</option>
+                        <option value="glitch">Glitch</option>
+                        <option value="thermal">Thermal</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="effect-params" id="effect-params">
+                <!-- Dynamic parameter controls will be inserted here -->
+            </div>
+        </div>
+
+        <div class="status-section">
+            <div id="status-message"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/app.js"></script>
+</body>
+</html>

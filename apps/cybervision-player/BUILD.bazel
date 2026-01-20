@@ -1,0 +1,16 @@
+py_binary(
+    name = "cybervision-player",
+    srcs = [
+        "__init__.py",
+        "main.py",
+        "server.py",
+    ],
+    main = "main.py",
+    data = glob(["webroot/**"]) + [
+        "//libs/cybervision-core:shaders",
+        "//libs/cybervision-core:renderers",
+    ],
+    deps = [
+        "@pip//click",
+    ],
+)
