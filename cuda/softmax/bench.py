@@ -39,18 +39,16 @@ def find_cuda_extension():
 
 def calculate_statistics(times: list[float]) -> dict:
     """Calculate statistics from timing results."""
-    times_sorted = sorted(times)
-    n = len(times_sorted)
-
+    times_np = np.array(times)
     return {
-        "min": times_sorted[0],
-        "max": times_sorted[-1],
-        "mean": sum(times_sorted) / n,
-        "median": times_sorted[n // 2],
-        "p50": times_sorted[int(n * 0.50)],
-        "p90": times_sorted[int(n * 0.90)],
-        "p95": times_sorted[int(n * 0.95)],
-        "p99": times_sorted[int(n * 0.99)],
+        "min": float(np.min(times_np)),
+        "max": float(np.max(times_np)),
+        "mean": float(np.mean(times_np)),
+        "median": float(np.median(times_np)),
+        "p50": float(np.percentile(times_np, 50)),
+        "p90": float(np.percentile(times_np, 90)),
+        "p95": float(np.percentile(times_np, 95)),
+        "p99": float(np.percentile(times_np, 99)),
     }
 
 
@@ -169,7 +167,6 @@ def main():
         default="all",
         help="Method to benchmark (default: all)",
     )
-    parser.add_argument("--block-size", type=int, default=256, help="CUDA block size (default: 256)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument("--no-verify", action="store_true", help="Skip correctness verification")
 
