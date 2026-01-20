@@ -12,3 +12,8 @@ huggingface_hub
 safetensors
 tiktoken
 transformers>=4.40.0  # For OPT tokenizer (need newer version for pre-built wheels)
+
+# CUDA benchmark framework dependencies
+torch
+# Note: triton is installed via system pip, not bazel-managed pip
+# (bazel pip.parse() has issues with triton's index)
