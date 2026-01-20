@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
-Python Benchmark CLI for Softmax: CUDA vs TinyGrad vs Triton
+Python Benchmark CLI for Softmax: CUDA vs TinyGrad
 
 Usage:
     python bench.py -n 1000000 -i 100 -m all
     python bench.py -n 1000000 -m cuda
     python bench.py -n 1000000 -m tinygrad
-    python bench.py -n 1000000 -m triton
 """
 
 import argparse
@@ -59,7 +58,7 @@ def print_comparison_table(results: dict, size: int, iterations: int):
     """Print comparison table for all benchmarked methods."""
     print()
     print("=" * 80)
-    print(f"Softmax Benchmark: CUDA vs TinyGrad vs Triton")
+    print(f"Softmax Benchmark: CUDA vs TinyGrad")
     print(f"Size: {size:,} elements | Iterations: {iterations}")
     print("=" * 80)
 
@@ -73,11 +72,10 @@ def print_comparison_table(results: dict, size: int, iterations: int):
         cuda_p50 = 1.0  # Avoid division by zero
 
     # Print results in order
-    method_order = ["cuda", "tinygrad", "triton"]
+    method_order = ["cuda", "tinygrad"]
     method_names = {
         "cuda": "CUDA (online warp)",
         "tinygrad": "TinyGrad",
-        "triton": "Triton",
     }
 
     for method in method_order:
@@ -153,29 +151,8 @@ def benchmark_tinygrad(x: np.ndarray, iterations: int, warmup: int) -> tuple[dic
         return None, None
 
 
-def benchmark_triton(x: np.ndarray, iterations: int, warmup: int) -> tuple[dict, np.ndarray]:
-    """Benchmark Triton implementation."""
-    try:
-        # Try relative import first (when run via bazel)
-        try:
-            from cuda.softmax.softmax_triton import benchmark, softmax
-        except ImportError:
-            from softmax_triton import benchmark, softmax
-
-        # Run benchmark
-        times = benchmark(x, iterations, warmup)
-
-        # Get result for verification
-        result = softmax(x)
-
-        return calculate_statistics(times), result
-    except ImportError as e:
-        print(f"  Triton not available: {e}")
-        return None, None
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Softmax benchmark: CUDA vs TinyGrad vs Triton")
+    parser = argparse.ArgumentParser(description="Softmax benchmark: CUDA vs TinyGrad")
     parser.add_argument(
         "-n", "--size", type=int, default=1000000, help="Array size (default: 1000000)"
     )
@@ -188,7 +165,7 @@ def main():
     parser.add_argument(
         "-m",
         "--method",
-        choices=["cuda", "tinygrad", "triton", "all"],
+        choices=["cuda", "tinygrad", "all"],
         default="all",
         help="Method to benchmark (default: all)",
     )
@@ -210,7 +187,7 @@ def main():
     verification_results = {}
 
     # Run benchmarks based on method selection
-    methods_to_run = ["cuda", "tinygrad", "triton"] if args.method == "all" else [args.method]
+    methods_to_run = ["cuda", "tinygrad"] if args.method == "all" else [args.method]
 
     for method in methods_to_run:
         print(f"\nBenchmarking {method.upper()}...")
@@ -219,8 +196,6 @@ def main():
             stats, result = benchmark_cuda(x, args.iterations, args.warmup)
         elif method == "tinygrad":
             stats, result = benchmark_tinygrad(x, args.iterations, args.warmup)
-        elif method == "triton":
-            stats, result = benchmark_triton(x, args.iterations, args.warmup)
         else:
             continue
 

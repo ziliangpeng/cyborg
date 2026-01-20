@@ -316,17 +316,6 @@ py_library(
     target_compatible_with = ["//constraints:cuda"],
 )
 
-py_library(
-    name = "softmax_triton",
-    srcs = ["softmax_triton.py"],
-    deps = [
-        "@pip//numpy",
-        "@pip//torch",
-        # triton is system-installed, not bazel-managed
-    ],
-    target_compatible_with = ["//constraints:cuda"],
-)
-
 # Python benchmark CLI
 py_binary(
     name = "bench",
@@ -334,7 +323,6 @@ py_binary(
     data = [":softmax_cuda.so"],
     deps = [
         ":softmax_tinygrad",
-        ":softmax_triton",
         "@pip//numpy",
     ],
     target_compatible_with = ["//constraints:cuda"],
