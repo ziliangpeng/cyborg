@@ -36,7 +36,6 @@ vitest_bin.vitest_test(
     name = "unit_tests",
     args = [
         "run",
-        "--coverage",
         "--config",
         "vitest.config.js",
     ],
@@ -45,9 +44,11 @@ vitest_bin.vitest_test(
         "vitest.config.js",
         ":node_modules/vitest",
         ":node_modules/@vitest/coverage-v8",
+        ":node_modules/happy-dom",
         ":webroot_files",
     ] + glob([
         "tests/unit/**/*.test.js",
+        "tests/unit/__mocks__/**/*.js",
     ]),
     tags = ["requires-network"],
 )

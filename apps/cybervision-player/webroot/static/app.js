@@ -32,6 +32,17 @@ class VideoPlayer {
     this.segments = 6;
     this.rotationSpeed = 1.0;
 
+    // Segmentation state
+    this.segmentationML = null;
+    this.segmentationModelLoaded = false;
+    this.segmentationMask = null;
+    this.segmentationFrameSkip = 2;  // Run inference every N frames
+    this.segmentationFrameCounter = 0;
+    this.segmentationMode = "blur";  // "blur", "blackout", "replace"
+    this.segmentationBlurRadius = 10;
+    this.segmentationSoftEdges = true;
+    this.segmentationGlow = false;
+
     this.init();
   }
 
@@ -117,6 +128,31 @@ class VideoPlayer {
     await this.renderer.init(this.canvas);
     await this.renderer.setupPipeline(this.videoElement, this.dotSize);
     console.log("Using WebGPU renderer");
+  }
+
+  async loadSegmentationModel() {
+    if (this.segmentationModelLoaded || this.segmentationML) return;
+
+    try {
+      this.showStatus("Loading segmentation model...");
+      const { PortraitSegmentation } = await import("/libs/cybervision-core/ml-inference.js");
+      this.segmentationML = new PortraitSegmentation();
+      await this.segmentationML.loadModel("/models/segmentation.onnx");
+      this.segmentationModelLoaded = true;
+      this.showStatus("Segmentation model loaded");
+      console.log("Segmentation model loaded successfully");
+    } catch (error) {
+      // Model not available - this is expected if not downloaded yet
+      this.segmentationModelLoaded = false;
+      this.segmentationML = null;
+      const msg = error.message.includes("Not Found") || error.message.includes("404")
+        ? "Segmentation model not found. See webroot/models/DOWNLOAD_MODEL.md for setup instructions."
+        : `Failed to load segmentation model: ${error.message}`;
+      this.showStatus(msg, "error");
+      console.warn("Segmentation model not available:", error.message);
+      console.info("To enable segmentation, place segmentation.onnx in webroot/models/ directory");
+      // Don't throw - allow graceful degradation to passthrough
+    }
   }
 
   togglePlayPause() {
@@ -225,7 +261,7 @@ class VideoPlayer {
     render();
   }
 
-  renderFrame() {
+  async renderFrame() {
     if (!this.renderer || !this.videoElement.videoWidth) return;
 
     switch (this.currentEffect) {
@@ -260,11 +296,44 @@ class VideoPlayer {
         this.renderer.renderKaleidoscope(this.videoElement, this.segments, this.rotationSpeed);
         break;
       case "segmentation":
-        // Segmentation requires ML model, skip for now
-        this.renderer.renderPassthrough(this.videoElement);
+        await this.renderSegmentation();
         break;
       default:
         this.renderer.renderPassthrough(this.videoElement);
+    }
+  }
+
+  async renderSegmentation() {
+    // Try to load model if not already loaded
+    if (!this.segmentationModelLoaded && !this.segmentationML) {
+      await this.loadSegmentationModel();
+    }
+
+    // If model still not available, fall back to passthrough
+    if (!this.segmentationModelLoaded || !this.segmentationML) {
+      this.renderer.renderPassthrough(this.videoElement);
+      return;
+    }
+
+    // Frame skipping for performance
+    this.segmentationFrameCounter++;
+    if (this.segmentationFrameCounter >= this.segmentationFrameSkip || !this.segmentationMask) {
+      const maskData = await this.segmentationML.segmentFrame(this.videoElement);
+      this.segmentationMask = this.segmentationML.postprocessMask(maskData);
+      this.segmentationFrameCounter = 0;
+    }
+
+    if (this.segmentationMask) {
+      this.renderer.renderSegmentation(
+        this.videoElement,
+        this.segmentationMode,
+        this.segmentationBlurRadius,
+        this.segmentationMask,
+        this.segmentationSoftEdges,
+        this.segmentationGlow
+      );
+    } else {
+      this.renderer.renderPassthrough(this.videoElement);
     }
   }
 
@@ -333,6 +402,42 @@ class VideoPlayer {
         document.getElementById("color-count-slider")?.addEventListener("input", (e) => {
           this.colorCount = parseInt(e.target.value);
           document.getElementById("color-count-value").textContent = this.colorCount;
+        });
+        break;
+
+      case "segmentation":
+        this.effectParams.innerHTML = `
+          <label>
+            Mode:
+            <select id="segmentation-mode">
+              <option value="blur" ${this.segmentationMode === "blur" ? "selected" : ""}>Blur Background</option>
+              <option value="blackout" ${this.segmentationMode === "blackout" ? "selected" : ""}>Blackout Background</option>
+              <option value="replace" ${this.segmentationMode === "replace" ? "selected" : ""}>Replace Background</option>
+            </select>
+          </label>
+          <label>
+            Blur Radius: <input type="range" id="blur-radius-slider" min="1" max="30" value="${this.segmentationBlurRadius}">
+            <span id="blur-radius-value">${this.segmentationBlurRadius}</span>
+          </label>
+          <label>
+            <input type="checkbox" id="soft-edges" ${this.segmentationSoftEdges ? "checked" : ""}> Soft Edges
+          </label>
+          <label>
+            <input type="checkbox" id="glow" ${this.segmentationGlow ? "checked" : ""}> Glow Effect
+          </label>
+        `;
+        document.getElementById("segmentation-mode")?.addEventListener("change", (e) => {
+          this.segmentationMode = e.target.value;
+        });
+        document.getElementById("blur-radius-slider")?.addEventListener("input", (e) => {
+          this.segmentationBlurRadius = parseInt(e.target.value);
+          document.getElementById("blur-radius-value").textContent = this.segmentationBlurRadius;
+        });
+        document.getElementById("soft-edges")?.addEventListener("change", (e) => {
+          this.segmentationSoftEdges = e.target.checked;
+        });
+        document.getElementById("glow")?.addEventListener("change", (e) => {
+          this.segmentationGlow = e.target.checked;
         });
         break;
     }

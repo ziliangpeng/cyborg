@@ -76,6 +76,21 @@
         </div>
     </div>
 
+    <!-- ONNX Runtime Web for ML inference -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+
+    <!-- Initialize ONNX Runtime paths -->
+    <script>
+      // Configure ONNX Runtime Web WASM paths
+      if (window.ort) {
+        // Set the path for WASM files
+        window.ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+
+        // ONNX Runtime configured with WASM fallback paths
+        console.log('ONNX Runtime configured with WASM fallback paths');
+      }
+    </script>
+
     <script type="module" src="/static/app.js"></script>
 </body>
 </html>

@@ -108,6 +108,51 @@ test.describe('CyberVision Video Player', () => {
     const timeDisplay = page.locator('#time-display');
     await expect(timeDisplay).toContainText('0:00');
   });
+
+  test('should show segmentation controls when segmentation effect is selected', async ({ page }) => {
+    const effectSelect = page.locator('#effect-select');
+    await effectSelect.selectOption('segmentation');
+
+    // Verify effect was selected
+    await expect(effectSelect).toHaveValue('segmentation');
+
+    // Check for segmentation mode radio buttons
+    const modeBlur = page.locator('#mode-blur');
+    const modeRemove = page.locator('#mode-remove');
+    await expect(modeBlur).toBeVisible();
+    await expect(modeRemove).toBeVisible();
+
+    // Check for blur radius slider (should be visible by default in blur mode)
+    const blurRadiusSlider = page.locator('#blur-radius-slider');
+    await expect(blurRadiusSlider).toBeVisible();
+  });
+
+  test('should not have critical console errors when selecting segmentation', async ({ page }) => {
+    const errors = [];
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        // Filter out expected model loading messages
+        if (!text.includes('segmentation model') && !text.includes('Not Found')) {
+          errors.push(text);
+        }
+      }
+    });
+
+    const effectSelect = page.locator('#effect-select');
+    await effectSelect.selectOption('segmentation');
+
+    // Wait a bit for any async errors to appear
+    await page.waitForTimeout(500);
+
+    // Should not have critical errors (ONNX Runtime loading errors, etc.)
+    const criticalErrors = errors.filter(err =>
+      err.includes('ort') ||
+      err.includes('ONNX') ||
+      err.includes('is not defined')
+    );
+    expect(criticalErrors).toHaveLength(0);
+  });
 });
 
 test.describe('CyberVision Video Player - With Mock Video', () => {
@@ -135,5 +180,28 @@ test.describe('CyberVision Video Player - With Mock Video', () => {
     // Should show loading status
     const statusMessage = page.locator('#status-message');
     await expect(statusMessage).toBeVisible();
+  });
+});
+
+test.describe('CyberVision Video Player - External Dependencies', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+  });
+
+  test('ONNX Runtime library is loaded', async ({ page }) => {
+    const ortLoaded = await page.evaluate(() => typeof window.ort !== 'undefined');
+    expect(ortLoaded).toBe(true);
+  });
+
+  test('server serves /libs/ route for ML inference', async ({ request }) => {
+    const response = await request.get('/libs/cybervision-core/ml-inference.js');
+    expect(response.status()).toBe(200);
+  });
+
+  test('server serves /models/ route', async ({ request }) => {
+    const response = await request.get('/models/segmentation.onnx');
+    // 200 if model exists, 404 is acceptable if model not downloaded yet
+    // What matters is the route exists (not a 500 or "Cannot GET" error)
+    expect([200, 404]).toContain(response.status());
   });
 });

@@ -1,16 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
-// Mock WebGPU renderer
-vi.mock('/lib/webgpu-renderer.js', () => ({
-  WebGPURenderer: vi.fn().mockImplementation(() => ({
-    init: vi.fn().mockResolvedValue(undefined),
-    updateDotSize: vi.fn(),
-    updateColorCount: vi.fn(),
-    updateSegments: vi.fn(),
-    setEffect: vi.fn(),
-    renderFrame: vi.fn()
-  }))
-}));
+// Mock dependencies are configured via vitest.config.js aliases
 
 // Helper function to create a mock video element
 function createMockVideoElement() {
@@ -104,6 +94,16 @@ describe('VideoPlayer - Effect Parameters', () => {
     expect(player.isVideoLoaded).toBe(false);
     expect(player.renderer).toBe(null);
     expect(player.animationFrame).toBe(null);
+  });
+
+  it('should initialize segmentation state variables correctly', async () => {
+    const { VideoPlayer } = await import('../../webroot/static/app.js');
+    const player = new VideoPlayer();
+
+    expect(player.segmentationML).toBe(null);
+    expect(player.segmentationModelLoaded).toBe(false);
+    expect(player.segmentationMode).toBe('blur');
+    expect(player.segmentationBlurRadius).toBe(10);
   });
 });
 
