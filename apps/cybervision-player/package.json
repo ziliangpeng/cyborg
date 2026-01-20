@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
+    "@vitest/coverage-v8": "^1.6.1",
     "@vitest/ui": "^1.0.0",
     "happy-dom": "^20.3.4",
     "jsdom": "^27.4.0",

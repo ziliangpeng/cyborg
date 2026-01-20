@@ -14,7 +14,7 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.js'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       include: ['webroot/static/**/*.js'],
       exclude: ['webroot/static/shaders/**']
     }

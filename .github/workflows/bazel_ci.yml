@@ -29,15 +29,21 @@ jobs:
         with:
           version: 9
 
-      - name: Generate JavaScript coverage
+      - name: Generate JavaScript coverage for CyberVision
         working-directory: apps/cybervision
         run: |
           pnpm install
           npm run test:unit -- --coverage
+
+      - name: Generate JavaScript coverage for CyberVision Player
+        working-directory: apps/cybervision-player
+        run: |
+          npm install
+          npm run test -- --run --coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: bazel-out/_coverage/_coverage_report.dat,apps/cybervision/coverage/lcov.info
+          files: bazel-out/_coverage/_coverage_report.dat,apps/cybervision/coverage/lcov.info,apps/cybervision-player/coverage/lcov.info
