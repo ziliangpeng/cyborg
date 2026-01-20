@@ -35,13 +35,6 @@ jobs:
           pnpm install
           npm run test:unit -- --coverage
 
-      - name: Debug - List coverage files
-        run: |
-          echo "=== Checking for Python coverage file ==="
-          ls -la bazel-out/_coverage/ || echo "bazel-out/_coverage/ directory not found"
-          echo "=== Checking for JS coverage file ==="
-          ls -la apps/cybervision/coverage/ || echo "apps/cybervision/coverage/ directory not found"
-
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
