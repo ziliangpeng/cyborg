@@ -179,7 +179,15 @@ class VideoPlayerHandler(BaseHTTPRequestHandler):
             # For shared lib, check both original location and Bazel runfiles
             if not safe_path.exists():
                 # Try Bazel runfiles location
-                runfiles_path = _MODULE_DIR / "cybervision-player.runfiles" / "_main" / "libs" / "cybervision-core" / "shaders" / rel
+                runfiles_path = (
+                    _MODULE_DIR
+                    / "cybervision-player.runfiles"
+                    / "_main"
+                    / "libs"
+                    / "cybervision-core"
+                    / "shaders"
+                    / rel
+                )
                 if runfiles_path.exists():
                     safe_path = runfiles_path
             self._send_file(safe_path, allowed_base=None)  # Shared lib, less strict check
@@ -193,7 +201,9 @@ class VideoPlayerHandler(BaseHTTPRequestHandler):
                 return
             # For shared lib, check both original location and Bazel runfiles
             if not safe_path.exists():
-                runfiles_path = _MODULE_DIR / "cybervision-player.runfiles" / "_main" / "libs" / "cybervision-core" / rel
+                runfiles_path = (
+                    _MODULE_DIR / "cybervision-player.runfiles" / "_main" / "libs" / "cybervision-core" / rel
+                )
                 if runfiles_path.exists():
                     safe_path = runfiles_path
             self._send_file(safe_path, allowed_base=None)
