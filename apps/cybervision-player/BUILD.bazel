@@ -67,6 +67,7 @@ playwright_bin.playwright_test(
         "playwright.config.js",
         ":node_modules/@playwright/test",
         ":webroot_files",
+        ":cybervision-player",
     ] + glob([
         "tests/e2e/**/*.test.js",
     ]),

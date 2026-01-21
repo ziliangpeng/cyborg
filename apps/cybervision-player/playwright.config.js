@@ -28,7 +28,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'bazel run //apps/cybervision-player:cybervision-player -- --port 8001',
+    command: './cybervision-player --port 8001',
     url: 'http://localhost:8001',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
