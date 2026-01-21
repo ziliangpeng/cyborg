@@ -1,6 +1,13 @@
 # Root BUILD file for cyborg monorepo
 
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+npm_link_all_packages(name = "node_modules")
+
 exports_files([
     "Cargo.toml",
     "Cargo.lock",
+    "package.json",
+    "pnpm-workspace.yaml",
+    "pnpm-lock.yaml",
 ])
