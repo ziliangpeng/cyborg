@@ -74,5 +74,8 @@ playwright_bin.playwright_test(
         "tests/e2e/**/*.test.js",
         "tests/e2e/test-helpers.js",
     ]),
+    env = {
+        "BAZEL_TEST": "1",
+    },
     tags = ["requires-network"],  # needs to start http server
 )

@@ -53,7 +53,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: './cybervision --port 8000',
+    // Use cybervision binary if available (Bazel tests), otherwise use Python HTTP server (pnpm tests)
+    command: process.env.BAZEL_TEST ? './cybervision --port 8000' : 'python3 -m http.server 8000 -d webroot',
     url: 'http://localhost:8000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
