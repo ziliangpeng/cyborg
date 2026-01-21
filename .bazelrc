@@ -12,8 +12,7 @@ test --test_output=errors
 build --verbose_failures
 
 # Enable caching
-# Disabled: conflicts with output base in CI
-# build --disk_cache=~/.cache/bazel
+build --disk_cache=~/.cache/bazel
 
 # Use sandboxing for reproducible builds
 build --spawn_strategy=sandboxed
