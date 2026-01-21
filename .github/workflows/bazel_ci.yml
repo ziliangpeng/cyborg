@@ -40,7 +40,7 @@ jobs:
 
       - name: Generate JavaScript coverage for CyberVision Player
         working-directory: apps/cybervision-player
-        run: pnpm run test -- --run --coverage
+        run: pnpm run test:coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
