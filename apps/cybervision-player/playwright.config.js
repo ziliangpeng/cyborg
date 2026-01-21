@@ -28,7 +28,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'cd ../.. && python3 -m apps.cybervision-player.main --port 8001',
+    command: 'python3 main.py --port 8001',
     url: 'http://localhost:8001',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

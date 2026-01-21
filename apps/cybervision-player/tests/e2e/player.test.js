@@ -116,15 +116,22 @@ test.describe('CyberVision Video Player', () => {
     // Verify effect was selected
     await expect(effectSelect).toHaveValue('segmentation');
 
-    // Check for segmentation mode radio buttons
-    const modeBlur = page.locator('#mode-blur');
-    const modeRemove = page.locator('#mode-remove');
-    await expect(modeBlur).toBeVisible();
-    await expect(modeRemove).toBeVisible();
+    // Check for segmentation mode dropdown
+    const segmentationMode = page.locator('#segmentation-mode');
+    await expect(segmentationMode).toBeVisible();
+
+    // Verify the dropdown has the expected options
+    await expect(segmentationMode).toHaveValue('blur'); // Default mode
 
     // Check for blur radius slider (should be visible by default in blur mode)
     const blurRadiusSlider = page.locator('#blur-radius-slider');
     await expect(blurRadiusSlider).toBeVisible();
+
+    // Check for other segmentation controls
+    const softEdgesCheckbox = page.locator('#soft-edges');
+    const glowCheckbox = page.locator('#glow');
+    await expect(softEdgesCheckbox).toBeVisible();
+    await expect(glowCheckbox).toBeVisible();
   });
 
   test('should not have critical console errors when selecting segmentation', async ({ page }) => {
