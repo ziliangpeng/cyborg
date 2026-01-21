@@ -138,84 +138,84 @@ export class WebGPURenderer {
     console.log("Setting up WebGPU pipeline...");
 
     // Load and create halftone shader
-    const shaderResponse = await fetch("/static/shaders/halftone.wgsl");
+    const shaderResponse = await fetch("/shaders/halftone.wgsl");
     const shaderCode = await shaderResponse.text();
     this.halftoneShader = this.device.createShaderModule({
       code: shaderCode,
     });
 
     // Load and create clustering shader
-    const clusteringShaderResponse = await fetch("/static/shaders/clustering.wgsl");
+    const clusteringShaderResponse = await fetch("/shaders/clustering.wgsl");
     const clusteringShaderCode = await clusteringShaderResponse.text();
     this.clusteringShader = this.device.createShaderModule({
       code: clusteringShaderCode,
     });
 
     // Load and create edges shader
-    const edgesShaderResponse = await fetch("/static/shaders/edges.wgsl");
+    const edgesShaderResponse = await fetch("/shaders/edges.wgsl");
     const edgesShaderCode = await edgesShaderResponse.text();
     this.edgesShader = this.device.createShaderModule({
       code: edgesShaderCode,
     });
 
     // Load and create mosaic shader
-    const mosaicShaderResponse = await fetch("/static/shaders/mosaic.wgsl");
+    const mosaicShaderResponse = await fetch("/shaders/mosaic.wgsl");
     const mosaicShaderCode = await mosaicShaderResponse.text();
     this.mosaicShader = this.device.createShaderModule({
       code: mosaicShaderCode,
     });
 
     // Load and create chromatic shader
-    const chromaticShaderResponse = await fetch("/static/shaders/chromatic.wgsl");
+    const chromaticShaderResponse = await fetch("/shaders/chromatic.wgsl");
     const chromaticShaderCode = await chromaticShaderResponse.text();
     this.chromaticShader = this.device.createShaderModule({
       code: chromaticShaderCode,
     });
 
     // Load and create thermal shader
-    const thermalShaderResponse = await fetch("/static/shaders/thermal.wgsl");
+    const thermalShaderResponse = await fetch("/shaders/thermal.wgsl");
     const thermalShaderCode = await thermalShaderResponse.text();
     this.thermalShader = this.device.createShaderModule({
       code: thermalShaderCode,
     });
 
     // Load and create glitch shader
-    const glitchShaderResponse = await fetch("/static/shaders/glitch.wgsl");
+    const glitchShaderResponse = await fetch("/shaders/glitch.wgsl");
     const glitchShaderCode = await glitchShaderResponse.text();
     this.glitchShader = this.device.createShaderModule({
       code: glitchShaderCode,
     });
 
     // Load and create pixel sort segment shader
-    const pixelSortSegmentShaderResponse = await fetch("/static/shaders/pixelsort-segment.wgsl");
+    const pixelSortSegmentShaderResponse = await fetch("/shaders/pixelsort-segment.wgsl");
     const pixelSortSegmentShaderCode = await pixelSortSegmentShaderResponse.text();
     this.pixelSortSegmentShader = this.device.createShaderModule({
       code: pixelSortSegmentShaderCode,
     });
 
     // Load and create pixel sort shader
-    const pixelSortShaderResponse = await fetch("/static/shaders/pixelsort.wgsl");
+    const pixelSortShaderResponse = await fetch("/shaders/pixelsort.wgsl");
     const pixelSortShaderCode = await pixelSortShaderResponse.text();
     this.pixelSortShader = this.device.createShaderModule({
       code: pixelSortShaderCode,
     });
 
     // Load and create rotate shader
-    const rotateShaderResponse = await fetch("/static/shaders/rotate.wgsl");
+    const rotateShaderResponse = await fetch("/shaders/rotate.wgsl");
     const rotateShaderCode = await rotateShaderResponse.text();
     this.rotateShader = this.device.createShaderModule({
       code: rotateShaderCode,
     });
 
     // Load and create kaleidoscope shader
-    const kaleidoscopeShaderResponse = await fetch("/static/shaders/kaleidoscope.wgsl");
+    const kaleidoscopeShaderResponse = await fetch("/shaders/kaleidoscope.wgsl");
     const kaleidoscopeShaderCode = await kaleidoscopeShaderResponse.text();
     this.kaleidoscopeShader = this.device.createShaderModule({
       code: kaleidoscopeShaderCode,
     });
 
     // Load and create segmentation shader
-    const segmentationShaderResponse = await fetch("/static/shaders/segmentation.wgsl");
+    const segmentationShaderResponse = await fetch("/shaders/segmentation.wgsl");
     const segmentationShaderCode = await segmentationShaderResponse.text();
     this.segmentationShader = this.device.createShaderModule({
       code: segmentationShaderCode,

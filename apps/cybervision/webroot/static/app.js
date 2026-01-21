@@ -2,9 +2,9 @@
 // TODO: Add automated tests - E2E tests with Playwright for UI/renderer switching,
 // and unit tests for pure logic (FPS calculation, algorithm mapping, etc.)
 
-import { initGPU } from "./webgpu-renderer.js";
-import { initWebGL } from "./webgl-renderer.js";
-import { calculateFPS, hexToRGB, average } from "./utils.js";
+import { initGPU } from "/lib/webgpu-renderer.js";
+import { initWebGL } from "/lib/webgl-renderer.js";
+import { calculateFPS, hexToRGB, average } from "/lib/utils.js";
 
 class CyberVision {
   constructor() {
@@ -758,7 +758,7 @@ class CyberVision {
       this.segmentationLoading.style.display = "flex";
 
       // Dynamically import ML inference class
-      const { PortraitSegmentation } = await import("./ml-inference.js");
+      const { PortraitSegmentation } = await import("/lib/ml-inference.js");
       this.segmentationML = new PortraitSegmentation();
 
       // Load model with progress callback

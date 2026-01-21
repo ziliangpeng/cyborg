@@ -20,6 +20,9 @@ build --spawn_strategy=sandboxed
 # See: https://github.com/bazelbuild/bazel/issues/7480
 build --strategy=CopyFile=local
 test --strategy=CopyFile=local
+# Fix for NpmLifecycleHook action (used by pnpm onlyBuiltDependencies)
+build --strategy=NpmLifecycleHook=local
+test --strategy=NpmLifecycleHook=local
 
 # ============================================================================
 # Platform Configurations

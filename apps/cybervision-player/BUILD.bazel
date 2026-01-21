@@ -1,6 +1,6 @@
 load("@npm//:defs.bzl", "npm_link_all_packages")
-load("@npm//apps/cybervision:vitest/package_json.bzl", vitest_bin = "bin")
-load("@npm//apps/cybervision:@playwright/test/package_json.bzl", playwright_bin = "bin")
+load("@npm//apps/cybervision-player:vitest/package_json.bzl", vitest_bin = "bin")
+load("@npm//apps/cybervision-player:@playwright/test/package_json.bzl", playwright_bin = "bin")
 
 npm_link_all_packages(name = "node_modules")
 
@@ -11,7 +11,7 @@ filegroup(
 )
 
 py_binary(
-    name = "cybervision",
+    name = "cybervision-player",
     srcs = [
         "__init__.py",
         "main.py",
@@ -40,42 +40,36 @@ vitest_bin.vitest_test(
         "--config",
         "vitest.config.js",
     ],
-    chdir = "apps/cybervision",
+    chdir = "apps/cybervision-player",
     data = [
         "vitest.config.js",
         ":node_modules/vitest",
         ":node_modules/@vitest/coverage-v8",
+        ":node_modules/happy-dom",
         ":webroot_files",
     ] + glob([
         "tests/unit/**/*.test.js",
+        "tests/unit/__mocks__/**/*.js",
     ]),
-    tags = ["requires-network"],  # Workaround: matching tags prevent Bazel action conflicts when multiple targets depend on :webroot_files
+    tags = ["requires-network"],
 )
 
-# WebGL tests (Playwright) - CI compatible with SwiftShader
+# E2E tests (Playwright)
 playwright_bin.playwright_test(
     name = "playwright_tests",
     args = [
         "test",
-        "--project=ci",
         "--config",
         "playwright.config.js",
     ],
-    chdir = "apps/cybervision",
+    chdir = "apps/cybervision-player",
     data = [
         "playwright.config.js",
         ":node_modules/@playwright/test",
-        ":node_modules/pixelmatch",
-        ":node_modules/pngjs",
         ":webroot_files",
-        ":cybervision",
+        ":cybervision-player",
     ] + glob([
-        "tests/integration/**/*.test.js",
         "tests/e2e/**/*.test.js",
-        "tests/e2e/test-helpers.js",
     ]),
-    env = {
-        "BAZEL_TEST": "1",
-    },
-    tags = ["requires-network"],  # needs to start http server
+    tags = ["requires-network"],
 )

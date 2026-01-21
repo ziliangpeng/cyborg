@@ -31,3 +31,9 @@ halftone_web.log
 
 # Test coverage reports
 **/coverage/
+
+# Node modules
+**/node_modules/
+
+# ML models
+*.onnx

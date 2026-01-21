@@ -21,14 +21,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install click
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Install dependencies
-        working-directory: apps/cybervision
-        run: npm install
+        run: pnpm install
 
       - name: Install Playwright browsers
         working-directory: apps/cybervision
@@ -36,7 +46,7 @@ jobs:
 
       - name: Run Playwright tests (WebGL)
         working-directory: apps/cybervision
-        run: npm run test:ci
+        run: pnpm run test:ci
 
       - name: Upload test results
         if: failure()
