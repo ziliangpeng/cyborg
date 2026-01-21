@@ -21,6 +21,7 @@ py_binary(
     data = glob(["webroot/**"]) + [
         "//libs/cybervision-core:shaders",
         "//libs/cybervision-core:renderers",
+        "//libs/cybervision-ui:ui_files",
     ],
     deps = [
         "@pip//click",

@@ -6,61 +6,75 @@ test.describe('CyberVision Video Player', () => {
   });
 
   test('should load the page successfully', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('CyberVision Video Player');
+    await expect(page.locator('h1')).toContainText('CyberVision Player');
     await expect(page.locator('#video-path')).toBeVisible();
     await expect(page.locator('#load-video-btn')).toBeVisible();
-    await expect(page.locator('#effect-select')).toBeVisible();
+    // New UI uses effect buttons instead of select
+    await expect(page.locator('.effect-btn').first()).toBeVisible();
   });
 
   test('should have all effect options available', async ({ page }) => {
-    const effectSelect = page.locator('#effect-select');
-    await expect(effectSelect).toBeVisible();
+    // Check for effect buttons across both tabs
+    const artisticTab = page.locator('.tab-button[data-tab="artistic"]');
+    const distortionTab = page.locator('.tab-button[data-tab="distortion"]');
 
-    const options = await effectSelect.locator('option').allTextContents();
-    expect(options).toContain('Original');
-    expect(options).toContain('Halftone');
-    expect(options).toContain('Clustering');
-    expect(options).toContain('Kaleidoscope');
+    await expect(artisticTab).toBeVisible();
+    await expect(distortionTab).toBeVisible();
+
+    // Check artistic effects
+    await artisticTab.click();
+    await expect(page.locator('.effect-btn[data-effect="halftone"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="clustering"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="kaleidoscope"]')).toBeVisible();
+
+    // Check distortion effects
+    await distortionTab.click();
+    await expect(page.locator('.effect-btn[data-effect="original"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="edges"]')).toBeVisible();
   });
 
   test('should show error message for empty video path', async ({ page }) => {
     // Clear the default video path first
     await page.locator('#video-path').clear();
     await page.click('#load-video-btn');
-    await expect(page.locator('#status-message')).toContainText('Please enter a video file path');
+    // New UI uses #status instead of #status-message
+    await expect(page.locator('#status')).toContainText('Please enter a video file path');
   });
 
   test('should change effect selection', async ({ page }) => {
-    const effectSelect = page.locator('#effect-select');
+    // Click on halftone effect button (in artistic tab)
+    const artisticTab = page.locator('.tab-button[data-tab="artistic"]');
+    await artisticTab.click();
 
-    // Select halftone effect
-    await effectSelect.selectOption('halftone');
-    await expect(effectSelect).toHaveValue('halftone');
+    const halftoneBtn = page.locator('.effect-btn[data-effect="halftone"]');
+    await halftoneBtn.click();
 
-    // Verify effect params UI appears
-    const effectParams = page.locator('#effect-params');
-    await expect(effectParams).toBeVisible();
+    // Verify halftone controls appear
+    const halftoneControls = page.locator('#halftoneControls');
+    await expect(halftoneControls).toBeVisible();
   });
 
   test('should show halftone controls when halftone effect is selected', async ({ page }) => {
-    const effectSelect = page.locator('#effect-select');
-    await effectSelect.selectOption('halftone');
+    // Click on halftone effect button
+    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-btn[data-effect="halftone"]').click();
 
-    // Check for dot size slider
-    const dotSizeSlider = page.locator('#dot-size-slider');
+    // Check for dot size slider (new ID: dotSizeSlider)
+    const dotSizeSlider = page.locator('#dotSizeSlider');
     await expect(dotSizeSlider).toBeVisible();
 
-    // Check for random colors checkbox
-    const randomColorsCheckbox = page.locator('#random-colors');
+    // Check for random colors checkbox (new ID: randomColorCheckbox)
+    const randomColorsCheckbox = page.locator('#randomColorCheckbox');
     await expect(randomColorsCheckbox).toBeVisible();
   });
 
   test('should update dot size value when slider is moved', async ({ page }) => {
-    const effectSelect = page.locator('#effect-select');
-    await effectSelect.selectOption('halftone');
+    // Select halftone effect
+    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-btn[data-effect="halftone"]').click();
 
-    const dotSizeSlider = page.locator('#dot-size-slider');
-    const dotSizeValue = page.locator('#dot-size-value');
+    const dotSizeSlider = page.locator('#dotSizeSlider');
+    const dotSizeValue = page.locator('#dotSizeValue');
 
     // Move slider to a specific value
     await dotSizeSlider.fill('12');
@@ -70,27 +84,26 @@ test.describe('CyberVision Video Player', () => {
   });
 
   test('should be able to select clustering effect', async ({ page }) => {
-    const effectSelect = page.locator('#effect-select');
-    await effectSelect.selectOption('clustering');
+    // Click on clustering effect button
+    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-btn[data-effect="clustering"]').click();
 
-    // Verify effect was selected
-    await expect(effectSelect).toHaveValue('clustering');
-
-    // Effect params container should exist (even if empty)
-    const effectParams = page.locator('#effect-params');
-    await expect(effectParams).toBeVisible();
+    // Verify clustering controls appear
+    const clusteringControls = page.locator('#clusteringControls');
+    await expect(clusteringControls).toBeVisible();
   });
 
   test('should show kaleidoscope controls when selected', async ({ page }) => {
-    const effectSelect = page.locator('#effect-select');
-    await effectSelect.selectOption('kaleidoscope');
+    // Click on kaleidoscope effect button
+    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-btn[data-effect="kaleidoscope"]').click();
 
-    // Check for segments slider
-    const segmentsSlider = page.locator('#segments-slider');
+    // Check for segments slider (new ID: segmentsSlider)
+    const segmentsSlider = page.locator('#segmentsSlider');
     await expect(segmentsSlider).toBeVisible();
 
-    // Check for rotation speed slider
-    const rotationSlider = page.locator('#rotation-slider');
+    // Check for rotation speed slider (new ID: rotationSpeedSlider)
+    const rotationSlider = page.locator('#rotationSpeedSlider');
     await expect(rotationSlider).toBeVisible();
   });
 
@@ -110,26 +123,28 @@ test.describe('CyberVision Video Player', () => {
   });
 
   test('should show segmentation controls when segmentation effect is selected', async ({ page }) => {
-    const effectSelect = page.locator('#effect-select');
-    await effectSelect.selectOption('segmentation');
+    // Click on segmentation effect button
+    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-btn[data-effect="segmentation"]').click();
 
-    // Verify effect was selected
-    await expect(effectSelect).toHaveValue('segmentation');
+    // Verify segmentation controls appear
+    const segmentationControls = page.locator('#segmentationControls');
+    await expect(segmentationControls).toBeVisible();
 
-    // Check for segmentation mode dropdown
-    const segmentationMode = page.locator('#segmentation-mode');
+    // Check for segmentation mode dropdown (new ID: segmentationMode)
+    const segmentationMode = page.locator('#segmentationMode');
     await expect(segmentationMode).toBeVisible();
 
-    // Verify the dropdown has the expected options
-    await expect(segmentationMode).toHaveValue('blur'); // Default mode
+    // Verify the dropdown has blackout selected by default
+    await expect(segmentationMode).toHaveValue('blackout');
 
-    // Check for blur radius slider (should be visible by default in blur mode)
-    const blurRadiusSlider = page.locator('#blur-radius-slider');
+    // Check for blur radius slider
+    const blurRadiusSlider = page.locator('#segmentationBlurRadius');
     await expect(blurRadiusSlider).toBeVisible();
 
-    // Check for other segmentation controls
-    const softEdgesCheckbox = page.locator('#soft-edges');
-    const glowCheckbox = page.locator('#glow');
+    // Check for soft edges and glow checkboxes
+    const softEdgesCheckbox = page.locator('#segmentationSoftEdges');
+    const glowCheckbox = page.locator('#segmentationGlow');
     await expect(softEdgesCheckbox).toBeVisible();
     await expect(glowCheckbox).toBeVisible();
   });
@@ -146,8 +161,9 @@ test.describe('CyberVision Video Player', () => {
       }
     });
 
-    const effectSelect = page.locator('#effect-select');
-    await effectSelect.selectOption('segmentation');
+    // Click on segmentation effect button
+    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-btn[data-effect="segmentation"]').click();
 
     // Wait a bit for any async errors to appear
     await page.waitForTimeout(500);
@@ -184,8 +200,8 @@ test.describe('CyberVision Video Player - With Mock Video', () => {
     await videoPathInput.fill('/test/video.mp4');
     await loadVideoBtn.click();
 
-    // Should show loading status
-    const statusMessage = page.locator('#status-message');
+    // Should show status (new ID: #status instead of #status-message)
+    const statusMessage = page.locator('#status');
     await expect(statusMessage).toBeVisible();
   });
 });

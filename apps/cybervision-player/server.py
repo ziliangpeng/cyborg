@@ -19,6 +19,7 @@ MODELS_ROOT = WEBROOT / "models"
 # Find the shared library location (Bazel runfiles)
 _MODULE_DIR = Path(__file__).parent
 SHARED_LIB_ROOT = _MODULE_DIR.parent.parent / "libs" / "cybervision-core"
+SHARED_UI_ROOT = _MODULE_DIR.parent.parent / "libs" / "cybervision-ui"
 
 
 def _safe_join(root: Path, rel: str) -> Path | None:
@@ -218,6 +219,20 @@ class VideoPlayerHandler(BaseHTTPRequestHandler):
             # For shared lib, check both original location and Bazel runfiles
             if not safe_path.exists():
                 runfiles_path = _MODULE_DIR / "cybervision-player.runfiles" / "_main" / "libs" / rel
+                if runfiles_path.exists():
+                    safe_path = runfiles_path
+            self._send_file(safe_path, allowed_base=None)
+            return
+
+        if path.startswith("/ui/"):
+            rel = path.removeprefix("/ui/")
+            safe_path = _safe_join(SHARED_UI_ROOT, rel)
+            if safe_path is None:
+                self.send_error(HTTPStatus.FORBIDDEN)
+                return
+            # For shared UI, check both original location and Bazel runfiles
+            if not safe_path.exists():
+                runfiles_path = _MODULE_DIR / "cybervision-player.runfiles" / "_main" / "libs" / "cybervision-ui" / rel
                 if runfiles_path.exists():
                     safe_path = runfiles_path
             self._send_file(safe_path, allowed_base=None)
