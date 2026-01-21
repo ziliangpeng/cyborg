@@ -28,7 +28,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'python3 main.py --port 8001',
+    command: 'bazel run //apps/cybervision-player:cybervision-player -- --port 8001',
     url: 'http://localhost:8001',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
