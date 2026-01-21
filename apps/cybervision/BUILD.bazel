@@ -68,6 +68,7 @@ playwright_bin.playwright_test(
         ":node_modules/pixelmatch",
         ":node_modules/pngjs",
         ":webroot_files",
+        ":cybervision",
     ] + glob([
         "tests/integration/**/*.test.js",
         "tests/e2e/**/*.test.js",
