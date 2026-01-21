@@ -13,6 +13,16 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'ci',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--use-gl=swiftshader'],
+        },
+      },
+      testIgnore: ['**/webgpu/**'],
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },

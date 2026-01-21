@@ -21,6 +21,6 @@
     "pngjs": "^7.0.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": []
+    "onlyBuiltDependencies": ["esbuild", "@esbuild/darwin-arm64", "@esbuild/linux-x64", "@playwright/test"]
   }
 }

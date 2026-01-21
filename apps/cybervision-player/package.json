@@ -2,17 +2,20 @@
   "name": "cybervision-player",
   "version": "1.0.0",
   "type": "module",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "@esbuild/darwin-arm64", "@esbuild/linux-x64", "@playwright/test"]
+  },
   "scripts": {
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0",
-    "@vitest/coverage-v8": "^1.6.1",
-    "@vitest/ui": "^1.0.0",
+    "@playwright/test": "^1.48.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "@vitest/ui": "^2.1.0",
     "happy-dom": "^20.3.4",
     "jsdom": "^27.4.0",
-    "vitest": "^1.0.0"
+    "vitest": "^2.1.0"
   }
 }

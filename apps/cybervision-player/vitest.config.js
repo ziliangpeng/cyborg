@@ -17,9 +17,12 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.js'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['lcov', 'text'],
       include: ['webroot/static/**/*.js'],
-      exclude: ['webroot/static/shaders/**']
+      exclude: ['webroot/static/shaders/**'],
+      reportsDirectory: process.env.COVERAGE_OUTPUT_FILE
+        ? path.dirname(process.env.COVERAGE_OUTPUT_FILE)
+        : './coverage',
     }
   }
 });

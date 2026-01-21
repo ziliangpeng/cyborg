@@ -36,6 +36,7 @@ vitest_bin.vitest_test(
     name = "unit_tests",
     args = [
         "run",
+        "--coverage",
         "--config",
         "vitest.config.js",
     ],
