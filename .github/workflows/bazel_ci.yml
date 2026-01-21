@@ -42,6 +42,12 @@ jobs:
         working-directory: apps/cybervision-player
         run: pnpm run test:coverage
 
+      - name: Fix JS coverage paths for Codecov
+        run: |
+          # Codecov needs paths relative to repo root, but vitest outputs paths relative to app dir
+          sed -i 's|^SF:|SF:apps/cybervision/|' apps/cybervision/coverage/lcov.info
+          sed -i 's|^SF:|SF:apps/cybervision-player/|' apps/cybervision-player/coverage/lcov.info
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
