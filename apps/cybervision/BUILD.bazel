@@ -45,7 +45,7 @@ vitest_bin.vitest_test(
         "vitest.config.js",
         ":node_modules/vitest",
         ":node_modules/@vitest/coverage-v8",
-        ":webroot_files",  # shaders.test.js reads shader files
+        ":webroot_files",
     ] + glob([
         "tests/unit/**/*.test.js",
     ]),
