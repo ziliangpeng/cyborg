@@ -232,9 +232,7 @@ class VideoPlayerHandler(BaseHTTPRequestHandler):
                 return
             # For shared UI, check both original location and Bazel runfiles
             if not safe_path.exists():
-                runfiles_path = (
-                    _MODULE_DIR / "cybervision-player.runfiles" / "_main" / "libs" / "cybervision-ui" / rel
-                )
+                runfiles_path = _MODULE_DIR / "cybervision-player.runfiles" / "_main" / "libs" / "cybervision-ui" / rel
                 if runfiles_path.exists():
                     safe_path = runfiles_path
             self._send_file(safe_path, allowed_base=None)
