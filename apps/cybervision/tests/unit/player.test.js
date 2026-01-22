@@ -62,9 +62,11 @@ function setupMockDOM() {
     <button class="effect-btn" data-effect="halftone">Halftone</button>
     <button class="effect-btn" data-effect="duotone">Duotone</button>
     <button class="effect-btn" data-effect="dither">Dither</button>
+    <button class="effect-btn" data-effect="posterize">Posterize</button>
     <button class="effect-btn" data-effect="clustering">Clustering</button>
     <button class="effect-btn" data-effect="edges">Edges</button>
     <button class="effect-btn" data-effect="twirl">Twirl</button>
+    <button class="effect-btn" data-effect="vignette">Vignette</button>
     <button class="effect-btn" data-effect="mosaic">Mosaic</button>
     <button class="effect-btn" data-effect="chromatic">Chromatic</button>
     <button class="effect-btn" data-effect="glitch">Glitch</button>
@@ -92,6 +94,12 @@ function setupMockDOM() {
       <span id="ditherScaleValue">2</span>
       <input id="ditherLevels" type="range" min="2" max="8" value="4" />
       <span id="ditherLevelsValue">4</span>
+    </div>
+
+    <!-- Posterize controls -->
+    <div id="posterizeControls" class="effect-controls">
+      <input id="posterizeLevels" type="range" min="2" max="8" value="4" />
+      <span id="posterizeLevelsValue">4</span>
     </div>
 
     <!-- Clustering controls -->
@@ -126,6 +134,14 @@ function setupMockDOM() {
       <span id="twirlStrengthValue">0.0</span>
       <input id="twirlRadius" type="range" min="0.1" max="1.0" value="0.5" />
       <span id="twirlRadiusValue">0.5</span>
+    </div>
+
+    <!-- Vignette controls -->
+    <div id="vignetteControls" class="effect-controls">
+      <input id="vignetteStrength" type="range" min="0" max="1" value="0.5" />
+      <span id="vignetteStrengthValue">0.5</span>
+      <input id="vignetteGrain" type="range" min="0" max="0.3" value="0.08" />
+      <span id="vignetteGrainValue">0.08</span>
     </div>
 
     <!-- Mosaic controls -->
@@ -474,24 +490,37 @@ describe('CyberVision - Effect Control Visibility', () => {
     vi.restoreAllMocks();
   });
 
-  it('toggles duotone, dither, and twirl controls', async () => {
+  it('toggles low-effort effect controls', async () => {
     const player = await createTestPlayer();
 
     player.currentEffect = 'duotone';
     player.updateEffectControls();
     expect(player.duotoneControls.style.display).toBe('block');
     expect(player.ditherControls.style.display).toBe('none');
+    expect(player.posterizeControls.style.display).toBe('none');
     expect(player.twirlControls.style.display).toBe('none');
+    expect(player.vignetteControls.style.display).toBe('none');
 
     player.currentEffect = 'dither';
     player.updateEffectControls();
     expect(player.ditherControls.style.display).toBe('block');
     expect(player.duotoneControls.style.display).toBe('none');
+    expect(player.posterizeControls.style.display).toBe('none');
+
+    player.currentEffect = 'posterize';
+    player.updateEffectControls();
+    expect(player.posterizeControls.style.display).toBe('block');
+    expect(player.ditherControls.style.display).toBe('none');
 
     player.currentEffect = 'twirl';
     player.updateEffectControls();
     expect(player.twirlControls.style.display).toBe('block');
     expect(player.edgesControls.style.display).toBe('none');
+
+    player.currentEffect = 'vignette';
+    player.updateEffectControls();
+    expect(player.vignetteControls.style.display).toBe('block');
+    expect(player.twirlControls.style.display).toBe('none');
   });
 
   it('shows mosaic info only for dominant mode in WebGL', async () => {

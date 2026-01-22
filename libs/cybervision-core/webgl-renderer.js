@@ -10,7 +10,9 @@ export class WebGLRenderer {
     this.mosaicProgram = null;
     this.duotoneProgram = null;
     this.ditherProgram = null;
+    this.posterizeProgram = null;
     this.twirlProgram = null;
+    this.vignetteProgram = null;
     this.chromaticProgram = null;
     this.glitchProgram = null;
     this.thermalProgram = null;
@@ -26,7 +28,9 @@ export class WebGLRenderer {
     this.mosaicLocations = null;
     this.duotoneLocations = null;
     this.ditherLocations = null;
+    this.posterizeLocations = null;
     this.twirlLocations = null;
+    this.vignetteLocations = null;
     this.chromaticLocations = null;
     this.glitchLocations = null;
     this.thermalLocations = null;
@@ -76,7 +80,9 @@ export class WebGLRenderer {
     const mosaicFragmentSource = await this.loadShader("/shaders/mosaic.frag.glsl");
     const duotoneFragmentSource = await this.loadShader("/shaders/duotone.frag.glsl");
     const ditherFragmentSource = await this.loadShader("/shaders/dither.frag.glsl");
+    const posterizeFragmentSource = await this.loadShader("/shaders/posterize.frag.glsl");
     const twirlFragmentSource = await this.loadShader("/shaders/twirl.frag.glsl");
+    const vignetteFragmentSource = await this.loadShader("/shaders/vignette.frag.glsl");
     const chromaticFragmentSource = await this.loadShader("/shaders/chromatic.frag.glsl");
     const glitchFragmentSource = await this.loadShader("/shaders/glitch.frag.glsl");
     const thermalFragmentSource = await this.loadShader("/shaders/thermal.frag.glsl");
@@ -91,7 +97,9 @@ export class WebGLRenderer {
     const mosaicFragment = this.compileShader(gl.FRAGMENT_SHADER, mosaicFragmentSource);
     const duotoneFragment = this.compileShader(gl.FRAGMENT_SHADER, duotoneFragmentSource);
     const ditherFragment = this.compileShader(gl.FRAGMENT_SHADER, ditherFragmentSource);
+    const posterizeFragment = this.compileShader(gl.FRAGMENT_SHADER, posterizeFragmentSource);
     const twirlFragment = this.compileShader(gl.FRAGMENT_SHADER, twirlFragmentSource);
+    const vignetteFragment = this.compileShader(gl.FRAGMENT_SHADER, vignetteFragmentSource);
     const chromaticFragment = this.compileShader(gl.FRAGMENT_SHADER, chromaticFragmentSource);
     const glitchFragment = this.compileShader(gl.FRAGMENT_SHADER, glitchFragmentSource);
     const thermalFragment = this.compileShader(gl.FRAGMENT_SHADER, thermalFragmentSource);
@@ -105,7 +113,9 @@ export class WebGLRenderer {
     this.mosaicProgram = this.createProgram(vertexShader, mosaicFragment);
     this.duotoneProgram = this.createProgram(vertexShader, duotoneFragment);
     this.ditherProgram = this.createProgram(vertexShader, ditherFragment);
+    this.posterizeProgram = this.createProgram(vertexShader, posterizeFragment);
     this.twirlProgram = this.createProgram(vertexShader, twirlFragment);
+    this.vignetteProgram = this.createProgram(vertexShader, vignetteFragment);
     this.chromaticProgram = this.createProgram(vertexShader, chromaticFragment);
     this.glitchProgram = this.createProgram(vertexShader, glitchFragment);
     this.thermalProgram = this.createProgram(vertexShader, thermalFragment);
@@ -524,6 +534,41 @@ export class WebGLRenderer {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
+  renderPosterize(video, levels) {
+    const gl = this.gl;
+    const program = this.posterizeProgram;
+
+    if (!this.posterizeLocations) {
+      this.posterizeLocations = {
+        position: gl.getAttribLocation(program, "a_position"),
+        texCoord: gl.getAttribLocation(program, "a_texCoord"),
+        video: gl.getUniformLocation(program, "u_video"),
+        levels: gl.getUniformLocation(program, "u_levels"),
+      };
+    }
+    const locations = this.posterizeLocations;
+
+    this.updateVideoTexture(video);
+
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.enableVertexAttribArray(locations.position);
+    gl.vertexAttribPointer(locations.position, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.enableVertexAttribArray(locations.texCoord);
+    gl.vertexAttribPointer(locations.texCoord, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform1i(locations.video, 0);
+    gl.uniform1f(locations.levels, levels);
+
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
   renderTwirl(video, centerX, centerY, radius, strength) {
     const gl = this.gl;
     const program = this.twirlProgram;
@@ -556,6 +601,49 @@ export class WebGLRenderer {
     gl.uniform2f(locations.center, centerX, centerY);
     gl.uniform1f(locations.radius, radius);
     gl.uniform1f(locations.strength, strength);
+
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  renderVignette(video, vignetteAmount, grainAmount) {
+    const gl = this.gl;
+    const program = this.vignetteProgram;
+
+    if (!this.vignetteLocations) {
+      this.vignetteLocations = {
+        position: gl.getAttribLocation(program, "a_position"),
+        texCoord: gl.getAttribLocation(program, "a_texCoord"),
+        video: gl.getUniformLocation(program, "u_video"),
+        resolution: gl.getUniformLocation(program, "u_resolution"),
+        vignette: gl.getUniformLocation(program, "u_vignette"),
+        grain: gl.getUniformLocation(program, "u_grain"),
+        time: gl.getUniformLocation(program, "u_time"),
+      };
+    }
+    const locations = this.vignetteLocations;
+
+    this.updateVideoTexture(video);
+
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.enableVertexAttribArray(locations.position);
+    gl.vertexAttribPointer(locations.position, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.enableVertexAttribArray(locations.texCoord);
+    gl.vertexAttribPointer(locations.texCoord, 2, gl.FLOAT, false, 0, 0);
+
+    const time = performance.now() / 1000;
+
+    gl.uniform1i(locations.video, 0);
+    gl.uniform2f(locations.resolution, video.videoWidth, video.videoHeight);
+    gl.uniform1f(locations.vignette, vignetteAmount);
+    gl.uniform1f(locations.grain, grainAmount);
+    gl.uniform1f(locations.time, time);
 
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0, 0, 0, 1);

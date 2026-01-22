@@ -62,6 +62,11 @@ class CyberVision {
     this.ditherLevels = document.getElementById("ditherLevels");
     this.ditherLevelsValue = document.getElementById("ditherLevelsValue");
 
+    // Posterize controls
+    this.posterizeControls = document.getElementById("posterizeControls");
+    this.posterizeLevels = document.getElementById("posterizeLevels");
+    this.posterizeLevelsValue = document.getElementById("posterizeLevelsValue");
+
     // Clustering controls
     this.clusteringControls = document.getElementById("clusteringControls");
     this.algorithmSelect = document.getElementById("algorithmSelect");
@@ -88,6 +93,13 @@ class CyberVision {
     this.twirlStrengthValue = document.getElementById("twirlStrengthValue");
     this.twirlRadius = document.getElementById("twirlRadius");
     this.twirlRadiusValue = document.getElementById("twirlRadiusValue");
+
+    // Vignette controls
+    this.vignetteControls = document.getElementById("vignetteControls");
+    this.vignetteStrength = document.getElementById("vignetteStrength");
+    this.vignetteStrengthValue = document.getElementById("vignetteStrengthValue");
+    this.vignetteGrain = document.getElementById("vignetteGrain");
+    this.vignetteGrainValue = document.getElementById("vignetteGrainValue");
 
     // Mosaic controls
     this.mosaicControls = document.getElementById("mosaicControls");
@@ -208,6 +220,9 @@ class CyberVision {
     this.ditherScaleValue_state = 2;
     this.ditherLevelsValue_state = 4;
 
+    // Posterize state
+    this.posterizeLevelsValue_state = 4;
+
     // Clustering state
     this.clusteringAlgorithm = "quantization-kmeans";
     this.useTrueColors = false;
@@ -227,6 +242,10 @@ class CyberVision {
     this.twirlRadiusValue_state = 0.5;
     this.twirlCenterX = 0.5;
     this.twirlCenterY = 0.5;
+
+    // Vignette state
+    this.vignetteStrengthValue_state = 0.5;
+    this.vignetteGrainValue_state = 0.08;
 
     // Mosaic state
     this.mosaicBlockSizeValue_state = 8;
@@ -552,6 +571,12 @@ class CyberVision {
       this.ditherLevelsValue.textContent = this.ditherLevelsValue_state;
     });
 
+    // Posterize event listeners
+    this.posterizeLevels.addEventListener("input", (e) => {
+      this.posterizeLevelsValue_state = parseInt(e.target.value, 10);
+      this.posterizeLevelsValue.textContent = this.posterizeLevelsValue_state;
+    });
+
     // Clustering event listeners
     this.algorithmSelect.addEventListener("change", (e) => {
       this.clusteringAlgorithm = e.target.value;
@@ -607,6 +632,17 @@ class CyberVision {
     this.twirlRadius.addEventListener("input", (e) => {
       this.twirlRadiusValue_state = parseFloat(e.target.value);
       this.twirlRadiusValue.textContent = this.twirlRadiusValue_state.toFixed(2);
+    });
+
+    // Vignette event listeners
+    this.vignetteStrength.addEventListener("input", (e) => {
+      this.vignetteStrengthValue_state = parseFloat(e.target.value);
+      this.vignetteStrengthValue.textContent = this.vignetteStrengthValue_state.toFixed(2);
+    });
+
+    this.vignetteGrain.addEventListener("input", (e) => {
+      this.vignetteGrainValue_state = parseFloat(e.target.value);
+      this.vignetteGrainValue.textContent = this.vignetteGrainValue_state.toFixed(2);
     });
 
     // Mosaic event listeners
@@ -1078,9 +1114,11 @@ class CyberVision {
     this.halftoneControls.style.display = this.currentEffect === "halftone" ? "block" : "none";
     this.duotoneControls.style.display = this.currentEffect === "duotone" ? "block" : "none";
     this.ditherControls.style.display = this.currentEffect === "dither" ? "block" : "none";
+    this.posterizeControls.style.display = this.currentEffect === "posterize" ? "block" : "none";
     this.clusteringControls.style.display = this.currentEffect === "clustering" ? "block" : "none";
     this.edgesControls.style.display = this.currentEffect === "edges" ? "block" : "none";
     this.twirlControls.style.display = this.currentEffect === "twirl" ? "block" : "none";
+    this.vignetteControls.style.display = this.currentEffect === "vignette" ? "block" : "none";
     this.mosaicControls.style.display = this.currentEffect === "mosaic" ? "block" : "none";
     this.chromaticControls.style.display = this.currentEffect === "chromatic" ? "block" : "none";
     this.glitchControls.style.display = this.currentEffect === "glitch" ? "block" : "none";
@@ -1318,6 +1356,9 @@ class CyberVision {
       case "dither":
         this.renderDither(sourceVideo);
         break;
+      case "posterize":
+        this.renderPosterize(sourceVideo);
+        break;
       case "clustering":
         this.renderClustering(sourceVideo);
         break;
@@ -1326,6 +1367,9 @@ class CyberVision {
         break;
       case "twirl":
         this.renderTwirl(sourceVideo);
+        break;
+      case "vignette":
+        this.renderVignette(sourceVideo);
         break;
       case "mosaic":
         this.renderMosaic(sourceVideo);
@@ -1375,6 +1419,13 @@ class CyberVision {
     );
   }
 
+  renderPosterize(sourceVideo) {
+    this.renderer.renderPosterize(
+      sourceVideo,
+      this.posterizeLevelsValue_state
+    );
+  }
+
   renderClustering(sourceVideo) {
     // Compute algorithm string based on base algorithm and true colors toggle
     const algorithmString = this.useTrueColors
@@ -1411,6 +1462,14 @@ class CyberVision {
       this.twirlCenterY,
       this.twirlRadiusValue_state,
       this.twirlStrengthValue_state
+    );
+  }
+
+  renderVignette(sourceVideo) {
+    this.renderer.renderVignette(
+      sourceVideo,
+      this.vignetteStrengthValue_state,
+      this.vignetteGrainValue_state
     );
   }
 

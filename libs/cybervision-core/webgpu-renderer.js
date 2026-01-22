@@ -22,7 +22,9 @@ export class WebGPURenderer {
     this.mosaicPipeline = null;
     this.duotonePipeline = null;
     this.ditherPipeline = null;
+    this.posterizePipeline = null;
     this.twirlPipeline = null;
+    this.vignettePipeline = null;
     this.chromaticPipeline = null;
     this.glitchPipeline = null;
     this.thermalPipeline = null;
@@ -40,7 +42,9 @@ export class WebGPURenderer {
     this.mosaicBindGroup = null;
     this.duotoneBindGroup = null;
     this.ditherBindGroup = null;
+    this.posterizeBindGroup = null;
     this.twirlBindGroup = null;
+    this.vignetteBindGroup = null;
     this.chromaticBindGroup = null;
     this.glitchBindGroup = null;
     this.thermalBindGroup = null;
@@ -60,7 +64,9 @@ export class WebGPURenderer {
     this.mosaicUniformBuffer = null;
     this.duotoneUniformBuffer = null;
     this.ditherUniformBuffer = null;
+    this.posterizeUniformBuffer = null;
     this.twirlUniformBuffer = null;
+    this.vignetteUniformBuffer = null;
     this.chromaticUniformBuffer = null;
     this.glitchUniformBuffer = null;
     this.thermalUniformBuffer = null;
@@ -78,7 +84,9 @@ export class WebGPURenderer {
     this.mosaicShader = null;
     this.duotoneShader = null;
     this.ditherShader = null;
+    this.posterizeShader = null;
     this.twirlShader = null;
+    this.vignetteShader = null;
     this.chromaticShader = null;
     this.glitchShader = null;
     this.thermalShader = null;
@@ -191,11 +199,25 @@ export class WebGPURenderer {
       code: ditherShaderCode,
     });
 
+    // Load and create posterize shader
+    const posterizeShaderResponse = await fetch("/shaders/posterize.wgsl");
+    const posterizeShaderCode = await posterizeShaderResponse.text();
+    this.posterizeShader = this.device.createShaderModule({
+      code: posterizeShaderCode,
+    });
+
     // Load and create twirl shader
     const twirlShaderResponse = await fetch("/shaders/twirl.wgsl");
     const twirlShaderCode = await twirlShaderResponse.text();
     this.twirlShader = this.device.createShaderModule({
       code: twirlShaderCode,
+    });
+
+    // Load and create vignette shader
+    const vignetteShaderResponse = await fetch("/shaders/vignette.wgsl");
+    const vignetteShaderCode = await vignetteShaderResponse.text();
+    this.vignetteShader = this.device.createShaderModule({
+      code: vignetteShaderCode,
     });
 
     // Load and create chromatic shader
@@ -320,6 +342,15 @@ export class WebGPURenderer {
     ]);
     this.ditherUniformBuffer = this.createUniformBuffer(ditherUniformData);
 
+    // Create posterize uniform buffer
+    const posterizeUniformData = new Float32Array([
+      4.0,  // levels
+      0.0,  // padding
+      0.0,  // padding
+      0.0,  // padding
+    ]);
+    this.posterizeUniformBuffer = this.createUniformBuffer(posterizeUniformData);
+
     // Create twirl uniform buffer
     const twirlUniformData = new Float32Array([
       0.5,  // centerX
@@ -328,6 +359,15 @@ export class WebGPURenderer {
       0.0,  // strength
     ]);
     this.twirlUniformBuffer = this.createUniformBuffer(twirlUniformData);
+
+    // Create vignette uniform buffer
+    const vignetteUniformData = new Float32Array([
+      0.5,  // vignette strength
+      0.08,  // grain amount
+      performance.now() / 1000,  // time
+      0.0,  // padding
+    ]);
+    this.vignetteUniformBuffer = this.createUniformBuffer(vignetteUniformData);
 
     // Create chromatic uniform buffer
     const chromaticUniformData = new Float32Array([
@@ -701,6 +741,36 @@ export class WebGPURenderer {
       ],
     });
 
+    // Create posterize compute pipeline
+    this.posterizePipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.posterizeShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create posterize bind group
+    this.posterizeBindGroup = this.device.createBindGroup({
+      layout: this.posterizePipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.posterizeUniformBuffer,
+          },
+        },
+      ],
+    });
+
     // Create twirl compute pipeline
     this.twirlPipeline = this.device.createComputePipeline({
       layout: "auto",
@@ -726,6 +796,36 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.twirlUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create vignette compute pipeline
+    this.vignettePipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.vignetteShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create vignette bind group
+    this.vignetteBindGroup = this.device.createBindGroup({
+      layout: this.vignettePipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.vignetteUniformBuffer,
           },
         },
       ],
@@ -1486,6 +1586,46 @@ export class WebGPURenderer {
     this.device.queue.submit([commandEncoder.finish()]);
   }
 
+  renderPosterize(video, levels) {
+    const uniformData = new Float32Array([
+      levels,
+      0.0,
+      0.0,
+      0.0,
+    ]);
+    this.updateUniformBuffer(this.posterizeUniformBuffer, uniformData);
+
+    this.uploadVideoToTexture(video);
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.posterizePipeline);
+    computePass.setBindGroup(0, this.posterizeBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
   renderTwirl(video, centerX, centerY, radius, strength) {
     const uniformData = new Float32Array([
       centerX,
@@ -1502,6 +1642,46 @@ export class WebGPURenderer {
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(this.twirlPipeline);
     computePass.setBindGroup(0, this.twirlBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderVignette(video, vignetteAmount, grainAmount) {
+    const uniformData = new Float32Array([
+      vignetteAmount,
+      grainAmount,
+      performance.now() / 1000,
+      0.0,
+    ]);
+    this.updateUniformBuffer(this.vignetteUniformBuffer, uniformData);
+
+    this.uploadVideoToTexture(video);
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.vignettePipeline);
+    computePass.setBindGroup(0, this.vignetteBindGroup);
 
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);
