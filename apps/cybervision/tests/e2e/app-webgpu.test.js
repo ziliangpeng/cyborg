@@ -98,8 +98,11 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     const effects = [
       'original',
       'halftone',
+      'duotone',
+      'dither',
       'clustering',
       'edges',
+      'twirl',
       'mosaic',
       'chromatic',
       'glitch',
@@ -169,8 +172,11 @@ test.describe('CyberVision E2E - WebGPU Path (macOS only)', () => {
     const effects = [
       'original',
       'halftone',
+      'duotone',
+      'dither',
       'clustering',
       'edges',
+      'twirl',
       'mosaic',
       'chromatic',
       'glitch',

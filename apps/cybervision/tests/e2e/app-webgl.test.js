@@ -55,8 +55,11 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     const effects = [
       'original',
       'halftone',
+      'duotone',
+      'dither',
       'clustering',
       'edges',
+      'twirl',
       'mosaic',
       'chromatic',
       'glitch',
@@ -85,6 +88,18 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#halftoneControls')).toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
 
+    // Select duotone effect
+    await switchToEffectTab(page, 'duotone');
+    await page.locator('button[data-effect="duotone"]').click();
+    await expect(page.locator('#duotoneControls')).toBeVisible();
+    await expect(page.locator('#halftoneControls')).not.toBeVisible();
+
+    // Select dither effect
+    await switchToEffectTab(page, 'dither');
+    await page.locator('button[data-effect="dither"]').click();
+    await expect(page.locator('#ditherControls')).toBeVisible();
+    await expect(page.locator('#duotoneControls')).not.toBeVisible();
+
     // Select clustering effect
     await switchToEffectTab(page, 'clustering');
     await page.locator('button[data-effect="clustering"]').click();
@@ -97,12 +112,21 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#edgesControls')).toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
 
+    // Select twirl effect
+    await switchToEffectTab(page, 'twirl');
+    await page.locator('button[data-effect="twirl"]').click();
+    await expect(page.locator('#twirlControls')).toBeVisible();
+    await expect(page.locator('#edgesControls')).not.toBeVisible();
+
     // Select original (no controls should be visible)
     await switchToEffectTab(page, 'original');
     await page.locator('button[data-effect="original"]').click();
     await expect(page.locator('#halftoneControls')).not.toBeVisible();
     await expect(page.locator('#clusteringControls')).not.toBeVisible();
     await expect(page.locator('#edgesControls')).not.toBeVisible();
+    await expect(page.locator('#duotoneControls')).not.toBeVisible();
+    await expect(page.locator('#ditherControls')).not.toBeVisible();
+    await expect(page.locator('#twirlControls')).not.toBeVisible();
   });
 
   test('should not have console errors when switching effects', async ({ page }) => {
@@ -121,7 +145,7 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 10000 });
 
-    const effects = ['original', 'halftone', 'clustering', 'edges', 'mosaic', 'chromatic', 'glitch', 'thermal'];
+    const effects = ['original', 'halftone', 'duotone', 'dither', 'clustering', 'edges', 'twirl', 'mosaic', 'chromatic', 'glitch', 'thermal'];
 
     for (const effect of effects) {
       await switchToEffectTab(page, effect);

@@ -60,8 +60,11 @@ function setupMockDOM() {
     <!-- Effect buttons -->
     <button class="effect-btn" data-effect="original">Original</button>
     <button class="effect-btn" data-effect="halftone">Halftone</button>
+    <button class="effect-btn" data-effect="duotone">Duotone</button>
+    <button class="effect-btn" data-effect="dither">Dither</button>
     <button class="effect-btn" data-effect="clustering">Clustering</button>
     <button class="effect-btn" data-effect="edges">Edges</button>
+    <button class="effect-btn" data-effect="twirl">Twirl</button>
     <button class="effect-btn" data-effect="mosaic">Mosaic</button>
     <button class="effect-btn" data-effect="chromatic">Chromatic</button>
     <button class="effect-btn" data-effect="glitch">Glitch</button>
@@ -75,6 +78,20 @@ function setupMockDOM() {
       <input id="dotSizeSlider" type="range" min="2" max="20" value="8" />
       <span id="dotSizeValue">8</span>
       <input id="randomColorCheckbox" type="checkbox" />
+    </div>
+
+    <!-- Duotone controls -->
+    <div id="duotoneControls" class="effect-controls">
+      <input id="duotoneShadow" type="color" value="#1b1f2a" />
+      <input id="duotoneHighlight" type="color" value="#f2c14e" />
+    </div>
+
+    <!-- Dither controls -->
+    <div id="ditherControls" class="effect-controls">
+      <input id="ditherScale" type="range" min="1" max="8" value="2" />
+      <span id="ditherScaleValue">2</span>
+      <input id="ditherLevels" type="range" min="2" max="8" value="4" />
+      <span id="ditherLevelsValue">4</span>
     </div>
 
     <!-- Clustering controls -->
@@ -101,6 +118,14 @@ function setupMockDOM() {
       <input id="edgeColor" type="color" value="#ffffff" />
       <input id="edgeThickness" type="range" min="1" max="5" value="1" />
       <span id="edgeThicknessValue">1</span>
+    </div>
+
+    <!-- Twirl controls -->
+    <div id="twirlControls" class="effect-controls">
+      <input id="twirlStrength" type="range" min="-4" max="4" value="0" />
+      <span id="twirlStrengthValue">0.0</span>
+      <input id="twirlRadius" type="range" min="0.1" max="1.0" value="0.5" />
+      <span id="twirlRadiusValue">0.5</span>
     </div>
 
     <!-- Mosaic controls -->
@@ -447,6 +472,26 @@ describe('CyberVision - Effect Control Visibility', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('toggles duotone, dither, and twirl controls', async () => {
+    const player = await createTestPlayer();
+
+    player.currentEffect = 'duotone';
+    player.updateEffectControls();
+    expect(player.duotoneControls.style.display).toBe('block');
+    expect(player.ditherControls.style.display).toBe('none');
+    expect(player.twirlControls.style.display).toBe('none');
+
+    player.currentEffect = 'dither';
+    player.updateEffectControls();
+    expect(player.ditherControls.style.display).toBe('block');
+    expect(player.duotoneControls.style.display).toBe('none');
+
+    player.currentEffect = 'twirl';
+    player.updateEffectControls();
+    expect(player.twirlControls.style.display).toBe('block');
+    expect(player.edgesControls.style.display).toBe('none');
   });
 
   it('shows mosaic info only for dominant mode in WebGL', async () => {

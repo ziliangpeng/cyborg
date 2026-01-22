@@ -20,6 +20,9 @@ export class WebGPURenderer {
     this.clusteringPipeline = null;
     this.edgesPipeline = null;
     this.mosaicPipeline = null;
+    this.duotonePipeline = null;
+    this.ditherPipeline = null;
+    this.twirlPipeline = null;
     this.chromaticPipeline = null;
     this.glitchPipeline = null;
     this.thermalPipeline = null;
@@ -35,6 +38,9 @@ export class WebGPURenderer {
     this.clusteringBindGroup = null;
     this.edgesBindGroup = null;
     this.mosaicBindGroup = null;
+    this.duotoneBindGroup = null;
+    this.ditherBindGroup = null;
+    this.twirlBindGroup = null;
     this.chromaticBindGroup = null;
     this.glitchBindGroup = null;
     this.thermalBindGroup = null;
@@ -52,6 +58,9 @@ export class WebGPURenderer {
     this.clusteringUniformBuffer = null;
     this.edgesUniformBuffer = null;
     this.mosaicUniformBuffer = null;
+    this.duotoneUniformBuffer = null;
+    this.ditherUniformBuffer = null;
+    this.twirlUniformBuffer = null;
     this.chromaticUniformBuffer = null;
     this.glitchUniformBuffer = null;
     this.thermalUniformBuffer = null;
@@ -67,6 +76,9 @@ export class WebGPURenderer {
     this.clusteringShader = null;
     this.edgesShader = null;
     this.mosaicShader = null;
+    this.duotoneShader = null;
+    this.ditherShader = null;
+    this.twirlShader = null;
     this.chromaticShader = null;
     this.glitchShader = null;
     this.thermalShader = null;
@@ -163,6 +175,27 @@ export class WebGPURenderer {
     const mosaicShaderCode = await mosaicShaderResponse.text();
     this.mosaicShader = this.device.createShaderModule({
       code: mosaicShaderCode,
+    });
+
+    // Load and create duotone shader
+    const duotoneShaderResponse = await fetch("/shaders/duotone.wgsl");
+    const duotoneShaderCode = await duotoneShaderResponse.text();
+    this.duotoneShader = this.device.createShaderModule({
+      code: duotoneShaderCode,
+    });
+
+    // Load and create dither shader
+    const ditherShaderResponse = await fetch("/shaders/dither.wgsl");
+    const ditherShaderCode = await ditherShaderResponse.text();
+    this.ditherShader = this.device.createShaderModule({
+      code: ditherShaderCode,
+    });
+
+    // Load and create twirl shader
+    const twirlShaderResponse = await fetch("/shaders/twirl.wgsl");
+    const twirlShaderCode = await twirlShaderResponse.text();
+    this.twirlShader = this.device.createShaderModule({
+      code: twirlShaderCode,
     });
 
     // Load and create chromatic shader
@@ -270,6 +303,31 @@ export class WebGPURenderer {
       0, 0, 0,  // padding
     ]);
     this.mosaicUniformBuffer = this.createUniformBuffer(mosaicUniformData);
+
+    // Create duotone uniform buffer
+    const duotoneUniformData = new Float32Array([
+      0.0, 0.0, 0.0, 0.0,  // shadow color
+      1.0, 1.0, 1.0, 0.0,  // highlight color
+    ]);
+    this.duotoneUniformBuffer = this.createUniformBuffer(duotoneUniformData);
+
+    // Create dither uniform buffer
+    const ditherUniformData = new Float32Array([
+      2.0,  // scale
+      4.0,  // levels
+      0.0,  // padding
+      0.0,  // padding
+    ]);
+    this.ditherUniformBuffer = this.createUniformBuffer(ditherUniformData);
+
+    // Create twirl uniform buffer
+    const twirlUniformData = new Float32Array([
+      0.5,  // centerX
+      0.5,  // centerY
+      0.5,  // radius (normalized)
+      0.0,  // strength
+    ]);
+    this.twirlUniformBuffer = this.createUniformBuffer(twirlUniformData);
 
     // Create chromatic uniform buffer
     const chromaticUniformData = new Float32Array([
@@ -578,6 +636,96 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.mosaicUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create duotone compute pipeline
+    this.duotonePipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.duotoneShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create duotone bind group
+    this.duotoneBindGroup = this.device.createBindGroup({
+      layout: this.duotonePipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.duotoneUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create dither compute pipeline
+    this.ditherPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.ditherShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create dither bind group
+    this.ditherBindGroup = this.device.createBindGroup({
+      layout: this.ditherPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.ditherUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create twirl compute pipeline
+    this.twirlPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.twirlShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create twirl bind group
+    this.twirlBindGroup = this.device.createBindGroup({
+      layout: this.twirlPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.twirlUniformBuffer,
           },
         },
       ],
@@ -1242,6 +1390,124 @@ export class WebGPURenderer {
     computePass.end();
 
     // Blit rgba texture to canvas (bgra format)
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderDuotone(video, shadowColor, highlightColor) {
+    const uniformData = new Float32Array([
+      shadowColor[0], shadowColor[1], shadowColor[2], 0.0,
+      highlightColor[0], highlightColor[1], highlightColor[2], 0.0,
+    ]);
+    this.updateUniformBuffer(this.duotoneUniformBuffer, uniformData);
+
+    this.uploadVideoToTexture(video);
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.duotonePipeline);
+    computePass.setBindGroup(0, this.duotoneBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderDither(video, scale, levels) {
+    const uniformData = new Float32Array([
+      scale,
+      levels,
+      0.0,
+      0.0,
+    ]);
+    this.updateUniformBuffer(this.ditherUniformBuffer, uniformData);
+
+    this.uploadVideoToTexture(video);
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.ditherPipeline);
+    computePass.setBindGroup(0, this.ditherBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderTwirl(video, centerX, centerY, radius, strength) {
+    const uniformData = new Float32Array([
+      centerX,
+      centerY,
+      radius,
+      strength,
+    ]);
+    this.updateUniformBuffer(this.twirlUniformBuffer, uniformData);
+
+    this.uploadVideoToTexture(video);
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.twirlPipeline);
+    computePass.setBindGroup(0, this.twirlBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
     const canvasTexture = this.canvasContext.getCurrentTexture();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [
