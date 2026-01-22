@@ -45,11 +45,17 @@ function setupMockDOM() {
     <input type="checkbox" id="webglToggle" />
     <div id="resolutionValue">-</div>
 
-    <!-- Tab structure -->
-    <div class="tab-button" data-tab="effects">Effects</div>
-    <div class="tab-button" data-tab="settings">Settings</div>
-    <div class="tab-content" id="tab-effects"></div>
-    <div class="tab-content" id="tab-settings"></div>
+    <!-- Input source tabs -->
+    <button class="input-source-tab-button" data-tab="camera">Camera</button>
+    <button class="input-source-tab-button" data-tab="video-file">Video File</button>
+    <div class="input-source-tab-content" id="tab-camera"></div>
+    <div class="input-source-tab-content" id="tab-video-file"></div>
+
+    <!-- Effect tab structure -->
+    <div class="effect-tab-button" data-tab="effects">Effects</div>
+    <div class="effect-tab-button" data-tab="settings">Settings</div>
+    <div class="effect-tab-content" id="tab-effects"></div>
+    <div class="effect-tab-content" id="tab-settings"></div>
 
     <!-- Effect buttons -->
     <button class="effect-btn" data-effect="original">Original</button>
@@ -600,5 +606,426 @@ describe('CyberVision - Renderer Parameters', () => {
     expect(player.histogram.update).toHaveBeenCalledWith(player.canvas);
 
     nowSpy.mockRestore();
+  });
+});
+
+describe('CyberVision - Event Listeners', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('switches input sources when tabs are clicked', async () => {
+    const player = await createTestPlayer();
+    const switchSpy = vi.spyOn(player, 'switchInputSource').mockImplementation(() => {});
+
+    player.setupEventListeners();
+
+    const videoTab = document.querySelector('.input-source-tab-button[data-tab="video-file"]');
+    videoTab.dispatchEvent(new Event('click'));
+
+    expect(switchSpy).toHaveBeenCalledWith('video-file');
+  });
+
+  it('loads files from input change and drop events', async () => {
+    const player = await createTestPlayer();
+    const loadSpy = vi.spyOn(player, 'loadLocalVideo').mockImplementation(() => {});
+
+    player.setupEventListeners();
+
+    const file = new File(['data'], 'clip.mp4', { type: 'video/mp4' });
+    Object.defineProperty(player.videoFileInput, 'files', {
+      value: [file],
+      configurable: true,
+    });
+    player.videoFileInput.dispatchEvent(new Event('change'));
+    expect(loadSpy).toHaveBeenCalledWith(file);
+
+    const dropEvent = new Event('drop');
+    Object.defineProperty(dropEvent, 'dataTransfer', {
+      value: { files: [file] },
+      configurable: true,
+    });
+    player.dropZone.dispatchEvent(dropEvent);
+    expect(loadSpy).toHaveBeenCalledWith(file);
+  });
+
+  it('toggles drop zone state and opens file picker', async () => {
+    const player = await createTestPlayer();
+    player.videoFileInput.click = vi.fn();
+
+    player.setupEventListeners();
+
+    player.dropZone.dispatchEvent(new Event('dragover'));
+    expect(player.dropZone.classList.contains('drag-over')).toBe(true);
+
+    player.dropZone.dispatchEvent(new Event('dragleave'));
+    expect(player.dropZone.classList.contains('drag-over')).toBe(false);
+
+    player.chooseFileBtn.dispatchEvent(new Event('click'));
+    expect(player.videoFileInput.click).toHaveBeenCalled();
+  });
+
+  it('updates effect state when selecting an effect button', async () => {
+    const player = await createTestPlayer();
+    const updateSpy = vi.spyOn(player, 'updateEffectControls').mockImplementation(() => {});
+
+    player.setupEventListeners();
+
+    const buttons = Array.from(document.querySelectorAll('.effect-btn'));
+    const targetButton = buttons.find((btn) => btn.dataset.effect === 'mosaic');
+    const otherButton = buttons.find((btn) => btn.dataset.effect === 'halftone');
+
+    targetButton.dispatchEvent(new Event('click'));
+
+    expect(player.currentEffect).toBe('mosaic');
+    expect(targetButton.classList.contains('selected')).toBe(true);
+    expect(targetButton.getAttribute('aria-checked')).toBe('true');
+    expect(otherButton.getAttribute('aria-checked')).toBe('false');
+    expect(updateSpy).toHaveBeenCalled();
+  });
+});
+
+describe('CyberVision - Input Source Switching', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('switches to video-file mode and sets up pipeline', async () => {
+    const player = await createTestPlayer();
+    const stopSpy = vi.spyOn(player, 'stopCamera').mockImplementation(() => {});
+
+    player.activeInputSource = 'camera';
+    player.isCameraRunning = true;
+    player.renderer = { setupPipeline: vi.fn() };
+
+    setMediaElementProperty(player.videoElement, 'videoWidth', 640);
+    setMediaElementProperty(player.videoElement, 'videoHeight', 360);
+
+    player.switchInputSource('video-file');
+
+    expect(stopSpy).toHaveBeenCalled();
+    expect(player.activeInputSource).toBe('video-file');
+    expect(player.currentSourceVideo).toBe(player.videoElement);
+    expect(player.playerStatusEl.textContent).toContain('Ready. Choose a video file.');
+    expect(player.statusEl.textContent).toBe('');
+    expect(player.startBtn.disabled).toBe(true);
+    expect(player.stopBtn.disabled).toBe(true);
+    expect(player.screenshotBtn.disabled).toBe(true);
+    expect(player.renderer.setupPipeline).toHaveBeenCalledWith(player.videoElement, player.dotSize);
+  });
+
+  it('switches to camera mode and pauses video playback', async () => {
+    const player = await createTestPlayer();
+    const pauseSpy = vi.spyOn(player, 'pauseVideo').mockImplementation(() => {});
+
+    player.activeInputSource = 'video-file';
+    player.isVideoPlaying = true;
+
+    player.switchInputSource('camera');
+
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(player.activeInputSource).toBe('camera');
+    expect(player.currentSourceVideo).toBe(player.cameraVideoElement);
+    expect(player.statusEl.textContent).toContain("Ready. Click 'Start Camera' to begin.");
+    expect(player.playerStatusEl.textContent).toBe('');
+    expect(player.playPauseBtn.disabled).toBe(true);
+    expect(player.seekSlider.disabled).toBe(true);
+    expect(player.timeDisplay.textContent).toBe('0:00 / 0:00');
+  });
+});
+
+describe('CyberVision - Video Lifecycle', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('initializes renderer state when video metadata loads', async () => {
+    const player = await createTestPlayer();
+    player.renderer = { setupPipeline: vi.fn().mockResolvedValue() };
+
+    setMediaElementProperty(player.videoElement, 'videoWidth', 1280);
+    setMediaElementProperty(player.videoElement, 'videoHeight', 720);
+    setMediaElementProperty(player.videoElement, 'duration', 120);
+
+    player.playPauseBtn.disabled = true;
+    player.seekSlider.disabled = true;
+
+    await player.onVideoLoaded();
+
+    expect(player.canvas.width).toBe(1280);
+    expect(player.canvas.height).toBe(720);
+    expect(player.resolutionValue.textContent).toBe('1280x720');
+    expect(player.isVideoLoaded).toBe(true);
+    expect(player.playPauseBtn.disabled).toBe(false);
+    expect(player.seekSlider.disabled).toBe(false);
+    expect(player.playerStatusEl.textContent).toContain('Video loaded');
+    expect(player.renderer.setupPipeline).toHaveBeenCalledWith(player.videoElement, player.dotSize);
+  });
+
+  it('reports renderer setup errors for videos', async () => {
+    const player = await createTestPlayer();
+    player.renderer = { setupPipeline: vi.fn().mockRejectedValue(new Error('boom')) };
+
+    setMediaElementProperty(player.videoElement, 'videoWidth', 640);
+    setMediaElementProperty(player.videoElement, 'videoHeight', 480);
+
+    await player.onVideoLoaded();
+
+    expect(player.isVideoLoaded).toBe(false);
+    expect(player.playerStatusEl.textContent).toContain('Failed to initialize renderer for video: boom');
+  });
+
+  it('updates playback state when the video ends', async () => {
+    const player = await createTestPlayer();
+    if (!globalThis.cancelAnimationFrame) {
+      globalThis.cancelAnimationFrame = () => {};
+    }
+    const cancelSpy = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    player.isVideoPlaying = true;
+    player.videoAnimationFrame = 42;
+
+    player.onVideoEnded();
+
+    expect(player.isVideoPlaying).toBe(false);
+    expect(player.playPauseBtn.textContent).toBe('Play');
+    expect(cancelSpy).toHaveBeenCalledWith(42);
+    expect(player.playerStatusEl.textContent).toBe('Playback ended');
+  });
+
+  it('starts the video render loop when playing', async () => {
+    const player = await createTestPlayer();
+    if (!globalThis.requestAnimationFrame) {
+      globalThis.requestAnimationFrame = () => 0;
+    }
+    const rafSpy = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(() => 99);
+    const nowSpy = vi.spyOn(performance, 'now');
+
+    nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1016);
+
+    player.isVideoPlaying = true;
+    player.activeInputSource = 'video-file';
+    player.renderFrame = vi.fn();
+    player.updateFPS = vi.fn();
+
+    player.startVideoRenderLoop();
+
+    expect(player.renderFrame).toHaveBeenCalled();
+    expect(player.updateFPS).toHaveBeenCalledWith(16);
+    expect(rafSpy).toHaveBeenCalled();
+    expect(player.videoAnimationFrame).toBe(99);
+  });
+});
+
+describe('CyberVision - Renderer Toggle', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('forces WebGL when WebGPU is unavailable', async () => {
+    const player = await createTestPlayer();
+    const switchSpy = vi.spyOn(player, 'switchToRenderer').mockImplementation(() => {});
+
+    player.webgpuAvailable = false;
+    player.webglToggle.checked = false;
+
+    player.handleRendererToggle(false);
+
+    expect(player.webglToggle.checked).toBe(true);
+    expect(switchSpy).not.toHaveBeenCalled();
+  });
+
+  it('restarts the camera when toggling renderer mid-stream', async () => {
+    const player = await createTestPlayer();
+    const stopSpy = vi.spyOn(player, 'stopCamera').mockImplementation(() => {});
+    const startSpy = vi.spyOn(player, 'startCamera').mockImplementation(() => {});
+
+    vi.spyOn(player, 'switchToRenderer').mockImplementation((target) => {
+      player.rendererType = target;
+    });
+
+    player.activeInputSource = 'camera';
+    player.isCameraRunning = true;
+    player.webgpuAvailable = true;
+
+    player.handleRendererToggle(true);
+
+    expect(stopSpy).toHaveBeenCalled();
+    expect(startSpy).toHaveBeenCalled();
+    expect(player.statusEl.textContent).toContain('Switched to WEBGL.');
+  });
+
+  it('restarts video playback after a renderer switch', async () => {
+    const player = await createTestPlayer();
+    const pauseSpy = vi.spyOn(player, 'pauseVideo').mockImplementation(() => {});
+    const playSpy = vi.spyOn(player, 'playVideo').mockImplementation(() => {});
+
+    vi.spyOn(player, 'switchToRenderer').mockImplementation((target) => {
+      player.rendererType = target;
+    });
+
+    player.activeInputSource = 'video-file';
+    player.isVideoPlaying = true;
+    player.isVideoLoaded = true;
+    player.webgpuAvailable = true;
+
+    player.handleRendererToggle(true);
+
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(playSpy).toHaveBeenCalled();
+  });
+});
+
+describe('CyberVision - Segmentation', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('loads the segmentation model and updates progress UI', async () => {
+    const player = await createTestPlayer();
+    const { PortraitSegmentation } = await import('/lib/ml-inference.js');
+
+    const loadSpy = vi
+      .spyOn(PortraitSegmentation.prototype, 'loadModel')
+      .mockImplementation(async (_path, onProgress) => {
+        onProgress({ stage: 'downloading', progress: 0.5 });
+        onProgress({ stage: 'initializing' });
+        onProgress({ stage: 'ready' });
+      });
+
+    await player.loadSegmentationModel();
+
+    expect(player.segmentationModelLoaded).toBe(true);
+    expect(player.segmentationML).toBeInstanceOf(PortraitSegmentation);
+    expect(player.segmentationLoadingText.textContent).toBe('Model ready!');
+    expect(player.segmentationLoading.style.display).toBe('none');
+    expect(loadSpy).toHaveBeenCalledWith(
+      '/static/models/segmentation.onnx',
+      expect.any(Function)
+    );
+  });
+
+  it('shows errors when the segmentation model fails to load', async () => {
+    const player = await createTestPlayer();
+    const { PortraitSegmentation } = await import('/lib/ml-inference.js');
+
+    vi.spyOn(PortraitSegmentation.prototype, 'loadModel').mockRejectedValue(new Error('boom'));
+
+    await player.loadSegmentationModel();
+
+    expect(player.segmentationModelLoaded).toBe(false);
+    expect(player.segmentationLoadingText.textContent).toBe('Error: Failed to load model.');
+    expect(player.segmentationLoading.style.display).toBe('flex');
+  });
+
+  it('falls back to passthrough when segmentation is unavailable', async () => {
+    const player = await createTestPlayer();
+    player.rendererType = 'webgpu';
+    player.renderer = { renderPassthrough: vi.fn() };
+
+    await player.renderSegmentation({});
+
+    expect(player.renderer.renderPassthrough).toHaveBeenCalled();
+  });
+
+  it('runs segmentation inference and renders the mask', async () => {
+    const player = await createTestPlayer();
+    const sourceVideo = {};
+    const maskData = { data: [1] };
+    const processedMask = { data: [2] };
+
+    player.rendererType = 'webgpu';
+    player.segmentationModelLoaded = true;
+    player.segmentationFrameSkip = 1;
+    player.segmentationFrameCounter = 0;
+    player.segmentationMask = null;
+    player.segmentationML = {
+      segmentFrame: vi.fn().mockResolvedValue(maskData),
+      postprocessMask: vi.fn().mockReturnValue(processedMask),
+    };
+    player.renderer = {
+      renderSegmentation: vi.fn(),
+      renderPassthrough: vi.fn(),
+    };
+
+    await player.renderSegmentation(sourceVideo);
+
+    expect(player.segmentationML.segmentFrame).toHaveBeenCalledWith(sourceVideo);
+    expect(player.segmentationML.postprocessMask).toHaveBeenCalledWith(maskData);
+    expect(player.renderer.renderSegmentation).toHaveBeenCalledWith(
+      sourceVideo,
+      player.segmentationMode_state,
+      player.segmentationBlurRadius_state,
+      processedMask,
+      player.segmentationSoftEdges_state,
+      player.segmentationGlow_state
+    );
+  });
+});
+
+describe('CyberVision - Screenshot Capture', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('writes status after saving a screenshot', async () => {
+    const player = await createTestPlayer();
+    const blob = new Blob(['data'], { type: 'image/png' });
+
+    player.isRunning = true;
+    player.canvas.toBlob = vi.fn((callback) => callback(blob));
+
+    if (!URL.createObjectURL) {
+      URL.createObjectURL = () => 'blob:stub';
+    }
+    if (!URL.revokeObjectURL) {
+      URL.revokeObjectURL = () => {};
+    }
+
+    const createSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    player.takeScreenshot();
+
+    expect(player.statusEl.textContent).toContain('Screenshot saved: cybervision-screenshot-');
+    expect(createSpy).toHaveBeenCalledWith(blob);
+    expect(revokeSpy).toHaveBeenCalledWith('blob:mock');
+    expect(clickSpy).toHaveBeenCalled();
+  });
+
+  it('reports errors when screenshot creation fails', async () => {
+    const player = await createTestPlayer();
+
+    player.isRunning = true;
+    player.canvas.toBlob = vi.fn((callback) => callback(null));
+
+    player.takeScreenshot();
+
+    expect(player.statusEl.textContent).toBe('Screenshot error: Failed to create image blob.');
   });
 });
