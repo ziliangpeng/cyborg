@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('CyberVision Video Player', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-  });
+test.beforeEach(async ({ page }) => {
+  await page.goto('/');
+  // Switch to Video File tab
+  await page.click('.input-source-tab-button[data-tab="video-file"]');
+});
 
+test.describe('CyberVision Player Features', () => {
   test('should load the page successfully', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('CyberVision Player');
+    await expect(page.locator('h1')).toContainText('CyberVision');
     await expect(page.locator('#chooseFileBtn')).toBeVisible();
     await expect(page.locator('#dropZone')).toBeVisible();
     // New UI uses effect buttons instead of select
@@ -15,8 +17,8 @@ test.describe('CyberVision Video Player', () => {
 
   test('should have all effect options available', async ({ page }) => {
     // Check for effect buttons across both tabs
-    const artisticTab = page.locator('.tab-button[data-tab="artistic"]');
-    const distortionTab = page.locator('.tab-button[data-tab="distortion"]');
+    const artisticTab = page.locator('.effect-tab-button[data-tab="artistic"]');
+    const distortionTab = page.locator('.effect-tab-button[data-tab="distortion"]');
 
     await expect(artisticTab).toBeVisible();
     await expect(distortionTab).toBeVisible();
@@ -91,7 +93,7 @@ test.describe('CyberVision Video Player', () => {
 
   test('should change effect selection', async ({ page }) => {
     // Click on halftone effect button (in artistic tab)
-    const artisticTab = page.locator('.tab-button[data-tab="artistic"]');
+    const artisticTab = page.locator('.effect-tab-button[data-tab="artistic"]');
     await artisticTab.click();
 
     const halftoneBtn = page.locator('.effect-btn[data-effect="halftone"]');
@@ -104,7 +106,7 @@ test.describe('CyberVision Video Player', () => {
 
   test('should show halftone controls when halftone effect is selected', async ({ page }) => {
     // Click on halftone effect button
-    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-tab-button[data-tab="artistic"]').click();
     await page.locator('.effect-btn[data-effect="halftone"]').click();
 
     // Check for dot size slider (new ID: dotSizeSlider)
@@ -118,7 +120,7 @@ test.describe('CyberVision Video Player', () => {
 
   test('should update dot size value when slider is moved', async ({ page }) => {
     // Select halftone effect
-    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-tab-button[data-tab="artistic"]').click();
     await page.locator('.effect-btn[data-effect="halftone"]').click();
 
     const dotSizeSlider = page.locator('#dotSizeSlider');
@@ -133,7 +135,7 @@ test.describe('CyberVision Video Player', () => {
 
   test('should be able to select clustering effect', async ({ page }) => {
     // Click on clustering effect button
-    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-tab-button[data-tab="artistic"]').click();
     await page.locator('.effect-btn[data-effect="clustering"]').click();
 
     // Verify clustering controls appear
@@ -143,7 +145,7 @@ test.describe('CyberVision Video Player', () => {
 
   test('should show kaleidoscope controls when selected', async ({ page }) => {
     // Click on kaleidoscope effect button
-    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-tab-button[data-tab="artistic"]').click();
     await page.locator('.effect-btn[data-effect="kaleidoscope"]').click();
 
     // Check for segments slider (new ID: segmentsSlider)
@@ -172,7 +174,7 @@ test.describe('CyberVision Video Player', () => {
 
   test('should show segmentation controls when segmentation effect is selected', async ({ page }) => {
     // Click on segmentation effect button
-    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-tab-button[data-tab="artistic"]').click();
     await page.locator('.effect-btn[data-effect="segmentation"]').click();
 
     // Verify segmentation controls appear
@@ -185,6 +187,9 @@ test.describe('CyberVision Video Player', () => {
 
     // Verify the dropdown has blackout selected by default
     await expect(segmentationMode).toHaveValue('blackout');
+
+    // Switch to blur mode to see the slider
+    await segmentationMode.selectOption('blur');
 
     // Check for blur radius slider
     const blurRadiusSlider = page.locator('#segmentationBlurRadius');
@@ -210,7 +215,7 @@ test.describe('CyberVision Video Player', () => {
     });
 
     // Click on segmentation effect button
-    await page.locator('.tab-button[data-tab="artistic"]').click();
+    await page.locator('.effect-tab-button[data-tab="artistic"]').click();
     await page.locator('.effect-btn[data-effect="segmentation"]').click();
 
     // Wait a bit for any async errors to appear
@@ -226,9 +231,11 @@ test.describe('CyberVision Video Player', () => {
   });
 });
 
-test.describe('CyberVision Video Player - With Local Video', () => {
+test.describe('CyberVision Player - Local Video Handling', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    // Switch to Video File tab
+    await page.click('.input-source-tab-button[data-tab="video-file"]');
   });
 
   test('should load video when file is selected', async ({ page }) => {
@@ -244,12 +251,12 @@ test.describe('CyberVision Video Player - With Local Video', () => {
     });
 
     // Should show loading status
-    const statusMessage = page.locator('#status');
+    const statusMessage = page.locator('#player-status');
     await expect(statusMessage).toBeVisible();
   });
 });
 
-test.describe('CyberVision Video Player - External Dependencies', () => {
+test.describe('CyberVision Player - External Dependencies', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });

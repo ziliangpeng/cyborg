@@ -27,10 +27,6 @@ jobs:
         working-directory: apps/cybervision
         run: npx playwright install chromium --with-deps
 
-      - name: Install Playwright browsers for CyberVision Player
-        working-directory: apps/cybervision-player
-        run: npx playwright install chromium --with-deps
-
       - name: Run Bazel coverage (non-CUDA)
         run: bazel coverage --config=ci --combined_report=lcov //...
 
@@ -38,19 +34,14 @@ jobs:
         working-directory: apps/cybervision
         run: npm run test:unit -- --coverage
 
-      - name: Generate JavaScript coverage for CyberVision Player
-        working-directory: apps/cybervision-player
-        run: pnpm run test:coverage
-
       - name: Fix JS coverage paths for Codecov
         run: |
           # Codecov needs paths relative to repo root, but vitest outputs paths relative to app dir
           sed -i 's|^SF:|SF:apps/cybervision/|' apps/cybervision/coverage/lcov.info
-          sed -i 's|^SF:|SF:apps/cybervision-player/|' apps/cybervision-player/coverage/lcov.info
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: bazel-out/_coverage/_coverage_report.dat,apps/cybervision/coverage/lcov.info,apps/cybervision-player/coverage/lcov.info
+          files: bazel-out/_coverage/_coverage_report.dat,apps/cybervision/coverage/lcov.info

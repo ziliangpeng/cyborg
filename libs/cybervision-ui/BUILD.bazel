@@ -1,5 +1,13 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+
 filegroup(
     name = "ui_files",
+    srcs = glob(["*.css"]),
+    visibility = ["//visibility:public"],
+)
+
+js_library(
+    name = "ui_assets",
     srcs = glob(["*.css"]),
     visibility = ["//visibility:public"],
 )

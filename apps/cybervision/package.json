@@ -16,8 +16,9 @@
   "devDependencies": {
     "@playwright/test": "^1.48.0",
     "@vitest/coverage-v8": "^2.1.0",
-    "vitest": "^2.1.0",
+    "happy-dom": "^20.3.4",
     "pixelmatch": "^6.0.0",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "vitest": "^2.1.0"
   }
 }

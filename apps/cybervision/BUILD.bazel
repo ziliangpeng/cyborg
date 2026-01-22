@@ -21,6 +21,7 @@ py_binary(
     data = glob(["webroot/**"]) + [
         "//libs/cybervision-core:shaders",
         "//libs/cybervision-core:renderers",
+        "//libs/cybervision-ui:ui_files",
     ],
     deps = [
         "@pip//click",
@@ -46,6 +47,10 @@ vitest_bin.vitest_test(
         ":node_modules/vitest",
         ":node_modules/@vitest/coverage-v8",
         ":webroot_files",
+        "tests/unit/__mocks__/ml-inference.js", # Added from player mocks
+        "tests/unit/__mocks__/utils.js",       # Added from player mocks
+        "tests/unit/__mocks__/webgpu-renderer.js", # Added from player mocks
+        "tests/unit/__mocks__/webgl-renderer.js", # Added mock
     ] + glob([
         "tests/unit/**/*.test.js",
     ]),
@@ -68,6 +73,7 @@ playwright_bin.playwright_test(
         ":node_modules/pixelmatch",
         ":node_modules/pngjs",
         ":webroot_files",
+        "//libs/cybervision-ui:ui_assets", # Changed from ui_files
         ":cybervision",
     ] + glob([
         "tests/integration/**/*.test.js",

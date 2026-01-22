@@ -1017,11 +1017,7 @@ export class WebGPURenderer {
     this.updateUniformBuffer(this.uniformBuffer, uniformData);
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1056,11 +1052,7 @@ export class WebGPURenderer {
 
   renderPassthrough(video) {
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1107,11 +1099,7 @@ export class WebGPURenderer {
     this.updateUniformBuffer(this.clusteringUniformBuffer, uniformData);
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1169,11 +1157,7 @@ export class WebGPURenderer {
     this.updateUniformBuffer(this.edgesUniformBuffer, uniformData);
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1230,11 +1214,7 @@ export class WebGPURenderer {
     this.updateUniformBuffer(this.mosaicUniformBuffer, uniformData);
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1301,11 +1281,7 @@ export class WebGPURenderer {
     this.updateUniformBuffer(this.chromaticUniformBuffer, uniformData);
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1362,11 +1338,7 @@ export class WebGPURenderer {
     this.updateUniformBuffer(this.glitchUniformBuffer, uniformData);
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1418,11 +1390,7 @@ export class WebGPURenderer {
     this.updateUniformBuffer(this.thermalUniformBuffer, uniformData);
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1486,11 +1454,7 @@ export class WebGPURenderer {
     };
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);
@@ -1725,11 +1689,7 @@ export class WebGPURenderer {
     ]);
     this.updateUniformBuffer(this.kaleidoscopeUniformBuffer, uniformData);
 
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1850,11 +1810,7 @@ export class WebGPURenderer {
     this.device.queue.writeBuffer(this.segmentationUniformBuffer, 0, this.segmentationUniformsArrayBuffer);
 
     // Copy video frame to input texture
-    this.device.queue.copyExternalImageToTexture(
-      { source: video, flipY: false },
-      { texture: this.inputTexture },
-      [this.videoWidth, this.videoHeight]
-    );
+    this.uploadVideoToTexture(video);
 
     const commandEncoder = this.device.createCommandEncoder();
 
@@ -1902,6 +1858,22 @@ export class WebGPURenderer {
 
   updateUniformBuffer(buffer, data) {
     this.device.queue.writeBuffer(buffer, 0, data);
+  }
+
+  uploadVideoToTexture(video) {
+    if (!video) return;
+    const srcWidth = video.videoWidth || video.width || this.videoWidth;
+    const srcHeight = video.videoHeight || video.height || this.videoHeight;
+    const width = Math.min(this.videoWidth, srcWidth);
+    const height = Math.min(this.videoHeight, srcHeight);
+    
+    if (width <= 0 || height <= 0) return;
+
+    this.device.queue.copyExternalImageToTexture(
+      { source: video, flipY: false },
+      { texture: this.inputTexture },
+      [width, height]
+    );
   }
 
   destroy() {
