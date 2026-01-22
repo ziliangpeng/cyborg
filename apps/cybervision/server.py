@@ -218,7 +218,7 @@ class CyberVisionHandler(BaseHTTPRequestHandler):
         # Add /libs/ route for shared library files (like ml-inference.js)
         if path.startswith("/libs/"):
             rel = path.removeprefix("/libs/")
-            safe_path = _safe_join(SHARED_LIB_ROOT.parent, rel) # Go up one level to get to libs
+            safe_path = _safe_join(SHARED_LIB_ROOT.parent, rel)  # Go up one level to get to libs
             if safe_path is None:
                 self.send_error(HTTPStatus.FORBIDDEN)
                 return
@@ -258,6 +258,7 @@ class CyberVisionHandler(BaseHTTPRequestHandler):
             return
 
         self.send_error(HTTPStatus.NOT_FOUND)
+
 
 def run_server(*, host: str, port: int, debug: bool) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
