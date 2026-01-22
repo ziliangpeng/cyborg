@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // Mock dependencies are configured via vitest.config.js aliases
 
@@ -224,6 +224,22 @@ function setupMockDOM() {
   `;
 }
 
+async function createTestPlayer() {
+  const { CyberVision } = await import('../../webroot/static/app.js');
+  class TestCyberVision extends CyberVision {
+    async init() {}
+  }
+  return new TestCyberVision();
+}
+
+function setMediaElementProperty(element, property, value) {
+  Object.defineProperty(element, property, {
+    value,
+    writable: true,
+    configurable: true,
+  });
+}
+
 describe('CyberVision - Time Formatting', () => {
   beforeEach(() => {
     setupMockDOM();
@@ -346,5 +362,243 @@ describe('CyberVision - Local Video Loading', () => {
 
     const status = document.getElementById('player-status');
     expect(status.textContent).toContain('Loading video');
+  });
+});
+
+describe('CyberVision - Playback Controls', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('updates time display and seek slider when video is loaded', async () => {
+    const player = await createTestPlayer();
+    player.isVideoLoaded = true;
+
+    setMediaElementProperty(player.videoElement, 'currentTime', 30);
+    setMediaElementProperty(player.videoElement, 'duration', 120);
+
+    player.updateTime();
+
+    expect(player.timeDisplay.textContent).toBe('0:30 / 2:00');
+    expect(Number(player.seekSlider.value)).toBeCloseTo(25);
+  });
+
+  it('does not update time display when video is not loaded', async () => {
+    const player = await createTestPlayer();
+    player.isVideoLoaded = false;
+
+    setMediaElementProperty(player.videoElement, 'currentTime', 50);
+    setMediaElementProperty(player.videoElement, 'duration', 100);
+    player.timeDisplay.textContent = '0:00 / 0:00';
+    player.seekSlider.value = '0';
+
+    player.updateTime();
+
+    expect(player.timeDisplay.textContent).toBe('0:00 / 0:00');
+    expect(player.seekSlider.value).toBe('0');
+  });
+
+  it('seeks to the correct position based on the slider value', async () => {
+    const player = await createTestPlayer();
+    player.isVideoLoaded = true;
+
+    setMediaElementProperty(player.videoElement, 'duration', 200);
+    setMediaElementProperty(player.videoElement, 'currentTime', 0);
+    player.seekSlider.value = '50';
+
+    player.seek();
+
+    expect(player.videoElement.currentTime).toBe(100);
+  });
+
+  it('toggles play and pause based on current state', async () => {
+    const player = await createTestPlayer();
+    const playSpy = vi.spyOn(player, 'playVideo').mockImplementation(() => {});
+    const pauseSpy = vi.spyOn(player, 'pauseVideo').mockImplementation(() => {});
+
+    player.isVideoLoaded = true;
+    player.isVideoPlaying = false;
+    player.togglePlayPause();
+
+    expect(playSpy).toHaveBeenCalledTimes(1);
+    expect(pauseSpy).not.toHaveBeenCalled();
+
+    player.isVideoPlaying = true;
+    player.togglePlayPause();
+
+    expect(pauseSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('CyberVision - Effect Control Visibility', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('shows mosaic info only for dominant mode in WebGL', async () => {
+    const player = await createTestPlayer();
+    player.rendererType = 'webgl';
+    player.mosaicModeValue = 'dominant';
+
+    player.updateMosaicInfo();
+    expect(player.mosaicInfo.style.display).toBe('flex');
+
+    player.mosaicModeValue = 'center';
+    player.updateMosaicInfo();
+    expect(player.mosaicInfo.style.display).toBe('none');
+
+    player.mosaicModeValue = 'dominant';
+    player.rendererType = 'webgpu';
+    player.updateMosaicInfo();
+    expect(player.mosaicInfo.style.display).toBe('none');
+  });
+
+  it('toggles pixel sort iteration controls based on algorithm', async () => {
+    const player = await createTestPlayer();
+    player.pixelSortAlgorithmValue = 'bubble';
+
+    player.updatePixelSortIterationsVisibility();
+    expect(player.pixelSortIterationsGroup.style.display).toBe('block');
+
+    player.pixelSortAlgorithmValue = 'bitonic';
+    player.updatePixelSortIterationsVisibility();
+    expect(player.pixelSortIterationsGroup.style.display).toBe('none');
+  });
+
+  it('switches segmentation controls based on mode', async () => {
+    const player = await createTestPlayer();
+
+    player.segmentationMode_state = 'blur';
+    player.updateSegmentationControlsVisibility();
+    expect(player.segmentationBlurGroup.style.display).toBe('block');
+    expect(player.segmentationBackgroundGroup.style.display).toBe('none');
+
+    player.segmentationMode_state = 'replace';
+    player.updateSegmentationControlsVisibility();
+    expect(player.segmentationBlurGroup.style.display).toBe('none');
+    expect(player.segmentationBackgroundGroup.style.display).toBe('block');
+
+    player.segmentationMode_state = 'blackout';
+    player.updateSegmentationControlsVisibility();
+    expect(player.segmentationBlurGroup.style.display).toBe('none');
+    expect(player.segmentationBackgroundGroup.style.display).toBe('none');
+  });
+});
+
+describe('CyberVision - Renderer Parameters', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('builds clustering algorithm strings based on true color toggle', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderClustering: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.clusteringAlgorithm = 'quantization-kmeans';
+    player.colorCount = 6;
+    player.colorThreshold = 0.2;
+
+    player.useTrueColors = true;
+    player.renderClustering(sourceVideo);
+
+    player.useTrueColors = false;
+    player.renderClustering(sourceVideo);
+
+    expect(renderer.renderClustering).toHaveBeenNthCalledWith(
+      1,
+      sourceVideo,
+      'quantization-kmeans-true',
+      6,
+      0.2
+    );
+    expect(renderer.renderClustering).toHaveBeenNthCalledWith(
+      2,
+      sourceVideo,
+      'quantization-kmeans',
+      6,
+      0.2
+    );
+  });
+
+  it('passes parsed edge color to the renderer', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderEdges: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.edgeAlgorithmValue = 'sobel';
+    player.edgeThresholdValue_state = 0.2;
+    player.edgeOverlayValue = true;
+    player.edgeInvertValue = false;
+    player.edgeColorValue = '#ff0000';
+    player.edgeThicknessValue_state = 3;
+
+    player.renderEdges(sourceVideo);
+
+    expect(renderer.renderEdges).toHaveBeenCalledWith(
+      sourceVideo,
+      'sobel',
+      0.2,
+      true,
+      false,
+      [1, 0, 0],
+      3
+    );
+  });
+
+  it('normalizes chromatic center percentages before rendering', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderChromatic: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.chromaticIntensityValue_state = 12;
+    player.chromaticModeValue = 'radial';
+    player.chromaticCenterXValue_state = 25;
+    player.chromaticCenterYValue_state = 75;
+
+    player.renderChromatic(sourceVideo);
+
+    expect(renderer.renderChromatic).toHaveBeenCalledWith(
+      sourceVideo,
+      12,
+      'radial',
+      0.25,
+      0.75
+    );
+  });
+
+  it('updates FPS and latency displays after a second elapses', async () => {
+    const player = await createTestPlayer();
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+
+    player.isVideoPlaying = true;
+    player.frameCount = 59;
+    player.lastFpsTime = 0;
+    player.lastLatencyUpdate = 0;
+    player.frameLatencies = [10, 20, 30];
+    player.histogram.update = vi.fn();
+
+    player.updateFPS();
+
+    expect(player.fpsValue.textContent).toBe('60');
+    expect(player.latencyValue.textContent).toBe('20.00 ms');
+    expect(player.histogram.update).toHaveBeenCalledWith(player.canvas);
+
+    nowSpy.mockRestore();
   });
 });
