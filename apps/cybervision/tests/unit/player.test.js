@@ -640,6 +640,87 @@ describe('CyberVision - Renderer Parameters', () => {
     );
   });
 
+  it('passes duotone colors to the renderer', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderDuotone: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.duotoneShadowColor = '#112233';
+    player.duotoneHighlightColor = '#aabbcc';
+
+    player.renderDuotone(sourceVideo);
+
+    expect(renderer.renderDuotone).toHaveBeenCalledWith(
+      sourceVideo,
+      [0x11 / 255, 0x22 / 255, 0x33 / 255],
+      [0xaa / 255, 0xbb / 255, 0xcc / 255]
+    );
+  });
+
+  it('passes dither parameters to the renderer', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderDither: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.ditherScaleValue_state = 3;
+    player.ditherLevelsValue_state = 6;
+
+    player.renderDither(sourceVideo);
+
+    expect(renderer.renderDither).toHaveBeenCalledWith(sourceVideo, 3, 6);
+  });
+
+  it('passes posterize levels to the renderer', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderPosterize: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.posterizeLevelsValue_state = 5;
+
+    player.renderPosterize(sourceVideo);
+
+    expect(renderer.renderPosterize).toHaveBeenCalledWith(sourceVideo, 5);
+  });
+
+  it('passes twirl parameters to the renderer', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderTwirl: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.twirlCenterX = 0.25;
+    player.twirlCenterY = 0.75;
+    player.twirlRadiusValue_state = 0.6;
+    player.twirlStrengthValue_state = 1.2;
+
+    player.renderTwirl(sourceVideo);
+
+    expect(renderer.renderTwirl).toHaveBeenCalledWith(
+      sourceVideo,
+      0.25,
+      0.75,
+      0.6,
+      1.2
+    );
+  });
+
+  it('passes vignette parameters to the renderer', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderVignette: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.vignetteStrengthValue_state = 0.7;
+    player.vignetteGrainValue_state = 0.12;
+
+    player.renderVignette(sourceVideo);
+
+    expect(renderer.renderVignette).toHaveBeenCalledWith(sourceVideo, 0.7, 0.12);
+  });
+
   it('normalizes chromatic center percentages before rendering', async () => {
     const player = await createTestPlayer();
     const renderer = { renderChromatic: vi.fn() };
