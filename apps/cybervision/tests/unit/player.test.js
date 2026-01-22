@@ -827,6 +827,114 @@ describe('CyberVision - Video Lifecycle', () => {
     expect(rafSpy).toHaveBeenCalled();
     expect(player.videoAnimationFrame).toBe(99);
   });
+
+  it('pauses playback when a render error occurs', async () => {
+    const player = await createTestPlayer();
+    const pauseSpy = vi.spyOn(player, 'pauseVideo').mockImplementation(() => {});
+    const statusSpy = vi.spyOn(player, 'setStatus');
+
+    player.isVideoPlaying = true;
+    player.activeInputSource = 'video-file';
+    player.renderFrame = vi.fn(() => {
+      throw new Error('boom');
+    });
+
+    player.startVideoRenderLoop();
+
+    expect(statusSpy).toHaveBeenCalledWith('Render error: boom', player.playerStatusEl);
+    expect(pauseSpy).toHaveBeenCalled();
+  });
+
+  it('handles video element errors by disabling controls', async () => {
+    const player = await createTestPlayer();
+    if (!globalThis.cancelAnimationFrame) {
+      globalThis.cancelAnimationFrame = () => {};
+    }
+    const cancelSpy = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    player.isVideoLoaded = true;
+    player.isVideoPlaying = true;
+    player.playPauseBtn.disabled = false;
+    player.seekSlider.disabled = false;
+    player.videoAnimationFrame = 7;
+
+    player.onVideoError({ target: { error: { code: 4 } } });
+
+    expect(cancelSpy).toHaveBeenCalledWith(7);
+    expect(player.isVideoLoaded).toBe(false);
+    expect(player.isVideoPlaying).toBe(false);
+    expect(player.playPauseBtn.disabled).toBe(true);
+    expect(player.seekSlider.disabled).toBe(true);
+    expect(player.playPauseBtn.textContent).toBe('Play');
+    expect(player.playerStatusEl.textContent).toContain('Video error:');
+  });
+});
+
+describe('CyberVision - Camera Render Loop', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('stops the camera when a render error occurs', async () => {
+    const player = await createTestPlayer();
+    const stopSpy = vi.spyOn(player, 'stopCamera').mockImplementation(() => {});
+    const statusSpy = vi.spyOn(player, 'setStatus');
+
+    player.isCameraRunning = true;
+    player.activeInputSource = 'camera';
+    player.renderFrame = vi.fn(() => {
+      throw new Error('boom');
+    });
+
+    player.startCameraRenderLoop();
+
+    expect(statusSpy).toHaveBeenCalledWith('Render Error: boom', player.statusEl);
+    expect(stopSpy).toHaveBeenCalled();
+  });
+});
+
+describe('CyberVision - Renderer Switching', () => {
+  beforeEach(() => {
+    setupMockDOM();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('cleans up old renderer and replaces the canvas for WebGL', async () => {
+    const player = await createTestPlayer();
+    const oldRenderer = { cleanup: vi.fn() };
+    const oldCanvas = player.canvas;
+
+    oldCanvas.width = 320;
+    oldCanvas.height = 240;
+    player.renderer = oldRenderer;
+
+    await player.switchToRenderer('webgl');
+
+    expect(oldRenderer.cleanup).toHaveBeenCalled();
+    expect(player.rendererType).toBe('webgl');
+    expect(player.gpuStatus.textContent).toBe('WebGL');
+    expect(player.gpuStatus.style.color).toBe('#60a5fa');
+    expect(player.canvas).not.toBe(oldCanvas);
+    expect(player.canvas.width).toBe(320);
+    expect(player.canvas.height).toBe(240);
+  });
+
+  it('sets WebGPU status when switching renderer', async () => {
+    const player = await createTestPlayer();
+
+    await player.switchToRenderer('webgpu');
+
+    expect(player.rendererType).toBe('webgpu');
+    expect(player.gpuStatus.textContent).toContain('WebGPU');
+    expect(player.gpuStatus.style.color).toBe('#34d399');
+  });
 });
 
 describe('CyberVision - Renderer Toggle', () => {
@@ -936,6 +1044,62 @@ describe('CyberVision - Segmentation', () => {
     expect(player.segmentationModelLoaded).toBe(false);
     expect(player.segmentationLoadingText.textContent).toBe('Error: Failed to load model.');
     expect(player.segmentationLoading.style.display).toBe('flex');
+  });
+
+  it('updates background preview and renderer on upload', async () => {
+    const player = await createTestPlayer();
+    const originalFileReader = globalThis.FileReader;
+    const originalImage = globalThis.Image;
+
+    class MockFileReader {
+      readAsDataURL() {
+        if (this.onload) {
+          this.onload({ target: { result: 'data:image/png;base64,abc' } });
+        }
+      }
+    }
+
+    class MockImage {
+      constructor() {
+        this._src = '';
+        this.onload = null;
+      }
+      set src(value) {
+        this._src = value;
+        if (this.onload) {
+          this.onload();
+        }
+      }
+      get src() {
+        return this._src;
+      }
+    }
+
+    globalThis.FileReader = MockFileReader;
+    globalThis.Image = MockImage;
+
+    player.renderer = { updateBackgroundImage: vi.fn() };
+    player.setupEventListeners();
+
+    const file = new File(['data'], 'bg.png', { type: 'image/png' });
+    Object.defineProperty(player.segmentationBackgroundUpload, 'files', {
+      value: [file],
+      configurable: true,
+    });
+
+    try {
+      player.segmentationBackgroundUpload.dispatchEvent(new Event('change'));
+
+      expect(player.segmentationBackgroundImage).toBeInstanceOf(MockImage);
+      expect(player.backgroundPreviewImg.src).toBe('data:image/png;base64,abc');
+      expect(player.backgroundPreview.style.display).toBe('block');
+      expect(player.renderer.updateBackgroundImage).toHaveBeenCalledWith(
+        player.segmentationBackgroundImage
+      );
+    } finally {
+      globalThis.FileReader = originalFileReader;
+      globalThis.Image = originalImage;
+    }
   });
 
   it('falls back to passthrough when segmentation is unavailable', async () => {

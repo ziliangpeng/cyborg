@@ -949,6 +949,40 @@ class CyberVision {
     this.setStatus("Playback ended", this.playerStatusEl);
   }
 
+  onVideoError(event) {
+    const errorCode = event?.target?.error?.code;
+    let message = "Video error: Unable to load the video.";
+
+    switch (errorCode) {
+      case 1:
+        message = "Video error: Playback was aborted.";
+        break;
+      case 2:
+        message = "Video error: Network error while loading.";
+        break;
+      case 3:
+        message = "Video error: Media decoding failed.";
+        break;
+      case 4:
+        message = "Video error: Format not supported.";
+        break;
+      default:
+        break;
+    }
+
+    if (this.videoAnimationFrame) {
+      cancelAnimationFrame(this.videoAnimationFrame);
+      this.videoAnimationFrame = null;
+    }
+
+    this.isVideoPlaying = false;
+    this.isVideoLoaded = false;
+    this.playPauseBtn.textContent = "Play";
+    this.playPauseBtn.disabled = true;
+    this.seekSlider.disabled = true;
+    this.setStatus(message, this.playerStatusEl);
+  }
+
   startVideoRenderLoop() {
     const render = () => {
       if (!this.isVideoPlaying || this.activeInputSource !== 'video-file') return;
