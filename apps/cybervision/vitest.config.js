@@ -8,6 +8,7 @@ export default defineConfig({
       '/lib/webgl-renderer.js': path.resolve(__dirname, 'tests/unit/__mocks__/webgl-renderer.js'),
       '/lib/ml-inference.js': path.resolve(__dirname, 'tests/unit/__mocks__/ml-inference.js'),
       '/lib/utils.js': path.resolve(__dirname, 'tests/unit/__mocks__/utils.js'),
+      '/lib/histogram.js': path.resolve(__dirname, '../../libs/cybervision-core/histogram.js'),
       '/libs/cybervision-core/ml-inference.js': path.resolve(__dirname, 'tests/unit/__mocks__/ml-inference.js'),
       '/lib': path.resolve(__dirname, '../../libs/cybervision-core'),
       '/libs/cybervision-core': path.resolve(__dirname, '../../libs/cybervision-core'),

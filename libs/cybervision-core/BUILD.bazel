@@ -1,9 +1,23 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+
 filegroup(
     name = "shaders",
     srcs = glob([
         "shaders/*.glsl",
         "shaders/*.wgsl",
     ]),
+    visibility = ["//visibility:public"],
+)
+
+js_library(
+    name = "renderers_js",
+    srcs = [
+        "histogram.js",
+        "ml-inference.js",
+        "utils.js",
+        "webgl-renderer.js",
+        "webgpu-renderer.js",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -14,6 +28,7 @@ filegroup(
         "webgpu-renderer.js",
         "ml-inference.js",
         "utils.js",
+        "histogram.js",
     ],
     visibility = ["//visibility:public"],
 )
@@ -26,3 +41,11 @@ filegroup(
     ],
     visibility = ["//visibility:public"],
 )
+
+exports_files([
+    "histogram.js",
+    "ml-inference.js",
+    "utils.js",
+    "webgl-renderer.js",
+    "webgpu-renderer.js",
+])

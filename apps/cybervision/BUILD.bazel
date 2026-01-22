@@ -47,6 +47,7 @@ vitest_bin.vitest_test(
         ":node_modules/vitest",
         ":node_modules/@vitest/coverage-v8",
         ":webroot_files",
+        "//libs/cybervision-core:renderers_js",
         "tests/unit/__mocks__/ml-inference.js", # Added from player mocks
         "tests/unit/__mocks__/utils.js",       # Added from player mocks
         "tests/unit/__mocks__/webgpu-renderer.js", # Added from player mocks

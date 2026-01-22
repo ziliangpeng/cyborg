@@ -5,6 +5,7 @@
 import { initGPU } from "/lib/webgpu-renderer.js";
 import { initWebGL } from "/lib/webgl-renderer.js";
 import { calculateFPS, hexToRGB, average } from "/lib/utils.js";
+import { Histogram } from "/lib/histogram.js";
 
 class CyberVision {
   constructor() {
@@ -148,6 +149,13 @@ class CyberVision {
     this.segmentationLoadingText = document.getElementById("segmentationLoadingText");
     this.segmentationSoftEdges = document.getElementById("segmentationSoftEdges");
     this.segmentationGlow = document.getElementById("segmentationGlow");
+
+    // Histograms and Visualizations
+    this.histogram = new Histogram({
+      rgb: document.getElementById("rgbHistogramCanvas"),
+      hue: document.getElementById("hueHistogramCanvas"),
+      sat: document.getElementById("satHistogramCanvas")
+    });
 
     // State (Shared)
     this.renderer = null;
@@ -1343,6 +1351,13 @@ class CyberVision {
     const now = performance.now();
     const elapsed = now - this.lastFpsTime;
     const latencyElapsed = now - this.lastLatencyUpdate;
+
+    // Update histogram (every frame or throttled)
+    // We update every frame for smoothness, the Histogram class uses a small 
+    // offscreen canvas for performance.
+    if (this.canvas && (this.isCameraRunning || this.isVideoPlaying)) {
+      this.histogram.update(this.canvas);
+    }
 
     // Update FPS once per second
     if (elapsed >= 1000) {
