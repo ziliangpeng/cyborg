@@ -7,6 +7,9 @@
  */
 const effectToTab = {
   'halftone': 'artistic',
+  'duotone': 'artistic',
+  'dither': 'artistic',
+  'posterize': 'artistic',
   'clustering': 'artistic',
   'mosaic': 'artistic',
   'kaleidoscope': 'artistic',
@@ -14,6 +17,8 @@ const effectToTab = {
   'segmentation': 'artistic',
   'original': 'distortion',
   'edges': 'distortion',
+  'twirl': 'distortion',
+  'vignette': 'distortion',
   'chromatic': 'distortion',
   'glitch': 'distortion',
   'thermal': 'distortion'

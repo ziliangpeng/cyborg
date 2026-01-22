@@ -26,6 +26,9 @@ test.describe('CyberVision Player Features', () => {
     // Check artistic effects
     await artisticTab.click();
     await expect(page.locator('.effect-btn[data-effect="halftone"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="duotone"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="dither"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="posterize"]')).toBeVisible();
     await expect(page.locator('.effect-btn[data-effect="clustering"]')).toBeVisible();
     await expect(page.locator('.effect-btn[data-effect="kaleidoscope"]')).toBeVisible();
 
@@ -33,6 +36,8 @@ test.describe('CyberVision Player Features', () => {
     await distortionTab.click();
     await expect(page.locator('.effect-btn[data-effect="original"]')).toBeVisible();
     await expect(page.locator('.effect-btn[data-effect="edges"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="twirl"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="vignette"]')).toBeVisible();
   });
 
   test('should have file picker button visible', async ({ page }) => {
