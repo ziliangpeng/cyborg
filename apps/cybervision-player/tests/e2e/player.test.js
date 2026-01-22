@@ -7,8 +7,8 @@ test.describe('CyberVision Video Player', () => {
 
   test('should load the page successfully', async ({ page }) => {
     await expect(page.locator('h1')).toContainText('CyberVision Player');
-    await expect(page.locator('#video-path')).toBeVisible();
-    await expect(page.locator('#load-video-btn')).toBeVisible();
+    await expect(page.locator('#chooseFileBtn')).toBeVisible();
+    await expect(page.locator('#dropZone')).toBeVisible();
     // New UI uses effect buttons instead of select
     await expect(page.locator('.effect-btn').first()).toBeVisible();
   });
@@ -33,12 +33,60 @@ test.describe('CyberVision Video Player', () => {
     await expect(page.locator('.effect-btn[data-effect="edges"]')).toBeVisible();
   });
 
-  test('should show error message for empty video path', async ({ page }) => {
-    // Clear the default video path first
-    await page.locator('#video-path').clear();
-    await page.click('#load-video-btn');
-    // New UI uses #status instead of #status-message
-    await expect(page.locator('#status')).toContainText('Please enter a video file path');
+  test('should have file picker button visible', async ({ page }) => {
+    await expect(page.locator('#chooseFileBtn')).toBeVisible();
+    await expect(page.locator('#chooseFileBtn')).toContainText('Choose Video File');
+  });
+
+  test('should have drop zone visible', async ({ page }) => {
+    await expect(page.locator('#dropZone')).toBeVisible();
+  });
+
+  test('should trigger file input when button is clicked', async ({ page }) => {
+    const fileInput = page.locator('#videoFile');
+    await expect(fileInput).toBeHidden(); // Hidden but present
+
+    // Verify the button triggers the file input
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.click('#chooseFileBtn');
+    const fileChooser = await fileChooserPromise;
+    expect(fileChooser).toBeTruthy();
+  });
+
+  test('should display filename after file selection', async ({ page }) => {
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.click('#chooseFileBtn');
+    const fileChooser = await fileChooserPromise;
+
+    // Select a file (Playwright can set file even without real file)
+    await fileChooser.setFiles({
+      name: 'test-video.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.from([])
+    });
+
+    await expect(page.locator('#currentFile')).toContainText('test-video.mp4');
+  });
+
+  test('should show drag-over visual feedback', async ({ page }) => {
+    const dropZone = page.locator('#dropZone');
+
+    // Use page.evaluate to dispatch drag events with proper dataTransfer
+    await page.evaluate(() => {
+      const dropZoneEl = document.getElementById('dropZone');
+      const dragOverEvent = new Event('dragover', { bubbles: true });
+      dragOverEvent.preventDefault = () => {};
+      dropZoneEl.dispatchEvent(dragOverEvent);
+    });
+    await expect(dropZone).toHaveClass(/drag-over/);
+
+    // Simulate dragleave event
+    await page.evaluate(() => {
+      const dropZoneEl = document.getElementById('dropZone');
+      const dragLeaveEvent = new Event('dragleave', { bubbles: true });
+      dropZoneEl.dispatchEvent(dragLeaveEvent);
+    });
+    await expect(dropZone).not.toHaveClass(/drag-over/);
   });
 
   test('should change effect selection', async ({ page }) => {
@@ -178,29 +226,24 @@ test.describe('CyberVision Video Player', () => {
   });
 });
 
-test.describe('CyberVision Video Player - With Mock Video', () => {
+test.describe('CyberVision Video Player - With Local Video', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-
-    // Mock the video API endpoint
-    await page.route('**/api/video?path=*', async route => {
-      // Return a mock video response
-      await route.fulfill({
-        status: 200,
-        contentType: 'video/mp4',
-        body: Buffer.from([]) // Empty buffer for testing
-      });
-    });
   });
 
-  test('should attempt to load video when path is provided', async ({ page }) => {
-    const videoPathInput = page.locator('#video-path');
-    const loadVideoBtn = page.locator('#load-video-btn');
+  test('should load video when file is selected', async ({ page }) => {
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.click('#chooseFileBtn');
+    const fileChooser = await fileChooserPromise;
 
-    await videoPathInput.fill('/test/video.mp4');
-    await loadVideoBtn.click();
+    // Select a file
+    await fileChooser.setFiles({
+      name: 'test-video.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.from([])
+    });
 
-    // Should show status (new ID: #status instead of #status-message)
+    // Should show loading status
     const statusMessage = page.locator('#status');
     await expect(statusMessage).toBeVisible();
   });

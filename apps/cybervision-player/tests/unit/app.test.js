@@ -19,8 +19,11 @@ function createMockVideoElement() {
 function setupMockDOM() {
   document.body.innerHTML = `
     <!-- Video controls -->
-    <input id="video-path" type="text" />
-    <button id="load-video-btn">Load</button>
+    <input type="file" id="videoFile" accept="video/*" style="display: none">
+    <div id="dropZone" class="drop-zone">
+      <button id="chooseFileBtn">Choose Video File</button>
+    </div>
+    <div id="currentFile"></div>
     <video id="video-element"></video>
     <canvas id="video-canvas"></canvas>
     <button id="play-pause-btn">Play</button>
@@ -275,30 +278,56 @@ describe('VideoPlayer - Effect Parameters', () => {
   });
 });
 
-describe('VideoPlayer - Video Path Validation', () => {
+describe('VideoPlayer - Local Video Loading', () => {
   beforeEach(() => {
     setupMockDOM();
   });
 
-  it('should handle empty video path', async () => {
+  it('should load local video file and create blob URL', async () => {
     const { VideoPlayer } = await import('../../webroot/static/app.js');
     const player = new VideoPlayer();
 
-    player.videoPathInput.value = '';
-    await player.loadVideo();
+    const mockFile = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
+    player.loadLocalVideo(mockFile);
 
-    const status = document.getElementById('status');
-    expect(status.textContent).toContain('Please enter a video file path');
+    expect(player.videoElement.src).toContain('blob:');
+    expect(document.getElementById('currentFile').textContent).toBe('test.mp4');
   });
 
-  it('should handle whitespace-only video path', async () => {
+  it('should revoke previous blob URL when loading new video', async () => {
+    const { VideoPlayer } = await import('../../webroot/static/app.js');
+    const player = new VideoPlayer();
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL');
+
+    const file1 = new File(['video1'], 'video1.mp4', { type: 'video/mp4' });
+    const file2 = new File(['video2'], 'video2.mp4', { type: 'video/mp4' });
+
+    player.loadLocalVideo(file1);
+    const firstBlobUrl = player.currentBlobUrl;
+
+    player.loadLocalVideo(file2);
+
+    expect(revokeObjectURL).toHaveBeenCalledWith(firstBlobUrl);
+  });
+
+  it('should update current file display with filename', async () => {
     const { VideoPlayer } = await import('../../webroot/static/app.js');
     const player = new VideoPlayer();
 
-    player.videoPathInput.value = '   ';
-    await player.loadVideo();
+    const mockFile = new File(['content'], 'my-video.mov', { type: 'video/quicktime' });
+    player.loadLocalVideo(mockFile);
+
+    expect(player.currentFileDisplay.textContent).toBe('my-video.mov');
+  });
+
+  it('should show loading status when loading video', async () => {
+    const { VideoPlayer } = await import('../../webroot/static/app.js');
+    const player = new VideoPlayer();
+
+    const mockFile = new File(['content'], 'test.mp4', { type: 'video/mp4' });
+    player.loadLocalVideo(mockFile);
 
     const status = document.getElementById('status');
-    expect(status.textContent).toContain('Please enter a video file path');
+    expect(status.textContent).toContain('Loading video');
   });
 });
