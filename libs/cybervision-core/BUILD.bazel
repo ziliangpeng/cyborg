@@ -14,6 +14,7 @@ filegroup(
         "webgpu-renderer.js",
         "ml-inference.js",
         "utils.js",
+        "histogram.js",
     ],
     visibility = ["//visibility:public"],
 )
