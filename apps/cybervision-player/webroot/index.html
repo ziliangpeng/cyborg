@@ -18,16 +18,12 @@
         <!-- Left panel: Video -->
         <section class="video-panel panel">
           <div class="video-input-section">
-            <label for="video-path">Video File:</label>
-            <input
-              type="text"
-              id="video-path"
-              class="select"
-              value="/Users/victor.peng/Downloads/IMG_1985.MOV"
-              placeholder="/Users/username/Movies/video.mp4"
-              autocomplete="off"
-            />
-            <button id="load-video-btn" class="button">Load</button>
+            <input type="file" id="videoFile" accept="video/*" style="display: none;">
+            <div id="dropZone" class="drop-zone">
+              <button id="chooseFileBtn" class="button">Choose Video File</button>
+              <span class="drop-hint">or drag & drop</span>
+            </div>
+            <div id="currentFile" class="current-file"></div>
           </div>
           <div class="video-container">
             <canvas id="video-canvas" class="video-output"></canvas>

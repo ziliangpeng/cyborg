@@ -6,9 +6,12 @@ import { calculateFPS, hexToRGB } from "/lib/utils.js";
 class VideoPlayer {
   constructor() {
     // Video controls
-    this.videoPathInput = document.getElementById("video-path");
-    this.loadVideoBtn = document.getElementById("load-video-btn");
+    this.videoFileInput = document.getElementById("videoFile");
+    this.chooseFileBtn = document.getElementById("chooseFileBtn");
+    this.dropZone = document.getElementById("dropZone");
+    this.currentFileDisplay = document.getElementById("currentFile");
     this.videoElement = document.getElementById("video-element");
+    this.currentBlobUrl = null;
     this.canvas = document.getElementById("video-canvas");
     this.playPauseBtn = document.getElementById("play-pause-btn");
     this.seekSlider = document.getElementById("seek-slider");
@@ -222,8 +225,35 @@ class VideoPlayer {
   }
 
   setupEventListeners() {
+    // File input change handler
+    this.videoFileInput.addEventListener("change", (e) => {
+      if (e.target.files[0]) {
+        this.loadLocalVideo(e.target.files[0]);
+      }
+    });
+
+    // Button click triggers file input
+    this.chooseFileBtn.addEventListener("click", () => {
+      this.videoFileInput.click();
+    });
+
+    // Drag-drop handlers
+    this.dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      this.dropZone.classList.add("drag-over");
+    });
+    this.dropZone.addEventListener("dragleave", () => {
+      this.dropZone.classList.remove("drag-over");
+    });
+    this.dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      this.dropZone.classList.remove("drag-over");
+      if (e.dataTransfer.files[0]) {
+        this.loadLocalVideo(e.dataTransfer.files[0]);
+      }
+    });
+
     // Video controls
-    this.loadVideoBtn.addEventListener("click", () => this.loadVideo());
     this.playPauseBtn.addEventListener("click", () => this.togglePlayPause());
     this.seekSlider.addEventListener("input", () => this.seek());
 
@@ -538,37 +568,21 @@ class VideoPlayer {
     }
   }
 
-  async loadVideo() {
-    const videoPath = this.videoPathInput.value.trim();
-    if (!videoPath) {
-      this.showStatus("Please enter a video file path");
-      return;
+  loadLocalVideo(file) {
+    // Revoke previous blob URL to prevent memory leak
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
     }
 
     this.showStatus("Loading video...");
 
-    try {
-      const encodedPath = encodeURIComponent(videoPath);
-      this.videoElement.src = `/api/video?path=${encodedPath}`;
+    // Create blob URL and set as video source
+    this.currentBlobUrl = URL.createObjectURL(file);
+    this.videoElement.src = this.currentBlobUrl;
+    this.videoElement.loop = true;
 
-      await new Promise((resolve, reject) => {
-        const loadHandler = () => {
-          this.videoElement.removeEventListener("loadedmetadata", loadHandler);
-          this.videoElement.removeEventListener("error", errorHandler);
-          resolve();
-        };
-        const errorHandler = (e) => {
-          this.videoElement.removeEventListener("loadedmetadata", loadHandler);
-          this.videoElement.removeEventListener("error", errorHandler);
-          reject(e);
-        };
-        this.videoElement.addEventListener("loadedmetadata", loadHandler);
-        this.videoElement.addEventListener("error", errorHandler);
-      });
-    } catch (error) {
-      this.showStatus(`Failed to load video: ${error.message}`);
-      console.error("Video load error:", error);
-    }
+    // Update UI with filename
+    this.currentFileDisplay.textContent = file.name;
   }
 
   async onVideoLoaded() {
