@@ -57,7 +57,24 @@
               />
               <span id="time-display" class="muted">0:00 / 0:00</span>
             </div>
-            <div id="player-status" class="status muted"></div>
+          <div id="player-status" class="status muted"></div>
+        </section>
+
+        <section class="viz-column panel">
+          <h3>Analysis</h3>
+          <div class="histogram-container">
+            <div class="viz-panel">
+              <h4>RGB + Luma</h4>
+              <canvas id="rgbHistogramCanvas" width="256" height="80"></canvas>
+            </div>
+            <div class="viz-panel">
+              <h4>Hue Distribution</h4>
+              <canvas id="hueHistogramCanvas" width="256" height="80"></canvas>
+            </div>
+            <div class="viz-panel">
+              <h4>Saturation</h4>
+              <canvas id="satHistogramCanvas" width="256" height="80"></canvas>
+            </div>
           </div>
         </section>
 
@@ -681,22 +698,6 @@
                 <span id="resolutionValue" class="stat-value">-</span>
               </div>
             </div>
-            
-            <div class="histogram-container">
-              <div class="viz-panel">
-                <h4>RGB + Luma</h4>
-                <canvas id="rgbHistogramCanvas" width="256" height="80"></canvas>
-              </div>
-              <div class="viz-panel">
-                <h4>Hue Distribution</h4>
-                <canvas id="hueHistogramCanvas" width="256" height="80"></canvas>
-              </div>
-              <div class="viz-panel">
-                <h4>Saturation</h4>
-                <canvas id="satHistogramCanvas" width="256" height="80"></canvas>
-              </div>
-            </div>
-
             <div class="effect-info"></div>
           </section>
         </aside>
