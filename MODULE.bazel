@@ -95,7 +95,6 @@ npm.npm_translate_lock(
         "//:pnpm-workspace.yaml",
         "//:package.json",
         "//apps/cybervision:package.json",
-        "//apps/cybervision-player:package.json",
     ],
 )
 

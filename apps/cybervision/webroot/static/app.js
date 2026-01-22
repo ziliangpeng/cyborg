@@ -8,27 +8,48 @@ import { calculateFPS, hexToRGB, average } from "/lib/utils.js";
 
 class CyberVision {
   constructor() {
-    // DOM elements
-    this.video = document.getElementById("video");
-    this.canvas = document.getElementById("canvas");
+    // DOM elements (Camera)
+    this.cameraVideoElement = document.getElementById("camera-video-element");
     this.startBtn = document.getElementById("startBtn");
     this.stopBtn = document.getElementById("stopBtn");
     this.screenshotBtn = document.getElementById("screenshotBtn");
-    this.statusEl = document.getElementById("status");
+    this.statusEl = document.getElementById("status"); // Status for camera operations
+
+    // DOM elements (Video Player)
+    this.videoFileInput = document.getElementById("videoFile");
+    this.chooseFileBtn = document.getElementById("chooseFileBtn");
+    this.dropZone = document.getElementById("dropZone");
+    this.currentFileDisplay = document.getElementById("currentFile");
+    this.videoElement = document.getElementById("video-element"); // Video element for playing files
+    this.playPauseBtn = document.getElementById("play-pause-btn");
+    this.seekSlider = document.getElementById("seek-slider");
+    this.timeDisplay = document.getElementById("time-display");
+    this.playerStatusEl = document.getElementById("player-status"); // Status for video player operations
+
+    // Shared DOM elements
+    this.canvas = document.getElementById("canvas");
     this.effectButtons = document.querySelectorAll('.effect-btn');
-    this.tabButtons = document.querySelectorAll('.tab-button');
-    this.tabContents = document.querySelectorAll('.tab-content');
-    this.dotSizeSlider = document.getElementById("dotSizeSlider");
-    this.dotSizeValue = document.getElementById("dotSizeValue");
-    this.randomColorCheckbox = document.getElementById("randomColorCheckbox");
+    this.tabButtons = document.querySelectorAll('.effect-tab-button'); // Effect tab buttons
+    this.tabContents = document.querySelectorAll('.effect-tab-content'); // Effect tab contents
+
+    // Input source tab elements
+    this.inputSourceTabButtons = document.querySelectorAll('.input-source-tab-button');
+    this.inputSourceTabContents = document.querySelectorAll('.input-source-tab-content');
+
+    // UI elements
     this.fpsValue = document.getElementById("fpsValue");
     this.latencyValue = document.getElementById("latencyValue");
     this.gpuStatus = document.getElementById("gpuStatus");
     this.webglToggle = document.getElementById("webglToggle");
     this.resolutionValue = document.getElementById("resolutionValue");
 
-    // Clustering controls
+    // Halftone controls
     this.halftoneControls = document.getElementById("halftoneControls");
+    this.dotSizeSlider = document.getElementById("dotSizeSlider");
+    this.dotSizeValue = document.getElementById("dotSizeValue");
+    this.randomColorCheckbox = document.getElementById("randomColorCheckbox");
+
+    // Clustering controls
     this.clusteringControls = document.getElementById("clusteringControls");
     this.algorithmSelect = document.getElementById("algorithmSelect");
     this.trueColorsCheckbox = document.getElementById("trueColorsCheckbox");
@@ -128,14 +149,24 @@ class CyberVision {
     this.segmentationSoftEdges = document.getElementById("segmentationSoftEdges");
     this.segmentationGlow = document.getElementById("segmentationGlow");
 
-    // State
+    // State (Shared)
     this.renderer = null;
     this.rendererType = null; // 'webgpu' or 'webgl'
     this.webgpuAvailable = false;
     this.webglAvailable = false;
-    this.stream = null;
-    this.isRunning = false;
-    this.animationFrame = null;
+    this.activeInputSource = 'camera'; // 'camera' or 'video-file'
+    this.currentSourceVideo = null; // Reference to the currently active video element (camera or file)
+
+    // State (Camera specific)
+    this.stream = null; // Camera stream
+    this.isCameraRunning = false;
+    this.cameraAnimationFrame = null; // For camera render loop
+
+    // State (Video Player specific)
+    this.currentBlobUrl = null;
+    this.isVideoPlaying = false;
+    this.isVideoLoaded = false;
+    this.videoAnimationFrame = null; // For video render loop
 
     // Effect state
     this.currentEffect = "segmentation";
@@ -215,11 +246,17 @@ class CyberVision {
     this.frameLatencies = [];
     this.lastLatencyUpdate = performance.now();
 
+
     this.init();
   }
 
   async init() {
     console.log("=== CyberVision Initialization Starting ===");
+
+    // Initialize UI immediately
+    this.setupEventListeners();
+    this.updateEffectControls();
+    this.switchInputSource('camera'); // Initialize with camera as default
     
     // Probe both renderers to check availability
     await this.probeRenderers();
@@ -282,8 +319,6 @@ class CyberVision {
     this.webglToggle.checked = this.rendererType === 'webgl';
     this.webglToggle.disabled = !this.webgpuAvailable; // Disable if WebGPU not available
 
-    this.setupEventListeners();
-    this.updateEffectControls();  // Initialize controls for default effect
     this.setStatus(`Ready. Using ${this.rendererType.toUpperCase()}. Click 'Start Camera' to begin.`);
   }
 
@@ -369,21 +404,62 @@ class CyberVision {
   }
 
   setupEventListeners() {
-    // Event listeners
+    // Input source tab switching
+    this.inputSourceTabButtons.forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const targetTab = e.currentTarget.dataset.tab;
+        this.switchInputSource(targetTab);
+      });
+    });
+
+    // Camera control listeners
     this.startBtn.addEventListener("click", () => this.startCamera());
     this.stopBtn.addEventListener("click", () => this.stopCamera());
     this.screenshotBtn.addEventListener("click", () => this.takeScreenshot());
 
-    // Tab switching event listeners
+    // Video Player control listeners
+    this.videoFileInput.addEventListener("change", (e) => {
+      if (e.target.files[0]) {
+        this.loadLocalVideo(e.target.files[0]);
+      }
+    });
+
+    this.chooseFileBtn.addEventListener("click", () => {
+      this.videoFileInput.click();
+    });
+
+    this.dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      this.dropZone.classList.add("drag-over");
+    });
+    this.dropZone.addEventListener("dragleave", () => {
+      this.dropZone.classList.remove("drag-over");
+    });
+    this.dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      this.dropZone.classList.remove("drag-over");
+      if (e.dataTransfer.files[0]) {
+        this.loadLocalVideo(e.dataTransfer.files[0]);
+      }
+    });
+
+    this.playPauseBtn.addEventListener("click", () => this.togglePlayPause());
+    this.seekSlider.addEventListener("input", () => this.seek());
+
+    // Video element event listeners
+    this.videoElement.addEventListener("loadedmetadata", () => this.onVideoLoaded());
+    this.videoElement.addEventListener("timeupdate", () => this.updateTime());
+    this.videoElement.addEventListener("ended", () => this.onVideoEnded());
+    this.videoElement.addEventListener("error", (e) => this.onVideoError(e));
+
+    // Effect tab switching event listeners
     this.tabButtons.forEach((button) => {
       button.addEventListener("click", (e) => {
         const targetTab = e.currentTarget.dataset.tab;
 
-        // Remove active class from all tabs and content
         this.tabButtons.forEach((btn) => btn.classList.remove("active"));
         this.tabContents.forEach((content) => content.classList.remove("active"));
 
-        // Add active class to clicked tab and corresponding content
         e.currentTarget.classList.add("active");
         document.getElementById(`tab-${targetTab}`).classList.add("active");
       });
@@ -392,12 +468,10 @@ class CyberVision {
     // Effect button event listeners
     this.effectButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
-        // Remove selected from all effect buttons across all tabs
         this.effectButtons.forEach(b => {
           b.classList.remove('selected');
           b.setAttribute('aria-checked', 'false');
         });
-        // Add selected to clicked button
         btn.classList.add('selected');
         btn.setAttribute('aria-checked', 'true');
         this.currentEffect = btn.dataset.effect;
@@ -650,12 +724,14 @@ class CyberVision {
     });
   }
 
-  async handleRendererToggle(forceWebGL) {
-    const wasRunning = this.isRunning;
+  handleRendererToggle(forceWebGL) {
+    const wasRunning = this.isCameraRunning || this.isVideoPlaying;
 
-    // Stop camera if running
-    if (wasRunning) {
+    // Stop current source if running
+    if (this.isCameraRunning) {
       this.stopCamera();
+    } else if (this.isVideoPlaying) {
+      this.pauseVideo();
     }
 
     // Switch renderer
@@ -668,20 +744,227 @@ class CyberVision {
     }
 
     try {
-      await this.switchToRenderer(targetRenderer);
-      this.setStatus(`Switched to ${this.rendererType.toUpperCase()}. ${wasRunning ? 'Restarting camera...' : 'Ready.'}`);
+      this.switchToRenderer(targetRenderer);
+      this.setStatus(`Switched to ${this.rendererType.toUpperCase()}. ${wasRunning ? 'Restarting...' : 'Ready.'}`, this.statusEl);
 
       // Update mosaic info visibility based on new renderer
       this.updateMosaicInfo();
 
-      // Restart camera if it was running
+      // Restart previous source if it was running
       if (wasRunning) {
-        await this.startCamera();
+        if (this.activeInputSource === 'camera') {
+          this.startCamera();
+        } else if (this.activeInputSource === 'video-file') {
+          // Restarting video playback after renderer toggle might be tricky if not at the same timestamp
+          // For now, just re-initiate play state
+          if (this.isVideoLoaded) {
+            this.playVideo();
+          }
+        }
       }
     } catch (err) {
-      this.setStatus(`Error switching renderer: ${err.message}`);
+      this.setStatus(`Error switching renderer: ${err.message}`, this.statusEl);
       console.error(err);
     }
+  }
+
+  switchInputSource(newSource) {
+    if (this.activeInputSource === newSource) {
+      return; // Already on this source
+    }
+
+    // Stop current source if active
+    if (this.activeInputSource === 'camera' && this.isCameraRunning) {
+      this.stopCamera();
+    } else if (this.activeInputSource === 'video-file' && this.isVideoPlaying) {
+      this.pauseVideo();
+    }
+
+    // Update active source
+    this.activeInputSource = newSource;
+
+    // Update tab button visual state
+    this.inputSourceTabButtons.forEach(button => {
+      if (button.dataset.tab === newSource) {
+        button.classList.add('active');
+      } else {
+        button.classList.remove('active');
+      }
+    });
+
+    // Update tab content visibility
+    this.inputSourceTabContents.forEach(content => {
+      if (content.id === `tab-${newSource}`) {
+        content.classList.add('active');
+      } else {
+        content.classList.remove('active');
+      }
+    });
+
+    // Set the current source video element for the renderer
+    if (newSource === 'camera') {
+      this.currentSourceVideo = this.cameraVideoElement;
+      this.setStatus("Ready. Click 'Start Camera' to begin.", this.statusEl);
+      // Clear player status when switching to camera
+      this.playerStatusEl.textContent = "";
+      // Disable player controls
+      this.playPauseBtn.disabled = true;
+      this.seekSlider.disabled = true;
+      this.timeDisplay.textContent = "0:00 / 0:00";
+    } else if (newSource === 'video-file') {
+      this.currentSourceVideo = this.videoElement;
+      this.setStatus("Ready. Choose a video file.", this.playerStatusEl);
+      // Clear camera status when switching to video file
+      this.statusEl.textContent = "";
+      // Disable camera controls
+      this.startBtn.disabled = true;
+      this.stopBtn.disabled = true;
+      this.screenshotBtn.disabled = true;
+    }
+
+    // Re-initialize renderer pipeline for the new source if available
+    // Also clear canvas if no valid source to prevent displaying old frame
+    if (this.renderer) {
+      if (this.currentSourceVideo && this.currentSourceVideo.videoWidth > 0 && this.currentSourceVideo.videoHeight > 0) {
+        this.renderer.setupPipeline(this.currentSourceVideo, this.dotSize);
+      } else {
+        // Clear canvas if no active video source
+        this.canvas.width = this.canvas.width; // Clear by re-setting width
+      }
+    }
+  }
+
+  loadLocalVideo(file) {
+    // Revoke previous blob URL to prevent memory leak
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+    }
+
+    this.setStatus("Loading video...", this.playerStatusEl);
+
+    // Create blob URL and set as video source
+    this.currentBlobUrl = URL.createObjectURL(file);
+    this.videoElement.src = this.currentBlobUrl;
+    this.videoElement.loop = true;
+
+    // Update UI with filename
+    this.currentFileDisplay.textContent = file.name;
+  }
+
+  async onVideoLoaded() {
+    console.log("Video loaded:", {
+      width: this.videoElement.videoWidth,
+      height: this.videoElement.videoHeight,
+      duration: this.videoElement.duration
+    });
+
+    this.canvas.width = this.videoElement.videoWidth;
+    this.canvas.height = this.videoElement.videoHeight;
+
+    this.resolutionValue.textContent = `${this.videoElement.videoWidth}x${this.videoElement.videoHeight}`;
+
+    try {
+      // Setup the pipeline for the video element
+      if (this.renderer) {
+        await this.renderer.setupPipeline(this.videoElement, this.dotSize);
+      }
+      this.isVideoLoaded = true;
+      this.playPauseBtn.disabled = false;
+      this.seekSlider.disabled = false;
+      this.setStatus("Video loaded. Click Play to start.", this.playerStatusEl);
+    } catch (error) {
+      this.setStatus(`Failed to initialize renderer for video: ${error.message}`, this.playerStatusEl);
+      console.error("Renderer init error:", error);
+    }
+  }
+
+  togglePlayPause() {
+    if (!this.isVideoLoaded) return;
+
+    if (this.isVideoPlaying) {
+      this.pauseVideo();
+    } else {
+      this.playVideo();
+    }
+  }
+
+  playVideo() {
+    this.videoElement.play();
+    this.isVideoPlaying = true;
+    this.playPauseBtn.textContent = "Pause";
+    this.startVideoRenderLoop();
+    this.setStatus("Playing...", this.playerStatusEl);
+  }
+
+  pauseVideo() {
+    this.videoElement.pause();
+    this.isVideoPlaying = false;
+    this.playPauseBtn.textContent = "Play";
+    if (this.videoAnimationFrame) {
+      cancelAnimationFrame(this.videoAnimationFrame);
+      this.videoAnimationFrame = null;
+    }
+    this.setStatus("Paused", this.playerStatusEl);
+  }
+
+  seek() {
+    if (!this.isVideoLoaded) return;
+    const seekTime = (this.seekSlider.value / 100) * this.videoElement.duration;
+    this.videoElement.currentTime = seekTime;
+  }
+
+  updateTime() {
+    if (!this.isVideoLoaded) return;
+
+    const currentTime = this.formatTime(this.videoElement.currentTime);
+    const duration = this.formatTime(this.videoElement.duration);
+    this.timeDisplay.textContent = `${currentTime} / ${duration}`;
+
+    const progress = (this.videoElement.currentTime / this.videoElement.duration) * 100;
+    this.seekSlider.value = progress || 0;
+  }
+
+  formatTime(seconds) {
+    if (isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }
+
+  onVideoEnded() {
+    this.isVideoPlaying = false;
+    this.playPauseBtn.textContent = "Play";
+    if (this.videoAnimationFrame) {
+      cancelAnimationFrame(this.videoAnimationFrame);
+      this.videoAnimationFrame = null;
+    }
+    this.setStatus("Playback ended", this.playerStatusEl);
+  }
+
+  startVideoRenderLoop() {
+    const render = () => {
+      if (!this.isVideoPlaying || this.activeInputSource !== 'video-file') return;
+
+      const now = performance.now();
+      const frameTime = now - this.lastFrameTime;
+      this.lastFrameTime = now;
+
+      try {
+        this.renderFrame();
+        this.updateFPS(frameTime);
+      } catch (error) {
+        console.error("Render error:", error);
+        this.setStatus(`Render error: ${error.message}`, this.playerStatusEl);
+        this.pauseVideo();
+        return;
+      }
+
+      this.videoAnimationFrame = requestAnimationFrame(render);
+    };
+
+    // Need to reset FPS tracking for video as well
+    this.lastFrameTime = performance.now();
+    render();
   }
 
   updateEffectControls() {
@@ -713,6 +996,8 @@ class CyberVision {
       this.updateSegmentationControlsVisibility();
     }
   }
+
+
 
   updatePixelSortIterationsVisibility() {
     // Show iterations slider only for bubble sort algorithm
@@ -794,8 +1079,14 @@ class CyberVision {
   }
 
   async startCamera() {
+    // Only start camera if current input source is 'camera'
+    if (this.activeInputSource !== 'camera') {
+      this.setStatus("Cannot start camera: Not in camera mode.", this.statusEl);
+      return;
+    }
+
     try {
-      this.setStatus("Requesting camera access...");
+      this.setStatus("Requesting camera access...", this.statusEl);
 
       // Request camera at 1080p
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -806,14 +1097,14 @@ class CyberVision {
         },
       });
 
-      this.video.srcObject = this.stream;
+      this.cameraVideoElement.srcObject = this.stream;
 
       // Wait for video metadata and ensure it's playing
       await new Promise((resolve, reject) => {
-        this.video.onloadedmetadata = async () => {
+        this.cameraVideoElement.onloadedmetadata = async () => {
           try {
-            await this.video.play();
-            console.log("Video playing");
+            await this.cameraVideoElement.play();
+            console.log("Camera playing");
             resolve();
           } catch (err) {
             reject(err);
@@ -822,17 +1113,20 @@ class CyberVision {
       });
 
       // Setup canvas size (always match video dimensions, rotation is handled by CSS)
-      this.canvas.width = this.video.videoWidth;
-      this.canvas.height = this.video.videoHeight;
+      this.canvas.width = this.cameraVideoElement.videoWidth;
+      this.canvas.height = this.cameraVideoElement.videoHeight;
 
-      console.log(`Video dimensions: ${this.video.videoWidth}x${this.video.videoHeight}`);
+      console.log(`Camera dimensions: ${this.cameraVideoElement.videoWidth}x${this.cameraVideoElement.videoHeight}`);
 
       // Update resolution display
-      this.resolutionValue.textContent = `${this.video.videoWidth}x${this.video.videoHeight}`;
+      this.resolutionValue.textContent = `${this.cameraVideoElement.videoWidth}x${this.cameraVideoElement.videoHeight}`;
+
+      // Set current source for renderer
+      this.currentSourceVideo = this.cameraVideoElement;
 
       // Initialize renderer-specific resources
       if (this.rendererType === "webgpu") {
-        await this.renderer.setupPipeline(this.video, this.dotSize);
+        await this.renderer.setupPipeline(this.currentSourceVideo, this.dotSize);
       }
       // WebGL doesn't need additional setup after init
 
@@ -840,25 +1134,24 @@ class CyberVision {
       this.startBtn.disabled = true;
       this.stopBtn.disabled = false;
       this.screenshotBtn.disabled = false;
-      this.isRunning = true;
+      this.isCameraRunning = true;
 
-      this.setStatus(`Camera running with ${this.rendererType.toUpperCase()}.`);
+      this.setStatus(`Camera running with ${this.rendererType.toUpperCase()}.`, this.statusEl);
 
       // Start render loop
-      this.render();
+      this.startCameraRenderLoop();
     } catch (err) {
-      this.setStatus(`Camera Error: ${err.message}`);
+      this.setStatus(`Camera Error: ${err.message}`, this.statusEl);
       console.error(err);
     }
   }
 
-
   stopCamera() {
-    this.isRunning = false;
+    this.isCameraRunning = false;
 
-    if (this.animationFrame) {
-      cancelAnimationFrame(this.animationFrame);
-      this.animationFrame = null;
+    if (this.cameraAnimationFrame) {
+      cancelAnimationFrame(this.cameraAnimationFrame);
+      this.cameraAnimationFrame = null;
     }
 
     if (this.stream) {
@@ -870,82 +1163,106 @@ class CyberVision {
     this.stopBtn.disabled = true;
     this.screenshotBtn.disabled = true;
     this.resolutionValue.textContent = "-";
-    this.setStatus("Camera stopped.");
+    this.setStatus("Camera stopped.", this.statusEl);
   }
 
-  render() {
-    if (!this.isRunning) return;
+  startCameraRenderLoop() {
+    const loop = () => {
+      if (!this.isCameraRunning || this.activeInputSource !== 'camera') return;
 
-    const frameStart = performance.now();
+      const frameStart = performance.now();
 
-    try {
-      if (this.currentEffect === "halftone") {
-        this.renderHalftone();
-      } else if (this.currentEffect === "clustering") {
-        this.renderClustering();
-      } else if (this.currentEffect === "edges") {
-        this.renderEdges();
-      } else if (this.currentEffect === "mosaic") {
-        this.renderMosaic();
-      } else if (this.currentEffect === "chromatic") {
-        this.renderChromatic();
-      } else if (this.currentEffect === "glitch") {
-        this.renderGlitch();
-      } else if (this.currentEffect === "thermal") {
-        this.renderThermal();
-      } else if (this.currentEffect === "pixelsort") {
-        this.renderPixelSort();
-      } else if (this.currentEffect === "kaleidoscope") {
-        this.renderKaleidoscope();
-      } else if (this.currentEffect === "segmentation") {
-        this.renderSegmentation();
-      } else if (this.currentEffect === "original") {
-        this.renderPassthrough();
+      try {
+        this.renderFrame(); // Call the generic renderFrame
+        const frameEnd = performance.now();
+        const latency = frameEnd - frameStart;
+        this.frameLatencies.push(latency);
+        this.updateFPS();
+      } catch (err) {
+        console.error("Render error:", err);
+        this.setStatus(`Render Error: ${err.message}`, this.statusEl);
+        this.stopCamera();
+        return;
       }
 
-      const frameEnd = performance.now();
-      const latency = frameEnd - frameStart;
-      this.frameLatencies.push(latency);
+      this.cameraAnimationFrame = requestAnimationFrame(loop);
+    };
 
-      this.updateFPS();
-    } catch (err) {
-      console.error("Render error:", err);
-      this.setStatus(`Render Error: ${err.message}`);
-      this.stopCamera();
-      return;
-    }
-
-    this.animationFrame = requestAnimationFrame(() => this.render());
+    this.lastFpsTime = performance.now();
+    this.lastLatencyUpdate = performance.now();
+    this.frameLatencies = [];
+    loop();
   }
 
-  renderHalftone() {
+  renderFrame() {
+    const sourceVideo = this.currentSourceVideo;
+    if (!sourceVideo) return;
+    if (sourceVideo.videoWidth === 0 || sourceVideo.videoHeight === 0) return;
+
+    switch (this.currentEffect) {
+      case "halftone":
+        this.renderHalftone(sourceVideo);
+        break;
+      case "clustering":
+        this.renderClustering(sourceVideo);
+        break;
+      case "edges":
+        this.renderEdges(sourceVideo);
+        break;
+      case "mosaic":
+        this.renderMosaic(sourceVideo);
+        break;
+      case "chromatic":
+        this.renderChromatic(sourceVideo);
+        break;
+      case "glitch":
+        this.renderGlitch(sourceVideo);
+        break;
+      case "thermal":
+        this.renderThermal(sourceVideo);
+        break;
+      case "pixelsort":
+        this.renderPixelSort(sourceVideo);
+        break;
+      case "kaleidoscope":
+        this.renderKaleidoscope(sourceVideo);
+        break;
+      case "segmentation":
+        this.renderSegmentation(sourceVideo);
+        break;
+      default:
+        this.renderPassthrough(sourceVideo);
+    }
+  }
+
+  renderHalftone(sourceVideo) {
     if (this.rendererType === "webgpu") {
-      this.renderer.renderHalftone(this.video, this.useRandomColors);
+      this.renderer.renderHalftone(sourceVideo, this.useRandomColors);
     } else {
-      this.renderer.renderHalftone(this.video, this.dotSize, this.useRandomColors);
+      this.renderer.renderHalftone(sourceVideo, this.dotSize, this.useRandomColors);
     }
   }
 
-  renderClustering() {
+  renderClustering(sourceVideo) {
     // Compute algorithm string based on base algorithm and true colors toggle
     const algorithmString = this.useTrueColors
       ? `${this.clusteringAlgorithm}-true`
       : this.clusteringAlgorithm;
 
     this.renderer.renderClustering(
-      this.video,
+      sourceVideo,
       algorithmString,
       this.colorCount,
       this.colorThreshold
     );
   }
 
-  renderEdges() {
+  renderEdges(sourceVideo) {
     // Parse edge color from hex to RGB
     const rgb = hexToRGB(this.edgeColorValue);
 
     this.renderer.renderEdges(
-      this.video,
+      sourceVideo,
       this.edgeAlgorithmValue,
       this.edgeThresholdValue_state,
       this.edgeOverlayValue,
@@ -955,21 +1272,21 @@ class CyberVision {
     );
   }
 
-  renderMosaic() {
+  renderMosaic(sourceVideo) {
     this.renderer.renderMosaic(
-      this.video,
+      sourceVideo,
       this.mosaicBlockSizeValue_state,
       this.mosaicModeValue
     );
   }
 
-  renderChromatic() {
+  renderChromatic(sourceVideo) {
     // Convert center percentage to 0-1 range
     const centerX = this.chromaticCenterXValue_state / 100;
     const centerY = this.chromaticCenterYValue_state / 100;
 
     this.renderer.renderChromatic(
-      this.video,
+      sourceVideo,
       this.chromaticIntensityValue_state,
       this.chromaticModeValue,
       centerX,
@@ -977,9 +1294,9 @@ class CyberVision {
     );
   }
 
-  renderGlitch() {
+  renderGlitch(sourceVideo) {
     this.renderer.renderGlitch(
-      this.video,
+      sourceVideo,
       this.glitchModeValue,
       this.glitchIntensityValue_state,
       this.glitchBlockSizeValue_state,
@@ -989,20 +1306,20 @@ class CyberVision {
     );
   }
 
-  renderThermal() {
+  renderThermal(sourceVideo) {
     this.renderer.renderThermal(
-      this.video,
+      sourceVideo,
       this.thermalPaletteValue,
       this.thermalContrastValue_state,
       this.thermalInvertValue
     );
   }
 
-  renderPixelSort() {
+  renderPixelSort(sourceVideo) {
     // Only WebGPU for now
     if (this.rendererType === "webgpu") {
       this.renderer.renderPixelSort(
-        this.video,
+        sourceVideo,
         this.pixelSortAngleModeValue,
         this.pixelSortDirectionValue,
         this.pixelSortAngleValue_state,
@@ -1017,8 +1334,8 @@ class CyberVision {
     }
   }
 
-  renderPassthrough() {
-    this.renderer.renderPassthrough(this.video);
+  renderPassthrough(sourceVideo) {
+    this.renderer.renderPassthrough(sourceVideo);
   }
 
   updateFPS() {
@@ -1044,26 +1361,26 @@ class CyberVision {
     }
   }
 
-  renderKaleidoscope() {
+  renderKaleidoscope(sourceVideo) {
     this.renderer.renderKaleidoscope(
-      this.video,
+      sourceVideo,
       this.kaleidoscopeSegments,
       this.kaleidoscopeRotationSpeed
     );
   }
 
-  async renderSegmentation() {
+  async renderSegmentation(sourceVideo) {
     // Only render with WebGPU (segmentation not supported in WebGL yet)
     if (this.rendererType !== "webgpu") {
       // Fall back to passthrough
-      this.renderPassthrough();
+      this.renderPassthrough(sourceVideo);
       return;
     }
 
     // Check if model is loaded
     if (!this.segmentationModelLoaded || !this.segmentationML) {
       // Show passthrough while loading
-      this.renderPassthrough();
+      this.renderPassthrough(sourceVideo);
       return;
     }
 
@@ -1072,7 +1389,7 @@ class CyberVision {
     if (this.segmentationFrameCounter >= this.segmentationFrameSkip || !this.segmentationMask) {
       try {
         // Run segmentation inference
-        const maskData = await this.segmentationML.segmentFrame(this.video);
+        const maskData = await this.segmentationML.segmentFrame(sourceVideo);
 
         // Postprocess mask
         this.segmentationMask = this.segmentationML.postprocessMask(maskData);
@@ -1087,7 +1404,7 @@ class CyberVision {
     // Render with current mask
     if (this.segmentationMask) {
       this.renderer.renderSegmentation(
-        this.video,
+        sourceVideo,
         this.segmentationMode_state,
         this.segmentationBlurRadius_state,
         this.segmentationMask,
@@ -1096,12 +1413,14 @@ class CyberVision {
       );
     } else {
       // No mask yet, show passthrough
-      this.renderPassthrough();
+      this.renderPassthrough(sourceVideo);
     }
   }
 
-  setStatus(text) {
-    this.statusEl.textContent = text;
+  setStatus(text, element = this.statusEl) {
+    if (element) {
+      element.textContent = text;
+    }
   }
 
   takeScreenshot() {
@@ -1147,3 +1466,6 @@ if (document.readyState === "loading") {
 } else {
   window.cyberVisionApp = new CyberVision();
 }
+
+// Export for testing
+export { CyberVision };

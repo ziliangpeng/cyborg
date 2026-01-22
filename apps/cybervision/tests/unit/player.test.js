@@ -25,17 +25,24 @@ function setupMockDOM() {
     </div>
     <div id="currentFile"></div>
     <video id="video-element"></video>
+    <video id="camera-video-element"></video>
     <canvas id="video-canvas"></canvas>
+    <canvas id="canvas"></canvas>
     <button id="play-pause-btn">Play</button>
+    <button id="startBtn">Start Camera</button>
+    <button id="stopBtn">Stop Camera</button>
+    <button id="screenshotBtn">Screenshot</button>
     <input id="seek-slider" type="range" min="0" max="100" value="0" />
     <div id="time-display">0:00 / 0:00</div>
     <div id="status-message"></div>
+    <div id="player-status"></div>
 
     <!-- Core UI elements -->
     <div id="status"></div>
     <div id="fpsValue">0</div>
     <div id="latencyValue">0</div>
     <div id="gpuStatus">Unknown</div>
+    <input type="checkbox" id="webglToggle" />
     <div id="resolutionValue">-</div>
 
     <!-- Tab structure -->
@@ -155,6 +162,9 @@ function setupMockDOM() {
       <div id="pixelSortAngleGroup"></div>
       <select id="pixelSortThresholdMode">
         <option value="brightness">Brightness</option>
+        <option value="saturation">Saturation</option>
+        <option value="hue">Hue</option>
+        <option value="edge">Edge</option>
       </select>
       <input id="pixelSortThresholdLow" type="range" min="0" max="1" step="0.01" value="0.25" />
       <span id="pixelSortThresholdLowValue">0.25</span>
@@ -162,12 +172,19 @@ function setupMockDOM() {
       <span id="pixelSortThresholdHighValue">0.75</span>
       <select id="pixelSortKey">
         <option value="luminance">Luminance</option>
+        <option value="hue">Hue</option>
+        <option value="saturation">Saturation</option>
+        <option value="red">Red Channel</option>
+        <option value="green">Green Channel</option>
+        <option value="blue">Blue Channel</option>
       </select>
       <select id="pixelSortOrder">
         <option value="ascending">Ascending</option>
+        <option value="descending">Descending</option>
       </select>
       <select id="pixelSortAlgorithm">
         <option value="bitonic">Bitonic</option>
+        <option value="bubble">Bubble (Stylized)</option>
       </select>
       <input id="pixelSortIterations" type="range" min="1" max="100" value="50" />
       <span id="pixelSortIterationsValue">50</span>
@@ -207,14 +224,14 @@ function setupMockDOM() {
   `;
 }
 
-describe('VideoPlayer - Time Formatting', () => {
+describe('CyberVision - Time Formatting', () => {
   beforeEach(() => {
     setupMockDOM();
   });
 
   it('should format time correctly for valid seconds', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
     expect(player.formatTime(0)).toBe('0:00');
     expect(player.formatTime(30)).toBe('0:30');
@@ -225,67 +242,67 @@ describe('VideoPlayer - Time Formatting', () => {
   });
 
   it('should handle NaN input', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
     expect(player.formatTime(NaN)).toBe('0:00');
   });
 
   it('should pad seconds with leading zero', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
     expect(player.formatTime(5)).toBe('0:05');
     expect(player.formatTime(65)).toBe('1:05');
   });
 });
 
-describe('VideoPlayer - Effect Parameters', () => {
+describe('CyberVision - Effect Parameters', () => {
   beforeEach(() => {
     setupMockDOM();
   });
 
   it('should initialize with default effect parameters', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
     expect(player.dotSize).toBe(8);
     expect(player.useRandomColors).toBe(false);
     expect(player.colorCount).toBe(8);
-    expect(player.segments).toBe(8);
-    expect(player.rotationSpeed).toBe(0.0);
-    expect(player.currentEffect).toBe('original');
+    expect(player.kaleidoscopeSegments).toBe(8);
+    expect(player.kaleidoscopeRotationSpeed).toBe(0.0);
+    expect(player.currentEffect).toBe('segmentation');
   });
 
   it('should initialize video player state', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
-    expect(player.isPlaying).toBe(false);
+    expect(player.isVideoPlaying).toBe(false);
     expect(player.isVideoLoaded).toBe(false);
     expect(player.renderer).toBe(null);
-    expect(player.animationFrame).toBe(null);
+    expect(player.videoAnimationFrame).toBe(null);
   });
 
   it('should initialize segmentation state variables correctly', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
     expect(player.segmentationML).toBe(null);
     expect(player.segmentationModelLoaded).toBe(false);
-    expect(player.segmentationModeValue).toBe('blackout');
-    expect(player.segmentationBlurRadiusValue_state).toBe(10);
+    expect(player.segmentationMode_state).toBe('blackout');
+    expect(player.segmentationBlurRadius_state).toBe(10);
   });
 });
 
-describe('VideoPlayer - Local Video Loading', () => {
+describe('CyberVision - Local Video Loading', () => {
   beforeEach(() => {
     setupMockDOM();
   });
 
   it('should load local video file and create blob URL', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
     const mockFile = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
     player.loadLocalVideo(mockFile);
@@ -295,8 +312,8 @@ describe('VideoPlayer - Local Video Loading', () => {
   });
 
   it('should revoke previous blob URL when loading new video', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL');
 
     const file1 = new File(['video1'], 'video1.mp4', { type: 'video/mp4' });
@@ -311,8 +328,8 @@ describe('VideoPlayer - Local Video Loading', () => {
   });
 
   it('should update current file display with filename', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
     const mockFile = new File(['content'], 'my-video.mov', { type: 'video/quicktime' });
     player.loadLocalVideo(mockFile);
@@ -321,13 +338,13 @@ describe('VideoPlayer - Local Video Loading', () => {
   });
 
   it('should show loading status when loading video', async () => {
-    const { VideoPlayer } = await import('../../webroot/static/app.js');
-    const player = new VideoPlayer();
+    const { CyberVision } = await import('../../webroot/static/app.js');
+    const player = new CyberVision();
 
     const mockFile = new File(['content'], 'test.mp4', { type: 'video/mp4' });
     player.loadLocalVideo(mockFile);
 
-    const status = document.getElementById('status');
+    const status = document.getElementById('player-status');
     expect(status.textContent).toContain('Loading video');
   });
 });

@@ -15,18 +15,50 @@
 
       <div class="main-content">
         <section class="video-panel panel">
+          <div class="input-source-tabs">
+            <button class="input-source-tab-button active" data-tab="camera">Camera</button>
+            <button class="input-source-tab-button" data-tab="video-file">Video File</button>
+          </div>
+
           <div class="video-container">
-            <video id="video" autoplay playsinline hidden></video>
+            <video id="camera-video-element" autoplay playsinline style="width: 1px; height: 1px; opacity: 0; position: absolute; pointer-events: none;"></video>
+            <video id="video-element" style="width: 1px; height: 1px; opacity: 0; position: absolute; pointer-events: none;"></video>
             <canvas id="canvas" class="video-output"></canvas>
           </div>
 
-          <div class="controls">
-            <button id="startBtn" class="button">Start Camera</button>
-            <button id="stopBtn" class="button secondary" disabled>Stop Camera</button>
-            <button id="screenshotBtn" class="button secondary" disabled>📸 Screenshot</button>
+          <div class="tab-content input-source-tab-content active" id="tab-camera">
+            <div class="controls">
+              <button id="startBtn" class="button">Start Camera</button>
+              <button id="stopBtn" class="button secondary" disabled>Stop Camera</button>
+              <button id="screenshotBtn" class="button secondary" disabled>📸 Screenshot</button>
+            </div>
+            <div id="status" class="status muted" role="status"></div>
           </div>
 
-          <div id="status" class="status muted" role="status"></div>
+          <div class="tab-content input-source-tab-content" id="tab-video-file">
+            <div class="video-input-section">
+              <input type="file" id="videoFile" accept="video/*" style="display: none;">
+              <div id="dropZone" class="drop-zone">
+                <button id="chooseFileBtn" class="button">Choose Video File</button>
+                <span class="drop-hint">or drag & drop</span>
+              </div>
+              <div id="currentFile" class="current-file"></div>
+            </div>
+            <div class="controls">
+              <button id="play-pause-btn" class="button" disabled>Play</button>
+              <input
+                type="range"
+                id="seek-slider"
+                class="slider"
+                min="0"
+                max="100"
+                value="0"
+                disabled
+              />
+              <span id="time-display" class="muted">0:00 / 0:00</span>
+            </div>
+            <div id="player-status" class="status muted"></div>
+          </div>
         </section>
 
         <aside class="side-panel panel">
@@ -35,12 +67,12 @@
 
             <!-- Tab buttons -->
             <div class="effect-tabs">
-              <button class="tab-button active" data-tab="artistic" title="Artistic">ART</button>
-              <button class="tab-button" data-tab="distortion" title="Distortion">DIST</button>
+              <button class="effect-tab-button active" data-tab="artistic" title="Artistic">ART</button>
+              <button class="effect-tab-button" data-tab="distortion" title="Distortion">DIST</button>
             </div>
 
             <!-- Tab content: Artistic -->
-            <div class="tab-content active" id="tab-artistic">
+            <div class="effect-tab-content active" id="tab-artistic">
               <div class="effect-grid" role="radiogroup" aria-label="Artistic effects">
                 <button class="effect-btn" data-effect="halftone" title="Halftone" role="radio" aria-checked="false">HT</button>
                 <button class="effect-btn" data-effect="clustering" title="Clustering" role="radio" aria-checked="false">CL</button>
@@ -52,7 +84,7 @@
             </div>
 
             <!-- Tab content: Distortion -->
-            <div class="tab-content" id="tab-distortion">
+            <div class="effect-tab-content" id="tab-distortion">
               <div class="effect-grid" role="radiogroup" aria-label="Distortion effects">
                 <button class="effect-btn" data-effect="original" title="Original" role="radio" aria-checked="false">OR</button>
                 <button class="effect-btn" data-effect="edges" title="Edge Detection" role="radio" aria-checked="false">ED</button>
