@@ -683,8 +683,18 @@
             </div>
             
             <div class="histogram-container">
-              <h4>Histogram</h4>
-              <canvas id="histogramCanvas" width="256" height="100"></canvas>
+              <div class="viz-panel">
+                <h4>RGB + Luma</h4>
+                <canvas id="rgbHistogramCanvas" width="256" height="80"></canvas>
+              </div>
+              <div class="viz-panel">
+                <h4>Hue Distribution</h4>
+                <canvas id="hueHistogramCanvas" width="256" height="80"></canvas>
+              </div>
+              <div class="viz-panel">
+                <h4>Saturation</h4>
+                <canvas id="satHistogramCanvas" width="256" height="80"></canvas>
+              </div>
             </div>
 
             <div class="effect-info"></div>

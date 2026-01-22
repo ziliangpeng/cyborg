@@ -150,9 +150,12 @@ class CyberVision {
     this.segmentationSoftEdges = document.getElementById("segmentationSoftEdges");
     this.segmentationGlow = document.getElementById("segmentationGlow");
 
-    // Histogram
-    this.histogramCanvas = document.getElementById("histogramCanvas");
-    this.histogram = new Histogram(this.histogramCanvas);
+    // Histograms and Visualizations
+    this.histogram = new Histogram({
+      rgb: document.getElementById("rgbHistogramCanvas"),
+      hue: document.getElementById("hueHistogramCanvas"),
+      sat: document.getElementById("satHistogramCanvas")
+    });
 
     // State (Shared)
     this.renderer = null;
