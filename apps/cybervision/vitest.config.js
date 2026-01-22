@@ -16,6 +16,11 @@ export default defineConfig({
     }
   },
   test: {
+    environmentOptions: {
+      happyDOM: {
+        url: 'http://127.0.0.1:3000',
+      },
+    },
     globals: true,
     environment: 'happy-dom', // Changed from 'node'
     include: ['tests/unit/**/*.test.js'],
