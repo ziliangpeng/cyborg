@@ -67,6 +67,20 @@ class CyberVision {
     this.posterizeLevels = document.getElementById("posterizeLevels");
     this.posterizeLevelsValue = document.getElementById("posterizeLevelsValue");
 
+    // ASCII controls
+    this.asciiControls = document.getElementById("asciiControls");
+    this.asciiCellSize = document.getElementById("asciiCellSize");
+    this.asciiCellSizeValue = document.getElementById("asciiCellSizeValue");
+    this.asciiColorize = document.getElementById("asciiColorize");
+    this.asciiUseGlyphs = document.getElementById("asciiUseGlyphs");
+
+    // Oil paint controls
+    this.oilPaintControls = document.getElementById("oilPaintControls");
+    this.oilPaintRadius = document.getElementById("oilPaintRadius");
+    this.oilPaintRadiusValue = document.getElementById("oilPaintRadiusValue");
+    this.oilPaintLevels = document.getElementById("oilPaintLevels");
+    this.oilPaintLevelsValue = document.getElementById("oilPaintLevelsValue");
+
     // Clustering controls
     this.clusteringControls = document.getElementById("clusteringControls");
     this.algorithmSelect = document.getElementById("algorithmSelect");
@@ -222,6 +236,15 @@ class CyberVision {
 
     // Posterize state
     this.posterizeLevelsValue_state = 4;
+
+    // ASCII state
+    this.asciiCellSizeValue_state = 10;
+    this.asciiColorizeValue = false;
+    this.asciiUseGlyphsValue = true;
+
+    // Oil paint state
+    this.oilPaintRadiusValue_state = 4;
+    this.oilPaintLevelsValue_state = 6;
 
     // Clustering state
     this.clusteringAlgorithm = "quantization-kmeans";
@@ -575,6 +598,31 @@ class CyberVision {
     this.posterizeLevels.addEventListener("input", (e) => {
       this.posterizeLevelsValue_state = parseInt(e.target.value, 10);
       this.posterizeLevelsValue.textContent = this.posterizeLevelsValue_state;
+    });
+
+    // ASCII event listeners
+    this.asciiCellSize.addEventListener("input", (e) => {
+      this.asciiCellSizeValue_state = parseInt(e.target.value, 10);
+      this.asciiCellSizeValue.textContent = this.asciiCellSizeValue_state;
+    });
+
+    this.asciiColorize.addEventListener("change", (e) => {
+      this.asciiColorizeValue = e.target.checked;
+    });
+
+    this.asciiUseGlyphs.addEventListener("change", (e) => {
+      this.asciiUseGlyphsValue = e.target.checked;
+    });
+
+    // Oil paint event listeners
+    this.oilPaintRadius.addEventListener("input", (e) => {
+      this.oilPaintRadiusValue_state = parseInt(e.target.value, 10);
+      this.oilPaintRadiusValue.textContent = this.oilPaintRadiusValue_state;
+    });
+
+    this.oilPaintLevels.addEventListener("input", (e) => {
+      this.oilPaintLevelsValue_state = parseInt(e.target.value, 10);
+      this.oilPaintLevelsValue.textContent = this.oilPaintLevelsValue_state;
     });
 
     // Clustering event listeners
@@ -1115,6 +1163,8 @@ class CyberVision {
     this.duotoneControls.style.display = this.currentEffect === "duotone" ? "block" : "none";
     this.ditherControls.style.display = this.currentEffect === "dither" ? "block" : "none";
     this.posterizeControls.style.display = this.currentEffect === "posterize" ? "block" : "none";
+    this.asciiControls.style.display = this.currentEffect === "ascii" ? "block" : "none";
+    this.oilPaintControls.style.display = this.currentEffect === "oilpaint" ? "block" : "none";
     this.clusteringControls.style.display = this.currentEffect === "clustering" ? "block" : "none";
     this.edgesControls.style.display = this.currentEffect === "edges" ? "block" : "none";
     this.twirlControls.style.display = this.currentEffect === "twirl" ? "block" : "none";
@@ -1359,6 +1409,12 @@ class CyberVision {
       case "posterize":
         this.renderPosterize(sourceVideo);
         break;
+      case "ascii":
+        this.renderAscii(sourceVideo);
+        break;
+      case "oilpaint":
+        this.renderOilPaint(sourceVideo);
+        break;
       case "clustering":
         this.renderClustering(sourceVideo);
         break;
@@ -1423,6 +1479,23 @@ class CyberVision {
     this.renderer.renderPosterize(
       sourceVideo,
       this.posterizeLevelsValue_state
+    );
+  }
+
+  renderAscii(sourceVideo) {
+    this.renderer.renderAscii(
+      sourceVideo,
+      this.asciiCellSizeValue_state,
+      this.asciiColorizeValue,
+      this.asciiUseGlyphsValue
+    );
+  }
+
+  renderOilPaint(sourceVideo) {
+    this.renderer.renderOilPaint(
+      sourceVideo,
+      this.oilPaintRadiusValue_state,
+      this.oilPaintLevelsValue_state
     );
   }
 

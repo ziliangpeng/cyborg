@@ -11,6 +11,8 @@ export class WebGLRenderer {
     this.duotoneProgram = null;
     this.ditherProgram = null;
     this.posterizeProgram = null;
+    this.asciiProgram = null;
+    this.oilPaintProgram = null;
     this.twirlProgram = null;
     this.vignetteProgram = null;
     this.chromaticProgram = null;
@@ -29,6 +31,8 @@ export class WebGLRenderer {
     this.duotoneLocations = null;
     this.ditherLocations = null;
     this.posterizeLocations = null;
+    this.asciiLocations = null;
+    this.oilPaintLocations = null;
     this.twirlLocations = null;
     this.vignetteLocations = null;
     this.chromaticLocations = null;
@@ -81,6 +85,8 @@ export class WebGLRenderer {
     const duotoneFragmentSource = await this.loadShader("/shaders/duotone.frag.glsl");
     const ditherFragmentSource = await this.loadShader("/shaders/dither.frag.glsl");
     const posterizeFragmentSource = await this.loadShader("/shaders/posterize.frag.glsl");
+    const asciiFragmentSource = await this.loadShader("/shaders/ascii.frag.glsl");
+    const oilPaintFragmentSource = await this.loadShader("/shaders/oilpaint.frag.glsl");
     const twirlFragmentSource = await this.loadShader("/shaders/twirl.frag.glsl");
     const vignetteFragmentSource = await this.loadShader("/shaders/vignette.frag.glsl");
     const chromaticFragmentSource = await this.loadShader("/shaders/chromatic.frag.glsl");
@@ -98,6 +104,8 @@ export class WebGLRenderer {
     const duotoneFragment = this.compileShader(gl.FRAGMENT_SHADER, duotoneFragmentSource);
     const ditherFragment = this.compileShader(gl.FRAGMENT_SHADER, ditherFragmentSource);
     const posterizeFragment = this.compileShader(gl.FRAGMENT_SHADER, posterizeFragmentSource);
+    const asciiFragment = this.compileShader(gl.FRAGMENT_SHADER, asciiFragmentSource);
+    const oilPaintFragment = this.compileShader(gl.FRAGMENT_SHADER, oilPaintFragmentSource);
     const twirlFragment = this.compileShader(gl.FRAGMENT_SHADER, twirlFragmentSource);
     const vignetteFragment = this.compileShader(gl.FRAGMENT_SHADER, vignetteFragmentSource);
     const chromaticFragment = this.compileShader(gl.FRAGMENT_SHADER, chromaticFragmentSource);
@@ -114,6 +122,8 @@ export class WebGLRenderer {
     this.duotoneProgram = this.createProgram(vertexShader, duotoneFragment);
     this.ditherProgram = this.createProgram(vertexShader, ditherFragment);
     this.posterizeProgram = this.createProgram(vertexShader, posterizeFragment);
+    this.asciiProgram = this.createProgram(vertexShader, asciiFragment);
+    this.oilPaintProgram = this.createProgram(vertexShader, oilPaintFragment);
     this.twirlProgram = this.createProgram(vertexShader, twirlFragment);
     this.vignetteProgram = this.createProgram(vertexShader, vignetteFragment);
     this.chromaticProgram = this.createProgram(vertexShader, chromaticFragment);
@@ -561,6 +571,86 @@ export class WebGLRenderer {
     gl.vertexAttribPointer(locations.texCoord, 2, gl.FLOAT, false, 0, 0);
 
     gl.uniform1i(locations.video, 0);
+    gl.uniform1f(locations.levels, levels);
+
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  renderAscii(video, cellSize, colorize, useGlyphs = true) {
+    const gl = this.gl;
+    const program = this.asciiProgram;
+
+    if (!this.asciiLocations) {
+      this.asciiLocations = {
+        position: gl.getAttribLocation(program, "a_position"),
+        texCoord: gl.getAttribLocation(program, "a_texCoord"),
+        video: gl.getUniformLocation(program, "u_video"),
+        resolution: gl.getUniformLocation(program, "u_resolution"),
+        cellSize: gl.getUniformLocation(program, "u_cellSize"),
+        colorize: gl.getUniformLocation(program, "u_colorize"),
+        useGlyphs: gl.getUniformLocation(program, "u_useGlyphs"),
+      };
+    }
+    const locations = this.asciiLocations;
+
+    this.updateVideoTexture(video);
+
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.enableVertexAttribArray(locations.position);
+    gl.vertexAttribPointer(locations.position, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.enableVertexAttribArray(locations.texCoord);
+    gl.vertexAttribPointer(locations.texCoord, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform1i(locations.video, 0);
+    gl.uniform2f(locations.resolution, video.videoWidth, video.videoHeight);
+    gl.uniform1f(locations.cellSize, cellSize);
+    gl.uniform1f(locations.colorize, colorize ? 1.0 : 0.0);
+    gl.uniform1f(locations.useGlyphs, useGlyphs ? 1.0 : 0.0);
+
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  renderOilPaint(video, radius, levels) {
+    const gl = this.gl;
+    const program = this.oilPaintProgram;
+
+    if (!this.oilPaintLocations) {
+      this.oilPaintLocations = {
+        position: gl.getAttribLocation(program, "a_position"),
+        texCoord: gl.getAttribLocation(program, "a_texCoord"),
+        video: gl.getUniformLocation(program, "u_video"),
+        resolution: gl.getUniformLocation(program, "u_resolution"),
+        radius: gl.getUniformLocation(program, "u_radius"),
+        levels: gl.getUniformLocation(program, "u_levels"),
+      };
+    }
+    const locations = this.oilPaintLocations;
+
+    this.updateVideoTexture(video);
+
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.enableVertexAttribArray(locations.position);
+    gl.vertexAttribPointer(locations.position, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.enableVertexAttribArray(locations.texCoord);
+    gl.vertexAttribPointer(locations.texCoord, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform1i(locations.video, 0);
+    gl.uniform2f(locations.resolution, video.videoWidth, video.videoHeight);
+    gl.uniform1f(locations.radius, radius);
     gl.uniform1f(locations.levels, levels);
 
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);

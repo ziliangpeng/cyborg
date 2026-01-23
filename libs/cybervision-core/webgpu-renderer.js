@@ -23,6 +23,8 @@ export class WebGPURenderer {
     this.duotonePipeline = null;
     this.ditherPipeline = null;
     this.posterizePipeline = null;
+    this.asciiPipeline = null;
+    this.oilPaintPipeline = null;
     this.twirlPipeline = null;
     this.vignettePipeline = null;
     this.chromaticPipeline = null;
@@ -43,6 +45,8 @@ export class WebGPURenderer {
     this.duotoneBindGroup = null;
     this.ditherBindGroup = null;
     this.posterizeBindGroup = null;
+    this.asciiBindGroup = null;
+    this.oilPaintBindGroup = null;
     this.twirlBindGroup = null;
     this.vignetteBindGroup = null;
     this.chromaticBindGroup = null;
@@ -65,6 +69,8 @@ export class WebGPURenderer {
     this.duotoneUniformBuffer = null;
     this.ditherUniformBuffer = null;
     this.posterizeUniformBuffer = null;
+    this.asciiUniformBuffer = null;
+    this.oilPaintUniformBuffer = null;
     this.twirlUniformBuffer = null;
     this.vignetteUniformBuffer = null;
     this.chromaticUniformBuffer = null;
@@ -85,6 +91,8 @@ export class WebGPURenderer {
     this.duotoneShader = null;
     this.ditherShader = null;
     this.posterizeShader = null;
+    this.asciiShader = null;
+    this.oilPaintShader = null;
     this.twirlShader = null;
     this.vignetteShader = null;
     this.chromaticShader = null;
@@ -204,6 +212,20 @@ export class WebGPURenderer {
     const posterizeShaderCode = await posterizeShaderResponse.text();
     this.posterizeShader = this.device.createShaderModule({
       code: posterizeShaderCode,
+    });
+
+    // Load and create ASCII shader
+    const asciiShaderResponse = await fetch("/shaders/ascii.wgsl");
+    const asciiShaderCode = await asciiShaderResponse.text();
+    this.asciiShader = this.device.createShaderModule({
+      code: asciiShaderCode,
+    });
+
+    // Load and create oil paint shader
+    const oilPaintShaderResponse = await fetch("/shaders/oilpaint.wgsl");
+    const oilPaintShaderCode = await oilPaintShaderResponse.text();
+    this.oilPaintShader = this.device.createShaderModule({
+      code: oilPaintShaderCode,
     });
 
     // Load and create twirl shader
@@ -350,6 +372,24 @@ export class WebGPURenderer {
       0.0,  // padding
     ]);
     this.posterizeUniformBuffer = this.createUniformBuffer(posterizeUniformData);
+
+    // Create ASCII uniform buffer
+    const asciiUniformData = new Float32Array([
+      10.0,  // cell size
+      0.0,  // colorize
+      1.0,  // use glyphs
+      0.0,  // padding
+    ]);
+    this.asciiUniformBuffer = this.createUniformBuffer(asciiUniformData);
+
+    // Create oil paint uniform buffer
+    const oilPaintUniformData = new Float32Array([
+      4.0,  // radius
+      6.0,  // levels
+      0.0,  // padding
+      0.0,  // padding
+    ]);
+    this.oilPaintUniformBuffer = this.createUniformBuffer(oilPaintUniformData);
 
     // Create twirl uniform buffer
     const twirlUniformData = new Float32Array([
@@ -766,6 +806,66 @@ export class WebGPURenderer {
           binding: 2,
           resource: {
             buffer: this.posterizeUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create ASCII compute pipeline
+    this.asciiPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.asciiShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create ASCII bind group
+    this.asciiBindGroup = this.device.createBindGroup({
+      layout: this.asciiPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.asciiUniformBuffer,
+          },
+        },
+      ],
+    });
+
+    // Create oil paint compute pipeline
+    this.oilPaintPipeline = this.device.createComputePipeline({
+      layout: "auto",
+      compute: {
+        module: this.oilPaintShader,
+        entryPoint: "main",
+      },
+    });
+
+    // Create oil paint bind group
+    this.oilPaintBindGroup = this.device.createBindGroup({
+      layout: this.oilPaintPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: this.inputTexture.createView(),
+        },
+        {
+          binding: 1,
+          resource: this.outputTexture.createView(),
+        },
+        {
+          binding: 2,
+          resource: {
+            buffer: this.oilPaintUniformBuffer,
           },
         },
       ],
@@ -1602,6 +1702,86 @@ export class WebGPURenderer {
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(this.posterizePipeline);
     computePass.setBindGroup(0, this.posterizeBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderAscii(video, cellSize, colorize, useGlyphs = true) {
+    const uniformData = new Float32Array([
+      cellSize,
+      colorize ? 1.0 : 0.0,
+      useGlyphs ? 1.0 : 0.0,
+      0.0,
+    ]);
+    this.updateUniformBuffer(this.asciiUniformBuffer, uniformData);
+
+    this.uploadVideoToTexture(video);
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.asciiPipeline);
+    computePass.setBindGroup(0, this.asciiBindGroup);
+
+    const workgroupsX = Math.ceil(this.videoWidth / 8);
+    const workgroupsY = Math.ceil(this.videoHeight / 8);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
+
+    const canvasTexture = this.canvasContext.getCurrentTexture();
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: canvasTexture.createView(),
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    renderPass.setPipeline(this.blitPipeline);
+    renderPass.setBindGroup(0, this.blitBindGroup);
+    renderPass.draw(6, 1, 0, 0);
+    renderPass.end();
+
+    this.device.queue.submit([commandEncoder.finish()]);
+  }
+
+  renderOilPaint(video, radius, levels) {
+    const uniformData = new Float32Array([
+      radius,
+      levels,
+      0.0,
+      0.0,
+    ]);
+    this.updateUniformBuffer(this.oilPaintUniformBuffer, uniformData);
+
+    this.uploadVideoToTexture(video);
+
+    const commandEncoder = this.device.createCommandEncoder();
+
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(this.oilPaintPipeline);
+    computePass.setBindGroup(0, this.oilPaintBindGroup);
 
     const workgroupsX = Math.ceil(this.videoWidth / 8);
     const workgroupsY = Math.ceil(this.videoHeight / 8);

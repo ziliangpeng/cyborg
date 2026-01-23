@@ -95,6 +95,8 @@
                 <button class="effect-btn" data-effect="duotone" title="Duotone" role="radio" aria-checked="false">DU</button>
                 <button class="effect-btn" data-effect="dither" title="Dither" role="radio" aria-checked="false">DI</button>
                 <button class="effect-btn" data-effect="posterize" title="Posterize" role="radio" aria-checked="false">PO</button>
+                <button class="effect-btn" data-effect="ascii" title="ASCII" role="radio" aria-checked="false">AS</button>
+                <button class="effect-btn" data-effect="oilpaint" title="Oil Paint" role="radio" aria-checked="false">OP</button>
                 <button class="effect-btn" data-effect="clustering" title="Clustering" role="radio" aria-checked="false">CL</button>
                 <button class="effect-btn" data-effect="mosaic" title="Mosaic" role="radio" aria-checked="false">MO</button>
                 <button class="effect-btn" data-effect="kaleidoscope" title="Kaleidoscope" role="radio" aria-checked="false">KA</button>
@@ -202,6 +204,66 @@
                   min="2"
                   max="8"
                   value="4"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+            </div>
+
+            <div class="effect-controls ascii-controls" id="asciiControls" style="display: none;">
+              <div class="control-group">
+                <label for="asciiCellSize">
+                  Cell Size: <span id="asciiCellSizeValue">10</span>px
+                </label>
+                <input
+                  id="asciiCellSize"
+                  type="range"
+                  min="4"
+                  max="24"
+                  value="10"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+              <div class="control-group">
+                <label class="radio-label">
+                  <input type="checkbox" id="asciiUseGlyphs" checked />
+                  <span>Use Letter Glyphs</span>
+                </label>
+              </div>
+              <div class="control-group">
+                <label class="radio-label">
+                  <input type="checkbox" id="asciiColorize" />
+                  <span>Use Source Color</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="effect-controls oilpaint-controls" id="oilPaintControls" style="display: none;">
+              <div class="control-group">
+                <label for="oilPaintRadius">
+                  Brush Radius: <span id="oilPaintRadiusValue">4</span>px
+                </label>
+                <input
+                  id="oilPaintRadius"
+                  type="range"
+                  min="1"
+                  max="6"
+                  value="4"
+                  step="1"
+                  class="slider"
+                />
+              </div>
+              <div class="control-group">
+                <label for="oilPaintLevels">
+                  Intensity Levels: <span id="oilPaintLevelsValue">6</span>
+                </label>
+                <input
+                  id="oilPaintLevels"
+                  type="range"
+                  min="3"
+                  max="8"
+                  value="6"
                   step="1"
                   class="slider"
                 />

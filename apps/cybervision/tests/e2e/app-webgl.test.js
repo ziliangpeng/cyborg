@@ -58,6 +58,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
       'duotone',
       'dither',
       'posterize',
+      'ascii',
+      'oilpaint',
       'clustering',
       'edges',
       'twirl',
@@ -108,6 +110,18 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#posterizeControls')).toBeVisible();
     await expect(page.locator('#ditherControls')).not.toBeVisible();
 
+    // Select ASCII effect
+    await switchToEffectTab(page, 'ascii');
+    await page.locator('button[data-effect="ascii"]').click();
+    await expect(page.locator('#asciiControls')).toBeVisible();
+    await expect(page.locator('#posterizeControls')).not.toBeVisible();
+
+    // Select oil paint effect
+    await switchToEffectTab(page, 'oilpaint');
+    await page.locator('button[data-effect="oilpaint"]').click();
+    await expect(page.locator('#oilPaintControls')).toBeVisible();
+    await expect(page.locator('#asciiControls')).not.toBeVisible();
+
     // Select clustering effect
     await switchToEffectTab(page, 'clustering');
     await page.locator('button[data-effect="clustering"]').click();
@@ -141,6 +155,8 @@ test.describe('CyberVision E2E - WebGL Path', () => {
     await expect(page.locator('#duotoneControls')).not.toBeVisible();
     await expect(page.locator('#ditherControls')).not.toBeVisible();
     await expect(page.locator('#posterizeControls')).not.toBeVisible();
+    await expect(page.locator('#asciiControls')).not.toBeVisible();
+    await expect(page.locator('#oilPaintControls')).not.toBeVisible();
     await expect(page.locator('#twirlControls')).not.toBeVisible();
     await expect(page.locator('#vignetteControls')).not.toBeVisible();
   });
@@ -161,7 +177,7 @@ test.describe('CyberVision E2E - WebGL Path', () => {
 
     await expect(page.locator('#gpuStatus')).toHaveText('WebGL', { timeout: 10000 });
 
-    const effects = ['original', 'halftone', 'duotone', 'dither', 'posterize', 'clustering', 'edges', 'twirl', 'vignette', 'mosaic', 'chromatic', 'glitch', 'thermal'];
+    const effects = ['original', 'halftone', 'duotone', 'dither', 'posterize', 'ascii', 'oilpaint', 'clustering', 'edges', 'twirl', 'vignette', 'mosaic', 'chromatic', 'glitch', 'thermal'];
 
     for (const effect of effects) {
       await switchToEffectTab(page, effect);
