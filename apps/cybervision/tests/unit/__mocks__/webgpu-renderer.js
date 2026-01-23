@@ -7,6 +7,8 @@ export async function initGPU() {
     renderDuotone: () => {},
     renderDither: () => {},
     renderPosterize: () => {},
+    renderAscii: () => {},
+    renderOilPaint: () => {},
     renderClustering: () => {},
     renderEdges: () => {},
     renderTwirl: () => {},

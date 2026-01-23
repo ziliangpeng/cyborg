@@ -10,6 +10,8 @@ const effectToTab = {
   'duotone': 'artistic',
   'dither': 'artistic',
   'posterize': 'artistic',
+  'ascii': 'artistic',
+  'oilpaint': 'artistic',
   'clustering': 'artistic',
   'mosaic': 'artistic',
   'kaleidoscope': 'artistic',

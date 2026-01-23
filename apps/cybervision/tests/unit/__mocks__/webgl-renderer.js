@@ -7,6 +7,8 @@ export async function initWebGL() {
     renderDuotone: () => {},
     renderDither: () => {},
     renderPosterize: () => {},
+    renderAscii: () => {},
+    renderOilPaint: () => {},
     renderClustering: () => {},
     renderEdges: () => {},
     renderTwirl: () => {},

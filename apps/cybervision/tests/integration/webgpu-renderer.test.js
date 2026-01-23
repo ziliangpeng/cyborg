@@ -95,6 +95,8 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
         'renderClustering',
         'renderEdges',
         'renderMosaic',
+        'renderAscii',
+        'renderOilPaint',
         'renderChromatic',
         'renderGlitch',
         'renderThermal',
@@ -162,6 +164,8 @@ test.describe('WebGPU Renderer Integration (macOS only)', () => {
         app.renderer.renderClustering(mockVideo, 'quantization-kmeans', 8, 0.1);
         app.renderer.renderEdges(mockVideo, 'sobel', 0.1, false, false, [1, 1, 1], 1);
         app.renderer.renderMosaic(mockVideo, 8, 'center');
+        app.renderer.renderAscii(mockVideo, 10, true, true);
+        app.renderer.renderOilPaint(mockVideo, 4, 6);
         app.renderer.renderChromatic(mockVideo, 10, 'radial', 0.5, 0.5);
         app.renderer.renderGlitch(mockVideo, 'slices', 12, 24, 4, 0.15, 0.3);
         app.renderer.renderThermal(mockVideo, 'classic', 1.0, false);

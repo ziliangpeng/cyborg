@@ -63,6 +63,8 @@ function setupMockDOM() {
     <button class="effect-btn" data-effect="duotone">Duotone</button>
     <button class="effect-btn" data-effect="dither">Dither</button>
     <button class="effect-btn" data-effect="posterize">Posterize</button>
+    <button class="effect-btn" data-effect="ascii">ASCII</button>
+    <button class="effect-btn" data-effect="oilpaint">Oil Paint</button>
     <button class="effect-btn" data-effect="clustering">Clustering</button>
     <button class="effect-btn" data-effect="edges">Edges</button>
     <button class="effect-btn" data-effect="twirl">Twirl</button>
@@ -100,6 +102,22 @@ function setupMockDOM() {
     <div id="posterizeControls" class="effect-controls">
       <input id="posterizeLevels" type="range" min="2" max="8" value="4" />
       <span id="posterizeLevelsValue">4</span>
+    </div>
+
+    <!-- ASCII controls -->
+    <div id="asciiControls" class="effect-controls">
+      <input id="asciiCellSize" type="range" min="4" max="24" value="10" />
+      <span id="asciiCellSizeValue">10</span>
+      <input id="asciiUseGlyphs" type="checkbox" checked />
+      <input id="asciiColorize" type="checkbox" />
+    </div>
+
+    <!-- Oil paint controls -->
+    <div id="oilPaintControls" class="effect-controls">
+      <input id="oilPaintRadius" type="range" min="1" max="6" value="4" />
+      <span id="oilPaintRadiusValue">4</span>
+      <input id="oilPaintLevels" type="range" min="3" max="8" value="6" />
+      <span id="oilPaintLevelsValue">6</span>
     </div>
 
     <!-- Clustering controls -->
@@ -331,6 +349,11 @@ describe('CyberVision - Effect Parameters', () => {
 
     expect(player.dotSize).toBe(8);
     expect(player.useRandomColors).toBe(false);
+    expect(player.asciiCellSizeValue_state).toBe(10);
+    expect(player.asciiColorizeValue).toBe(false);
+    expect(player.asciiUseGlyphsValue).toBe(true);
+    expect(player.oilPaintRadiusValue_state).toBe(4);
+    expect(player.oilPaintLevelsValue_state).toBe(6);
     expect(player.colorCount).toBe(8);
     expect(player.kaleidoscopeSegments).toBe(8);
     expect(player.kaleidoscopeRotationSpeed).toBe(0.0);
@@ -512,6 +535,16 @@ describe('CyberVision - Effect Control Visibility', () => {
     expect(player.posterizeControls.style.display).toBe('block');
     expect(player.ditherControls.style.display).toBe('none');
 
+    player.currentEffect = 'ascii';
+    player.updateEffectControls();
+    expect(player.asciiControls.style.display).toBe('block');
+    expect(player.posterizeControls.style.display).toBe('none');
+
+    player.currentEffect = 'oilpaint';
+    player.updateEffectControls();
+    expect(player.oilPaintControls.style.display).toBe('block');
+    expect(player.asciiControls.style.display).toBe('none');
+
     player.currentEffect = 'twirl';
     player.updateEffectControls();
     expect(player.twirlControls.style.display).toBe('block');
@@ -683,6 +716,35 @@ describe('CyberVision - Renderer Parameters', () => {
     player.renderPosterize(sourceVideo);
 
     expect(renderer.renderPosterize).toHaveBeenCalledWith(sourceVideo, 5);
+  });
+
+  it('passes ASCII parameters to the renderer', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderAscii: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.asciiCellSizeValue_state = 12;
+    player.asciiColorizeValue = false;
+    player.asciiUseGlyphsValue = true;
+
+    player.renderAscii(sourceVideo);
+
+    expect(renderer.renderAscii).toHaveBeenCalledWith(sourceVideo, 12, false, true);
+  });
+
+  it('passes oil paint parameters to the renderer', async () => {
+    const player = await createTestPlayer();
+    const renderer = { renderOilPaint: vi.fn() };
+    const sourceVideo = {};
+
+    player.renderer = renderer;
+    player.oilPaintRadiusValue_state = 5;
+    player.oilPaintLevelsValue_state = 7;
+
+    player.renderOilPaint(sourceVideo);
+
+    expect(renderer.renderOilPaint).toHaveBeenCalledWith(sourceVideo, 5, 7);
   });
 
   it('passes twirl parameters to the renderer', async () => {

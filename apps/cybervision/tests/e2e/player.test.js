@@ -29,6 +29,8 @@ test.describe('CyberVision Player Features', () => {
     await expect(page.locator('.effect-btn[data-effect="duotone"]')).toBeVisible();
     await expect(page.locator('.effect-btn[data-effect="dither"]')).toBeVisible();
     await expect(page.locator('.effect-btn[data-effect="posterize"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="ascii"]')).toBeVisible();
+    await expect(page.locator('.effect-btn[data-effect="oilpaint"]')).toBeVisible();
     await expect(page.locator('.effect-btn[data-effect="clustering"]')).toBeVisible();
     await expect(page.locator('.effect-btn[data-effect="kaleidoscope"]')).toBeVisible();
 
