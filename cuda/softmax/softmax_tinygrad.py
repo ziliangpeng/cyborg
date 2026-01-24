@@ -6,11 +6,8 @@ Interface uses NumPy arrays for compatibility with other implementations.
 """
 
 import numpy as np
-from tinygrad import Device
+from tinygrad import Device, TinyJit
 from tinygrad.tensor import Tensor
-
-# Ensure GPU usage
-Device.DEFAULT = "CUDA"
 
 
 def softmax(x: np.ndarray) -> np.ndarray:
@@ -31,7 +28,10 @@ def softmax(x: np.ndarray) -> np.ndarray:
 
 def benchmark(x: np.ndarray, iterations: int = 100, warmup: int = 10) -> list[float]:
     """
-    Benchmark softmax kernel.
+    Benchmark softmax kernel execution time only (no D2H transfer).
+
+    Uses TinyJIT to compile the kernel once and replay it without
+    rebuilding the computation graph each iteration.
 
     Args:
         x: Input array (1D float32)
@@ -43,24 +43,32 @@ def benchmark(x: np.ndarray, iterations: int = 100, warmup: int = 10) -> list[fl
     """
     import time
 
-    # Create tensor once (avoid repeated conversion overhead)
+    # Get the CUDA device for explicit synchronization
+    cuda_device = Device["CUDA"]
+
+    # Create input tensor once - data stays on GPU
     t = Tensor(x, device="CUDA")
+    t.realize()  # Ensure input is on GPU
+    cuda_device.synchronize()
 
-    # Warmup
+    # Define JIT-compiled softmax function
+    # TinyJIT replays the compiled kernels without rebuilding the graph
+    @TinyJit
+    def jit_softmax(inp: Tensor) -> Tensor:
+        return inp.softmax().realize()
+
+    # Warmup - first calls compile and cache the kernel
     for _ in range(warmup):
-        result = t.softmax()
-        result.realize()
-        # Force synchronization by reading a value
-        _ = result.numpy().flatten()[0]
+        jit_softmax(t)
+        cuda_device.synchronize()
 
-    # Benchmark with proper GPU synchronization
+    # Benchmark kernel execution only (using JIT-cached kernel)
     times = []
     for _ in range(iterations):
+        cuda_device.synchronize()  # Ensure previous work is done
         start = time.perf_counter()
-        result = t.softmax()
-        result.realize()
-        # Force synchronization
-        _ = result.numpy().flatten()[0]
+        jit_softmax(t)
+        cuda_device.synchronize()  # Wait for kernel to complete
         end = time.perf_counter()
         times.append((end - start) * 1000)  # Convert to ms
 
