@@ -328,3 +328,36 @@ py_binary(
     ],
     target_compatible_with = ["//constraints:cuda"],
 )
+
+# Triton softmax implementation (uses PyTorch for GPU memory)
+py_library(
+    name = "softmax_triton",
+    srcs = ["softmax_triton.py"],
+    deps = [
+        "@pip//numpy",
+        "@pip_cuda//nvidia_cudnn_cu12",
+        "@pip_cuda//nvidia_cusparselt_cu12",
+        "@pip_cuda//torch",
+        "@pip_cuda//triton",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+)
+
+# Triton softmax demo binary
+py_binary(
+    name = "softmax_triton_demo",
+    srcs = ["softmax_triton_demo.py"],
+    deps = [
+        ":softmax_triton",
+        "@pip//numpy",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+)
+
+# Shell wrapper that sets up LD_LIBRARY_PATH for CUDA libs
+sh_binary(
+    name = "run_triton_demo",
+    srcs = ["run_triton_demo.sh"],
+    data = [":softmax_triton_demo"],
+    target_compatible_with = ["//constraints:cuda"],
+)
