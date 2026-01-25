@@ -99,7 +99,7 @@ pub fn largest_prime_factor(mut n: u64) -> Option<u64> {
     let mut factor = 2;
 
     while factor * factor <= n {
-        while n % factor == 0 {
+        while n.is_multiple_of(factor) {
             largest = Some(factor);
             n /= factor;
         }
