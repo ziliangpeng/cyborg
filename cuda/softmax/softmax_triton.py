@@ -4,9 +4,11 @@ Triton softmax implementation for benchmarking.
 This module provides softmax using a Triton JIT-compiled kernel.
 Uses PyTorch for GPU memory management (required by Triton's CUDA driver).
 Interface uses NumPy arrays for compatibility with other implementations.
-"""
 
-import time
+Note: This module requires LD_LIBRARY_PATH to include NVIDIA pip package
+library directories. Use cuda_py_binary from //cuda:defs.bzl to run this
+with the correct library paths set hermetically by Bazel.
+"""
 
 import numpy as np
 import torch

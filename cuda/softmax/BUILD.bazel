@@ -1,6 +1,7 @@
 load("@rules_cuda//cuda:defs.bzl", "cuda_library", "cuda_binary", "cuda_test")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//cuda:defs.bzl", "cuda_py_binary")
 
 # ============================================================================
 # Softmax Implementation Libraries (one per approach)
@@ -343,21 +344,30 @@ py_library(
     target_compatible_with = ["//constraints:cuda"],
 )
 
-# Triton softmax demo binary
-py_binary(
+# Triton softmax demo binary (uses cuda_py_binary for hermetic CUDA library paths)
+cuda_py_binary(
     name = "softmax_triton_demo",
     srcs = ["softmax_triton_demo.py"],
     deps = [
         ":softmax_triton",
         "@pip//numpy",
     ],
-    target_compatible_with = ["//constraints:cuda"],
-)
-
-# Shell wrapper that sets up LD_LIBRARY_PATH for CUDA libs
-sh_binary(
-    name = "run_triton_demo",
-    srcs = ["run_triton_demo.sh"],
-    data = [":softmax_triton_demo"],
+    # NVIDIA packages that need LD_LIBRARY_PATH configured
+    # (transitive deps through torch, not auto-detected)
+    nvidia_packages = [
+        "nvidia_cublas_cu12",
+        "nvidia_cuda_cupti_cu12",
+        "nvidia_cuda_nvrtc_cu12",
+        "nvidia_cuda_runtime_cu12",
+        "nvidia_cudnn_cu12",
+        "nvidia_cufft_cu12",
+        "nvidia_curand_cu12",
+        "nvidia_cusolver_cu12",
+        "nvidia_cusparse_cu12",
+        "nvidia_cusparselt_cu12",
+        "nvidia_nccl_cu12",
+        "nvidia_nvjitlink_cu12",
+        "nvidia_nvtx_cu12",
+    ],
     target_compatible_with = ["//constraints:cuda"],
 )
