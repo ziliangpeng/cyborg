@@ -1,6 +1,6 @@
 use math::{is_prime, primes_below};
 
-fn main() {
+pub fn solve(verbose: bool) -> String {
     const LIMIT: u64 = 1_000_000;
     let primes = primes_below(LIMIT as u32);
 
@@ -26,11 +26,26 @@ fn main() {
         }
     }
 
-    println!("Chain length: {}", best_chain_len);
-    println!(
-        "Start: {} (index {})",
-        primes[best_start_idx], best_start_idx
-    );
-    println!("End: {} (index {})", primes[best_end_idx], best_end_idx);
-    println!("The answer to Problem 50 is: {}", best_answer);
+    if verbose {
+        println!("Chain length: {}", best_chain_len);
+        println!(
+            "Start: {} (index {})",
+            primes[best_start_idx], best_start_idx
+        );
+        println!("End: {} (index {})", primes[best_end_idx], best_end_idx);
+    }
+
+    best_answer.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solve() {
+        let answer = solve(false);
+        println!("PE50 answer: {}", answer);
+        assert_eq!(answer, "997651");
+    }
 }

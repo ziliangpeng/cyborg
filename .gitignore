@@ -37,3 +37,6 @@ halftone_web.log
 
 # ML models
 *.onnx
+
+# Claude Code local settings
+.claude/

@@ -1,0 +1,32 @@
+name: Project Euler Tests
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'apps/project-euler/**'
+      - 'packages/math/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'apps/project-euler/**'
+      - 'packages/math/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+
+    - name: Run tests
+      run: cargo test -p project-euler --verbose -- --nocapture

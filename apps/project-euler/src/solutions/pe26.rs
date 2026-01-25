@@ -26,7 +26,7 @@ fn cycle_length(d: u32) -> usize {
     }
 }
 
-fn main() {
+pub fn solve(verbose: bool) -> String {
     let mut best_d = 1;
     let mut best_cycle = 0;
 
@@ -38,6 +38,21 @@ fn main() {
         }
     }
 
-    println!("Best cycle length: {}", best_cycle);
-    println!("The answer to Problem 26 is: {}", best_d);
+    if verbose {
+        println!("Best cycle length: {}", best_cycle);
+    }
+
+    best_d.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solve() {
+        let answer = solve(false);
+        println!("PE26 answer: {}", answer);
+        assert_eq!(answer, "983");
+    }
 }

@@ -1,6 +1,7 @@
 use math::BigInt;
 
-fn main() {
+pub fn solve(verbose: bool) -> String {
+    let _ = verbose;
     let numbers = [
         "37107287533902102798797998220837590246510135740250",
         "46376937677490009712648124896970078050417018260538",
@@ -110,6 +111,17 @@ fn main() {
         .fold(BigInt::zero(), |acc, n| acc + n);
 
     let sum_str = format!("{}", sum);
-    let first_ten = &sum_str[..10];
-    println!("The answer to Problem 13 is: {}", first_ten);
+    sum_str[..10].to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solve() {
+        let answer = solve(false);
+        println!("PE13 answer: {}", answer);
+        assert_eq!(answer, "5537376230");
+    }
 }

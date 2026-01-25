@@ -24,3 +24,10 @@
 - It's ok to print debug info or extra info
 - Always print the answer as the last line
 - Use strict format: `The answer to Problem {} is: {}`
+
+## Adding New Solutions
+
+- For new solutions: implement solution first, user verifies answer, then add unit test with that value
+- Solutions go in `src/solutions/pe<N>.rs` with a `pub fn solve() -> String`
+- Add module declaration to `src/solutions/mod.rs`
+- Add match arm in `src/lib.rs` `run_problem()` and add ID to `PROBLEMS` array
