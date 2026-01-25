@@ -1,6 +1,34 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
+/// Iterator that yields triangle numbers: 1, 3, 6, 10, 15, ...
+pub struct TriangleNumbers {
+    n: u64,
+    current: u64,
+}
+
+impl TriangleNumbers {
+    pub fn new() -> Self {
+        Self { n: 0, current: 0 }
+    }
+}
+
+impl Default for TriangleNumbers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Iterator for TriangleNumbers {
+    type Item = u64;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.n += 1;
+        self.current += self.n;
+        Some(self.current)
+    }
+}
+
 /// Find the length of a chain produced by repeatedly applying a transform function.
 ///
 /// Starting from `start`, repeatedly applies `transform` until a previously seen

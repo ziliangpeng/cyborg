@@ -5,6 +5,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Iterator that generates prime numbers.
 ///
+/// Maintains an internal list of found primes and checks each candidate
+/// only against primes up to its square root.
+///
 /// # Example
 ///
 /// ```
@@ -14,12 +17,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// assert_eq!(first_ten, vec![2, 3, 5, 7, 11, 13, 17, 19, 23, 29]);
 /// ```
 pub struct Primes {
-    current: u64,
+    found: Vec<u64>,
+    candidate: u64,
 }
 
 impl Primes {
     pub fn new() -> Self {
-        Primes { current: 2 }
+        Primes {
+            found: Vec::new(),
+            candidate: 2,
+        }
     }
 }
 
@@ -33,13 +40,20 @@ impl Iterator for Primes {
     type Item = u64;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let prime = self.current;
-        // Find next prime
-        self.current += if self.current == 2 { 1 } else { 2 };
-        while !is_prime(self.current) {
-            self.current += if self.current == 2 { 1 } else { 2 };
+        loop {
+            let c = self.candidate;
+            self.candidate += if c == 2 { 1 } else { 2 };
+
+            let sqrt_c = (c as f64).sqrt() as u64;
+            let is_prime = self.found.iter()
+                .take_while(|&&p| p <= sqrt_c)
+                .all(|&p| c % p != 0);
+
+            if is_prime {
+                self.found.push(c);
+                return Some(c);
+            }
         }
-        Some(prime)
     }
 }
 
@@ -109,6 +123,58 @@ pub fn largest_prime_factor(mut n: u64) -> Option<u64> {
         largest = Some(n);
     }
     largest
+}
+
+/// Count the number of divisors of n using prime factorization.
+///
+/// Takes a slice of primes that must include all primes up to sqrt(n).
+/// Panics if the last prime in the slice is less than sqrt(n).
+///
+/// # Example
+///
+/// ```
+/// use math::prime::count_divisors;
+///
+/// let primes = vec![2, 3, 5, 7];
+/// assert_eq!(count_divisors(28, &primes), 6); // 1, 2, 4, 7, 14, 28
+/// assert_eq!(count_divisors(12, &primes), 6); // 1, 2, 3, 4, 6, 12
+/// ```
+pub fn count_divisors(mut n: u64, primes: &[u64]) -> u32 {
+    if n <= 1 {
+        return n as u32;
+    }
+
+    let sqrt_n = (n as f64).sqrt() as u64;
+    let last_prime = *primes.last().expect("primes slice cannot be empty");
+    if last_prime < sqrt_n {
+        panic!(
+            "primes slice insufficient: last prime {} < sqrt({})",
+            last_prime, n
+        );
+    }
+
+    let mut count = 1u32;
+
+    for &p in primes {
+        if p * p > n {
+            break;
+        }
+        let mut exp = 0;
+        while n % p == 0 {
+            exp += 1;
+            n /= p;
+        }
+        if exp > 0 {
+            count *= exp + 1;
+        }
+    }
+
+    // If remainder > 1, it's a prime factor with exponent 1
+    if n > 1 {
+        count *= 2;
+    }
+
+    count
 }
 
 /// Check if a number is prime.
@@ -293,6 +359,18 @@ mod tests {
     }
 
     #[test]
+    fn test_primes_iterator_vs_sieve() {
+        // Compare iterator output against sieve for primes below 100,000
+        let limit = 100_000u32;
+        let sieve_primes = primes_below(limit);
+        let iter_primes: Vec<u64> = Primes::new()
+            .take_while(|&p| p < limit as u64)
+            .collect();
+        let sieve_as_u64: Vec<u64> = sieve_primes.iter().map(|&p| p as u64).collect();
+        assert_eq!(iter_primes, sieve_as_u64);
+    }
+
+    #[test]
     fn test_primes_function() {
         let first_five: Vec<u64> = primes().take(5).collect();
         assert_eq!(first_five, vec![2, 3, 5, 7, 11]);
@@ -314,5 +392,23 @@ mod tests {
         assert_eq!(largest_prime_factor(2), Some(2));
         assert_eq!(largest_prime_factor(84), Some(7)); // 84 = 2^2 * 3 * 7
         assert_eq!(largest_prime_factor(100), Some(5));
+    }
+
+    #[test]
+    fn test_count_divisors() {
+        let primes: Vec<u64> = Primes::new().take(100).collect();
+        assert_eq!(count_divisors(1, &primes), 1);
+        assert_eq!(count_divisors(2, &primes), 2); // 1, 2
+        assert_eq!(count_divisors(6, &primes), 4); // 1, 2, 3, 6
+        assert_eq!(count_divisors(12, &primes), 6); // 1, 2, 3, 4, 6, 12
+        assert_eq!(count_divisors(28, &primes), 6); // 1, 2, 4, 7, 14, 28
+        assert_eq!(count_divisors(36, &primes), 9); // 1, 2, 3, 4, 6, 9, 12, 18, 36
+    }
+
+    #[test]
+    #[should_panic(expected = "primes slice insufficient")]
+    fn test_count_divisors_insufficient_primes() {
+        let primes = vec![2, 3]; // sqrt(100) = 10, but max prime is 3
+        count_divisors(100, &primes);
     }
 }
