@@ -97,7 +97,6 @@ class RequestMetrics:
     input_tokens: int = 0
     cache_read_tokens: int = 0
     cache_creation_tokens: int = 0
-    token_times: list = field(default_factory=list)
 
     @property
     def ttft(self) -> Optional[float]:
@@ -108,15 +107,17 @@ class RequestMetrics:
 
     @property
     def tpot(self) -> Optional[float]:
-        """Average time per output token in milliseconds."""
-        if len(self.token_times) >= 2:
-            # Calculate inter-token intervals
-            intervals = []
-            for i in range(1, len(self.token_times)):
-                interval_ms = (self.token_times[i] - self.token_times[i-1]) * 1000
-                intervals.append(interval_ms)
-            if intervals:
-                return sum(intervals) / len(intervals)
+        """Average time per output token in milliseconds.
+
+        Calculated as: (last_token_time - first_token_time) / (output_tokens - 1)
+        This gives the true average inter-token latency based on actual token count.
+        """
+        if (self.first_token_time and self.last_token_time
+            and self.output_tokens > 1
+            and self.last_token_time > self.first_token_time):
+            generation_time_ms = (self.last_token_time - self.first_token_time) * 1000
+            token_intervals = self.output_tokens - 1
+            return generation_time_ms / token_intervals
         return None
 
     @property
@@ -231,20 +232,12 @@ async def stream_response_with_metrics(
                     event = json.loads(data)
                     event_type = event.get("type", "")
 
-                    # Track first token
+                    # Track first and last token times
                     if event_type == "content_block_delta":
                         now = time.time()
-
                         if metrics.first_token_time is None:
                             metrics.first_token_time = now
-
-                        metrics.token_times.append(now)
                         metrics.last_token_time = now
-
-                        # Count output tokens from delta
-                        delta = event.get("delta", {})
-                        if delta.get("type") == "text_delta":
-                            metrics.output_tokens += 1
 
                     # Extract final usage stats
                     elif event_type == "message_delta":
