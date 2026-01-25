@@ -43,8 +43,9 @@ test:macos --skip_incompatible_explicit_targets
 # Usage: bazel test --config=cuda //...
 # No special flags needed - all targets should be compatible
 
-# CUDA architecture settings for WMMA support (Volta+ / SM 7.0+)
-build --@rules_cuda//cuda:archs=sm_70,sm_75,sm_80,sm_86,sm_89,sm_90
+# CUDA architecture - H100 (Hopper) only
+# SM90 supports all features: BF16, FP8, wgmma, TMA
+build --@rules_cuda//cuda:archs=sm_90
 
 # ============================================================================
 # User-Local Configuration (optional, git-ignored)
