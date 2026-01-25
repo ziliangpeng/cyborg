@@ -8,6 +8,7 @@ pub mod pe26;
 pub mod pe3;
 pub mod pe30;
 pub mod pe34;
+pub mod pe42;
 pub mod pe4;
 pub mod pe5;
 pub mod pe50;
