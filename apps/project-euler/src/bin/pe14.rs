@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 fn transform(n: u64) -> u64 {
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         n / 2
     } else {
         3 * n + 1
@@ -36,11 +36,11 @@ fn main() {
     let mut max_length = 1;
 
     for n in 1..LIMIT {
-        if let Some(&length) = memo.get(&n) {
-            if length > max_length {
-                max_length = length;
-                max_start = n;
-            }
+        if let Some(&length) = memo.get(&n)
+            && length > max_length
+        {
+            max_length = length;
+            max_start = n;
         }
     }
 

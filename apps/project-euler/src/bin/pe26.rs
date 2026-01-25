@@ -10,12 +10,12 @@ fn cycle_length(d: u32) -> usize {
             x *= 10;
         }
 
-        if x % d == 0 {
+        if x.is_multiple_of(d) {
             return 0; // no recurring cycle
         }
 
         let digit = x / d;
-        x = x % d;
+        x %= d;
 
         if let Some(&prev_pos) = seen.get(&(x, digit)) {
             return pos - prev_pos;
