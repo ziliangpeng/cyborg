@@ -1,8 +1,10 @@
-use math::{digit_factorial_sum, find_chain_length};
+use math::{digit_factorial_sum, find_chain_length_cached};
+use std::collections::HashMap;
 
 pub fn solve(_verbose: bool) -> String {
+    let mut cache = HashMap::new();
     let count = (1..1_000_000u64)
-        .filter(|&n| find_chain_length(n, digit_factorial_sum) == 60)
+        .filter(|&n| find_chain_length_cached(n, |x| digit_factorial_sum(*x), &mut cache) == 60)
         .count();
     count.to_string()
 }
@@ -10,6 +12,7 @@ pub fn solve(_verbose: bool) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use math::find_chain_length;
 
     #[test]
     fn test_chain_length() {
