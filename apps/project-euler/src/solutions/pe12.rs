@@ -7,7 +7,7 @@ pub fn solve(verbose: bool) -> String {
     for t in TriangleNumbers::new() {
         // Ensure we have enough primes (up to sqrt(t))
         let sqrt_t = (t as f64).sqrt() as u64;
-        while primes.last().map_or(true, |&p| p < sqrt_t) {
+        while primes.last().is_none_or(|&p| p < sqrt_t) {
             primes.push(prime_iter.next().unwrap());
         }
 

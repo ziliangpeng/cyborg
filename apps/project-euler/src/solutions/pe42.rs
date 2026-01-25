@@ -16,7 +16,7 @@ pub fn solve(verbose: bool) -> String {
     let word_values: Vec<u32> = content
         .split(',')
         .map(|w| w.trim_matches('"'))
-        .map(|w| word_value(w))
+        .map(word_value)
         .collect();
 
     let max_value = *word_values.iter().max().unwrap();

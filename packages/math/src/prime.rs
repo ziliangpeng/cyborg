@@ -47,7 +47,7 @@ impl Iterator for Primes {
             let sqrt_c = (c as f64).sqrt() as u64;
             let is_prime = self.found.iter()
                 .take_while(|&&p| p <= sqrt_c)
-                .all(|&p| c % p != 0);
+                .all(|&p| !c.is_multiple_of(p));
 
             if is_prime {
                 self.found.push(c);
@@ -160,7 +160,7 @@ pub fn count_divisors(mut n: u64, primes: &[u64]) -> u32 {
             break;
         }
         let mut exp = 0;
-        while n % p == 0 {
+        while n.is_multiple_of(p) {
             exp += 1;
             n /= p;
         }
