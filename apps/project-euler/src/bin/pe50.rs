@@ -27,7 +27,10 @@ fn main() {
     }
 
     println!("Chain length: {}", best_chain_len);
-    println!("Start: {} (index {})", primes[best_start_idx], best_start_idx);
+    println!(
+        "Start: {} (index {})",
+        primes[best_start_idx], best_start_idx
+    );
     println!("End: {} (index {})", primes[best_end_idx], best_end_idx);
     println!("The answer to Problem 50 is: {}", best_answer);
 }
