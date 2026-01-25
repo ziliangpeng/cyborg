@@ -17,9 +17,7 @@ import numpy as np
 def main():
     parser = argparse.ArgumentParser(description="Triton Softmax Demo")
     parser.add_argument("-n", "--size", type=int, default=1024, help="Array size")
-    parser.add_argument(
-        "-i", "--iterations", type=int, default=100, help="Benchmark iterations"
-    )
+    parser.add_argument("-i", "--iterations", type=int, default=100, help="Benchmark iterations")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     args = parser.parse_args()
 
