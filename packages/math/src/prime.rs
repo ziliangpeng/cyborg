@@ -1,7 +1,115 @@
-//! Sieve of Eratosthenes prime number generator.
+//! Prime number utilities including sieves, iterators, and factorization.
 
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Iterator that generates prime numbers.
+///
+/// # Example
+///
+/// ```
+/// use math::prime::Primes;
+///
+/// let first_ten: Vec<u64> = Primes::new().take(10).collect();
+/// assert_eq!(first_ten, vec![2, 3, 5, 7, 11, 13, 17, 19, 23, 29]);
+/// ```
+pub struct Primes {
+    current: u64,
+}
+
+impl Primes {
+    pub fn new() -> Self {
+        Primes { current: 2 }
+    }
+}
+
+impl Default for Primes {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Iterator for Primes {
+    type Item = u64;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let prime = self.current;
+        // Find next prime
+        self.current += if self.current == 2 { 1 } else { 2 };
+        while !is_prime(self.current) {
+            self.current += if self.current == 2 { 1 } else { 2 };
+        }
+        Some(prime)
+    }
+}
+
+/// Returns an iterator over prime numbers: 2, 3, 5, 7, 11, ...
+///
+/// # Example
+///
+/// ```
+/// use math::prime::primes;
+///
+/// let first_five: Vec<u64> = primes().take(5).collect();
+/// assert_eq!(first_five, vec![2, 3, 5, 7, 11]);
+/// ```
+pub fn primes() -> Primes {
+    Primes::new()
+}
+
+/// Returns the nth prime number (1-indexed: nth_prime(1) = 2, nth_prime(2) = 3, ...).
+///
+/// Returns None if n is 0.
+///
+/// # Example
+///
+/// ```
+/// use math::prime::nth_prime;
+///
+/// assert_eq!(nth_prime(1), Some(2));
+/// assert_eq!(nth_prime(6), Some(13));
+/// assert_eq!(nth_prime(0), None);
+/// ```
+pub fn nth_prime(n: usize) -> Option<u64> {
+    if n == 0 {
+        return None;
+    }
+    Primes::new().nth(n - 1)
+}
+
+/// Returns the largest prime factor of n.
+///
+/// Returns None if n < 2.
+///
+/// # Example
+///
+/// ```
+/// use math::prime::largest_prime_factor;
+///
+/// assert_eq!(largest_prime_factor(84), Some(7)); // 84 = 2^2 * 3 * 7
+/// assert_eq!(largest_prime_factor(2), Some(2));
+/// assert_eq!(largest_prime_factor(1), None);
+/// ```
+pub fn largest_prime_factor(mut n: u64) -> Option<u64> {
+    if n < 2 {
+        return None;
+    }
+
+    let mut largest = None;
+    let mut factor = 2;
+
+    while factor * factor <= n {
+        while n % factor == 0 {
+            largest = Some(factor);
+            n /= factor;
+        }
+        factor += 1;
+    }
+    if n > 1 {
+        largest = Some(n);
+    }
+    largest
+}
 
 /// Check if a number is prime.
 pub fn is_prime(n: u64) -> bool {
@@ -176,5 +284,35 @@ mod tests {
                 n
             );
         }
+    }
+
+    #[test]
+    fn test_primes_iterator() {
+        let first_ten: Vec<u64> = Primes::new().take(10).collect();
+        assert_eq!(first_ten, vec![2, 3, 5, 7, 11, 13, 17, 19, 23, 29]);
+    }
+
+    #[test]
+    fn test_primes_function() {
+        let first_five: Vec<u64> = primes().take(5).collect();
+        assert_eq!(first_five, vec![2, 3, 5, 7, 11]);
+    }
+
+    #[test]
+    fn test_nth_prime() {
+        assert_eq!(nth_prime(0), None);
+        assert_eq!(nth_prime(1), Some(2));
+        assert_eq!(nth_prime(2), Some(3));
+        assert_eq!(nth_prime(6), Some(13));
+        assert_eq!(nth_prime(1000), Some(7919));
+    }
+
+    #[test]
+    fn test_largest_prime_factor() {
+        assert_eq!(largest_prime_factor(0), None);
+        assert_eq!(largest_prime_factor(1), None);
+        assert_eq!(largest_prime_factor(2), Some(2));
+        assert_eq!(largest_prime_factor(84), Some(7)); // 84 = 2^2 * 3 * 7
+        assert_eq!(largest_prime_factor(100), Some(5));
     }
 }
