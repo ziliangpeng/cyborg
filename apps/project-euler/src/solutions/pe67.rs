@@ -1,8 +1,12 @@
 use std::fs;
+use std::path::PathBuf;
 
-fn main() {
-    let content = fs::read_to_string("apps/project-euler/data/triangle.txt")
-        .expect("Failed to read triangle.txt");
+pub fn solve(verbose: bool) -> String {
+    let _ = verbose;
+    let data_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "data", "triangle.txt"]
+        .iter()
+        .collect();
+    let content = fs::read_to_string(&data_path).expect("Failed to read triangle.txt");
 
     let elem: Vec<Vec<u32>> = content
         .lines()
@@ -25,5 +29,15 @@ fn main() {
     }
 
     let answer = sum[n - 1].iter().max().unwrap();
-    println!("The answer to Problem 67 is: {}", answer);
+    answer.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solve() {
+        assert_eq!(solve(false), "7273");
+    }
 }

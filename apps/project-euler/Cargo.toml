@@ -4,4 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
 math = { path = "../../packages/math" }
+
+[[bin]]
+name = "project-euler"
+path = "src/main.rs"

@@ -8,7 +8,8 @@ fn transform(n: u64) -> u64 {
     }
 }
 
-fn main() {
+pub fn solve(verbose: bool) -> String {
+    let _ = verbose;
     const LIMIT: u64 = 1_000_000;
     let mut memo: HashMap<u64, u64> = HashMap::new();
     memo.insert(1, 1);
@@ -44,5 +45,15 @@ fn main() {
         }
     }
 
-    println!("The answer to Problem 14 is: {}", max_start);
+    max_start.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solve() {
+        assert_eq!(solve(false), "837799");
+    }
 }
