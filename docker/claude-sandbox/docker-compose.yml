@@ -1,0 +1,16 @@
+services:
+  claude:
+    build:
+      context: .
+    volumes:
+      # Mount current repo
+      - ../../:/workspace
+      # Mount container home directory (for .config, etc)
+      - ~/.claude/sandboxed-home:/home/node
+      # Mount Claude config (memory, settings, history, skills)
+      - ~/.claude:/home/node/.claude
+      # Mount git config for commits
+      - ~/.gitconfig:/home/node/.gitconfig:ro
+      - ~/.ssh:/home/node/.ssh:ro
+    stdin_open: true
+    tty: true
