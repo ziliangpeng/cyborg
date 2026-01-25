@@ -60,6 +60,31 @@ curl -s http://localhost:19418/stats | jq
 ## Options
 
 ```
---port PORT    Proxy port (default: 8080)
+--port PORT    Proxy port (default: 19418)
 --host HOST    Proxy host (default: 127.0.0.1)
+```
+
+## Run as macOS Daemon
+
+Install the launchd service:
+
+```bash
+# Symlink plist to LaunchAgents
+ln -sf ~/code/cyborg/scripts/claude-metrics-proxy/com.cyborg.claude-metrics-proxy.plist \
+    ~/Library/LaunchAgents/
+
+# Load and start the service
+launchctl load ~/Library/LaunchAgents/com.cyborg.claude-metrics-proxy.plist
+
+# Check status
+launchctl list | grep claude-metrics-proxy
+
+# View logs
+tail -f /tmp/claude-metrics-proxy.log
+```
+
+To stop/unload:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.cyborg.claude-metrics-proxy.plist
 ```
