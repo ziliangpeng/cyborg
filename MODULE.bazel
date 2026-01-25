@@ -82,13 +82,22 @@ pip.parse(
     python_version = "3.13",
     requirements_lock = "//:requirements_lock.txt",  # Locked dependencies with transitives
     requirements_linux = "//:requirements_lock_linux.txt",
+)
+
+# CUDA-specific Python dependencies (Linux only)
+# These packages (triton, cupy, torch) only have Linux wheels
+# Use @pip_cuda//package_name for CUDA targets
+pip.parse(
+    hub_name = "pip_cuda",
+    python_version = "3.13",
+    requirements_lock = "//:requirements_cuda_lock.txt",
     extra_pip_args = [
         "--extra-index-url",
         "https://download.pytorch.org/whl/cu124",
     ],
 )
 
-use_repo(pip, "pip")
+use_repo(pip, "pip", "pip_cuda")
 
 # ============================================================================
 # JavaScript/Node.js Rules

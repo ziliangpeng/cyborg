@@ -1,0 +1,13 @@
+# CUDA-specific Python dependencies
+# These packages only have Linux wheels and should not be installed on macOS/CI
+# Used by MODULE.bazel pip.parse() with hub_name = "pip_cuda"
+
+# PyTorch for GPU tensor management (required by Triton's CUDA driver)
+torch
+
+# CUDA libraries needed by PyTorch (pip versions to ensure compatibility)
+nvidia-cudnn-cu12
+nvidia-cusparselt-cu12
+
+# Triton GPU kernel compiler
+triton
