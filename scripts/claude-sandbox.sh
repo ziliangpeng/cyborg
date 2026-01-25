@@ -19,5 +19,5 @@ DOCKER_DIR="$REPO_ROOT/docker/claude-sandbox"
 
 # Build and run
 cd "$DOCKER_DIR"
-docker compose build --quiet
+docker compose build
 docker compose run --rm claude "$@"
