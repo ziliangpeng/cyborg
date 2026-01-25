@@ -107,8 +107,9 @@ __global__ void batch_softmax_naive_kernel(
     // PHASE 3: Normalize output
     // ========================================================================
 
+    float inv_sum = 1.0f / row_sum;  // Multiply is faster than divide
     for (int i = tid; i < dim; i += blockSize) {
-        row_output[i] = expf(row_input[i] - row_max) / row_sum;
+        row_output[i] = expf(row_input[i] - row_max) * inv_sum;
     }
 }
 

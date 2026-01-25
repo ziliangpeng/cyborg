@@ -145,8 +145,9 @@ __global__ void batch_softmax_multi_warp_scalar_kernel(
     // PHASE 3: Normalize output
     // ========================================================================
 
+    float inv_sum = 1.0f / row_sum;  // Multiply is faster than divide
     for (int i = tid; i < dim; i += BLOCK_SIZE) {
-        row_output[i] = expf(row_input[i] - row_max) / row_sum;
+        row_output[i] = expf(row_input[i] - row_max) * inv_sum;
     }
 }
 
@@ -259,13 +260,14 @@ __global__ void batch_softmax_multi_warp_vec4_kernel(
     // PHASE 3: Normalize output with vectorized stores
     // ========================================================================
 
+    float inv_sum = 1.0f / row_sum;  // Multiply is faster than divide
     for (int i = tid; i < dim4; i += BLOCK_SIZE) {
         float4 vals = row_input4[i];
         float4 out;
-        out.x = expf(vals.x - row_max) / row_sum;
-        out.y = expf(vals.y - row_max) / row_sum;
-        out.z = expf(vals.z - row_max) / row_sum;
-        out.w = expf(vals.w - row_max) / row_sum;
+        out.x = expf(vals.x - row_max) * inv_sum;
+        out.y = expf(vals.y - row_max) * inv_sum;
+        out.z = expf(vals.z - row_max) * inv_sum;
+        out.w = expf(vals.w - row_max) * inv_sum;
         row_output4[i] = out;
     }
 }

@@ -107,6 +107,8 @@ cuda_library(
         "batch_softmax_kernel.h",
     ],
     deps = [
+        ":batch_softmax_warp",
+        ":batch_softmax_multi_warp",
         "//cuda:cuda_utils",
     ],
     target_compatible_with = ["//constraints:cuda"],
