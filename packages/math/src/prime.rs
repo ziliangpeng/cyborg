@@ -45,7 +45,9 @@ impl Iterator for Primes {
             self.candidate += if c == 2 { 1 } else { 2 };
 
             let sqrt_c = (c as f64).sqrt() as u64;
-            let is_prime = self.found.iter()
+            let is_prime = self
+                .found
+                .iter()
                 .take_while(|&&p| p <= sqrt_c)
                 .all(|&p| !c.is_multiple_of(p));
 
@@ -363,9 +365,7 @@ mod tests {
         // Compare iterator output against sieve for primes below 100,000
         let limit = 100_000u32;
         let sieve_primes = primes_below(limit);
-        let iter_primes: Vec<u64> = Primes::new()
-            .take_while(|&p| p < limit as u64)
-            .collect();
+        let iter_primes: Vec<u64> = Primes::new().take_while(|&p| p < limit as u64).collect();
         let sieve_as_u64: Vec<u64> = sieve_primes.iter().map(|&p| p as u64).collect();
         assert_eq!(iter_primes, sieve_as_u64);
     }
