@@ -36,60 +36,45 @@ import uvicorn
 
 # Histograms for latency metrics
 TTFT_HISTOGRAM = Histogram(
-    'claude_ttft_seconds',
-    'Time to first token in seconds',
-    buckets=(0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0)
+    "claude_ttft_seconds",
+    "Time to first token in seconds",
+    buckets=(0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0),
 )
 
 TPOT_HISTOGRAM = Histogram(
-    'claude_tpot_milliseconds',
-    'Time per output token in milliseconds',
-    buckets=(5, 10, 20, 30, 50, 75, 100, 150, 200, 300, 500)
+    "claude_tpot_milliseconds",
+    "Time per output token in milliseconds",
+    buckets=(5, 10, 20, 30, 50, 75, 100, 150, 200, 300, 500),
 )
 
 REQUEST_DURATION_HISTOGRAM = Histogram(
-    'claude_request_duration_seconds',
-    'Total request duration in seconds',
-    buckets=(1, 2, 5, 10, 20, 30, 60, 120, 300)
+    "claude_request_duration_seconds", "Total request duration in seconds", buckets=(1, 2, 5, 10, 20, 30, 60, 120, 300)
 )
 
 # Counters for token usage
-INPUT_TOKENS_COUNTER = Counter(
-    'claude_input_tokens_total',
-    'Total input tokens consumed'
-)
+INPUT_TOKENS_COUNTER = Counter("claude_input_tokens_total", "Total input tokens consumed")
 
-OUTPUT_TOKENS_COUNTER = Counter(
-    'claude_output_tokens_total',
-    'Total output tokens generated'
-)
+OUTPUT_TOKENS_COUNTER = Counter("claude_output_tokens_total", "Total output tokens generated")
 
-CACHE_READ_TOKENS_COUNTER = Counter(
-    'claude_cache_read_tokens_total',
-    'Total cache read tokens'
-)
+CACHE_READ_TOKENS_COUNTER = Counter("claude_cache_read_tokens_total", "Total cache read tokens")
 
-CACHE_CREATION_TOKENS_COUNTER = Counter(
-    'claude_cache_creation_tokens_total',
-    'Total cache creation tokens'
-)
+CACHE_CREATION_TOKENS_COUNTER = Counter("claude_cache_creation_tokens_total", "Total cache creation tokens")
 
-REQUEST_COUNTER = Counter(
-    'claude_requests_total',
-    'Total number of requests'
-)
+REQUEST_COUNTER = Counter("claude_requests_total", "Total number of requests")
 
 # Gauges for recent metrics (useful for real-time dashboards)
-LAST_TTFT_GAUGE = Gauge('claude_last_ttft_seconds', 'Most recent TTFT')
-LAST_TPOT_GAUGE = Gauge('claude_last_tpot_milliseconds', 'Most recent TPOT')
+LAST_TTFT_GAUGE = Gauge("claude_last_ttft_seconds", "Most recent TTFT")
+LAST_TPOT_GAUGE = Gauge("claude_last_tpot_milliseconds", "Most recent TPOT")
 
 # ============================================================================
 # Request Tracking
 # ============================================================================
 
+
 @dataclass
 class RequestMetrics:
     """Tracks metrics for a single request."""
+
     start_time: float = field(default_factory=time.time)
     first_token_time: Optional[float] = None
     last_token_time: Optional[float] = None
@@ -112,9 +97,12 @@ class RequestMetrics:
         Calculated as: (last_token_time - first_token_time) / (output_tokens - 1)
         This gives the true average inter-token latency based on actual token count.
         """
-        if (self.first_token_time and self.last_token_time
+        if (
+            self.first_token_time
+            and self.last_token_time
             and self.output_tokens > 1
-            and self.last_token_time > self.first_token_time):
+            and self.last_token_time > self.first_token_time
+        ):
             generation_time_ms = (self.last_token_time - self.first_token_time) * 1000
             token_intervals = self.output_tokens - 1
             return generation_time_ms / token_intervals
@@ -137,6 +125,7 @@ recent_requests: deque = deque(maxlen=100)
 # Global HTTP client - reuse connections
 http_client: Optional[httpx.AsyncClient] = None
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage HTTP client lifecycle."""
@@ -144,6 +133,7 @@ async def lifespan(app: FastAPI):
     http_client = httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=30.0))
     yield
     await http_client.aclose()
+
 
 app = FastAPI(title="Claude Metrics Proxy", lifespan=lifespan)
 
@@ -172,28 +162,30 @@ def record_metrics(metrics: RequestMetrics):
     REQUEST_DURATION_HISTOGRAM.observe(metrics.duration)
 
     # Store for /stats endpoint
-    recent_requests.append({
-        "timestamp": datetime.now().isoformat(),
-        "ttft_ms": round(metrics.ttft * 1000, 2) if metrics.ttft else None,
-        "tpot_ms": round(metrics.tpot, 2) if metrics.tpot else None,
-        "duration_s": round(metrics.duration, 2),
-        "input_tokens": metrics.input_tokens,
-        "output_tokens": metrics.output_tokens,
-        "cache_read_tokens": metrics.cache_read_tokens,
-        "cache_creation_tokens": metrics.cache_creation_tokens,
-    })
+    recent_requests.append(
+        {
+            "timestamp": datetime.now().isoformat(),
+            "ttft_ms": round(metrics.ttft * 1000, 2) if metrics.ttft else None,
+            "tpot_ms": round(metrics.tpot, 2) if metrics.tpot else None,
+            "duration_s": round(metrics.duration, 2),
+            "input_tokens": metrics.input_tokens,
+            "output_tokens": metrics.output_tokens,
+            "cache_read_tokens": metrics.cache_read_tokens,
+            "cache_creation_tokens": metrics.cache_creation_tokens,
+        }
+    )
 
     # Log to console
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Request completed at {datetime.now().strftime('%H:%M:%S')}")
-    print(f"  TTFT:          {metrics.ttft*1000:.1f}ms" if metrics.ttft else "  TTFT:          N/A")
+    print(f"  TTFT:          {metrics.ttft * 1000:.1f}ms" if metrics.ttft else "  TTFT:          N/A")
     print(f"  TPOT:          {metrics.tpot:.1f}ms" if metrics.tpot else "  TPOT:          N/A")
     print(f"  Duration:      {metrics.duration:.2f}s")
     print(f"  Input tokens:  {metrics.input_tokens}")
     print(f"  Output tokens: {metrics.output_tokens}")
     print(f"  Cache read:    {metrics.cache_read_tokens}")
     print(f"  Cache create:  {metrics.cache_creation_tokens}")
-    print(f"{'='*60}\n", flush=True)
+    print(f"{'=' * 60}\n", flush=True)
 
 
 def filter_response_headers(headers: httpx.Headers) -> dict:
@@ -353,14 +345,14 @@ async def stats():
         "aggregates": {
             "avg_ttft_ms": round(sum(ttfts) / len(ttfts), 2) if ttfts else None,
             "avg_tpot_ms": round(sum(tpots) / len(tpots), 2) if tpots else None,
-            "p50_ttft_ms": round(sorted(ttfts)[len(ttfts)//2], 2) if ttfts else None,
-            "p50_tpot_ms": round(sorted(tpots)[len(tpots)//2], 2) if tpots else None,
+            "p50_ttft_ms": round(sorted(ttfts)[len(ttfts) // 2], 2) if ttfts else None,
+            "p50_tpot_ms": round(sorted(tpots)[len(tpots) // 2], 2) if tpots else None,
             "p99_ttft_ms": round(sorted(ttfts)[int((len(ttfts) - 1) * 0.99)], 2) if len(ttfts) > 1 else None,
             "p99_tpot_ms": round(sorted(tpots)[int((len(tpots) - 1) * 0.99)], 2) if len(tpots) > 1 else None,
             "total_input_tokens": sum(r["input_tokens"] for r in requests_list),
             "total_output_tokens": sum(r["output_tokens"] for r in requests_list),
         },
-        "recent_requests": requests_list[-10:]  # Last 10
+        "recent_requests": requests_list[-10:],  # Last 10
     }
 
 
@@ -376,7 +368,8 @@ def main():
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Proxy host")
     args = parser.parse_args()
 
-    print(f"""
+    print(
+        f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║           Claude API Metrics Proxy                           ║
 ╠══════════════════════════════════════════════════════════════╣
@@ -390,7 +383,9 @@ def main():
 ║    claude                                                    ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
-""", flush=True)
+""",
+        flush=True,
+    )
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
