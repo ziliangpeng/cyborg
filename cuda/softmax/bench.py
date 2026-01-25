@@ -288,7 +288,9 @@ def run_sweep(sizes: list[int], methods: list[str], iterations: int, warmup: int
     print("SUMMARY: Softmax Benchmark (CUDA vs TinyGrad vs Triton)")
     print(f"Iterations: {iterations} | Warmup: {warmup}")
     print("=" * 110)
-    print(f"{'Size':>12} | {'CUDA P50 (ms)':>14} | {'TinyGrad P50 (ms)':>18} | {'Triton P50 (ms)':>16} | {'TinyGrad/CUDA':>14} | {'Triton/CUDA':>12}")
+    print(
+        f"{'Size':>12} | {'CUDA P50 (ms)':>14} | {'TinyGrad P50 (ms)':>18} | {'Triton P50 (ms)':>16} | {'TinyGrad/CUDA':>14} | {'Triton/CUDA':>12}"
+    )
     print("-" * 12 + "-+-" + "-" * 14 + "-+-" + "-" * 18 + "-+-" + "-" * 16 + "-+-" + "-" * 14 + "-+-" + "-" * 12)
 
     for size in sizes:
@@ -308,7 +310,9 @@ def run_sweep(sizes: list[int], methods: list[str], iterations: int, warmup: int
         else:
             triton_ratio_str = "N/A"
 
-        print(f"{size:>12,} | {cuda_p50:>14.3f} | {tinygrad_p50:>18.3f} | {triton_p50:>16.3f} | {tinygrad_ratio_str:>14} | {triton_ratio_str:>12}")
+        print(
+            f"{size:>12,} | {cuda_p50:>14.3f} | {tinygrad_p50:>18.3f} | {triton_p50:>16.3f} | {tinygrad_ratio_str:>14} | {triton_ratio_str:>12}"
+        )
 
     print("=" * 110)
 

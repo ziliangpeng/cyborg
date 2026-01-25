@@ -154,20 +154,14 @@ def softmax(x: np.ndarray) -> np.ndarray:
     global_sum = torch.empty(1, dtype=torch.float32, device="cuda")
 
     # Pass 1: compute partial max/sum per block
-    softmax_pass1_kernel[(n_blocks,)](
-        x_gpu, partial_max, partial_sum, n_elements, BLOCK_SIZE=BLOCK_SIZE
-    )
+    softmax_pass1_kernel[(n_blocks,)](x_gpu, partial_max, partial_sum, n_elements, BLOCK_SIZE=BLOCK_SIZE)
 
     # Reduce: combine partial results
     REDUCE_BLOCK = min(1024, triton.next_power_of_2(n_blocks))
-    softmax_reduce_kernel[(1,)](
-        partial_max, partial_sum, global_max, global_sum, n_blocks, BLOCK_SIZE=REDUCE_BLOCK
-    )
+    softmax_reduce_kernel[(1,)](partial_max, partial_sum, global_max, global_sum, n_blocks, BLOCK_SIZE=REDUCE_BLOCK)
 
     # Pass 2: normalize
-    softmax_pass2_kernel[(n_blocks,)](
-        x_gpu, output_gpu, global_max, global_sum, n_elements, BLOCK_SIZE=BLOCK_SIZE
-    )
+    softmax_pass2_kernel[(n_blocks,)](x_gpu, output_gpu, global_max, global_sum, n_elements, BLOCK_SIZE=BLOCK_SIZE)
 
     # Transfer back to CPU
     return output_gpu.cpu().numpy()
@@ -202,15 +196,9 @@ def benchmark(x: np.ndarray, iterations: int = 100, warmup: int = 10) -> list[fl
     REDUCE_BLOCK = min(1024, triton.next_power_of_2(n_blocks))
 
     def run_softmax():
-        softmax_pass1_kernel[(n_blocks,)](
-            x_gpu, partial_max, partial_sum, n_elements, BLOCK_SIZE=BLOCK_SIZE
-        )
-        softmax_reduce_kernel[(1,)](
-            partial_max, partial_sum, global_max, global_sum, n_blocks, BLOCK_SIZE=REDUCE_BLOCK
-        )
-        softmax_pass2_kernel[(n_blocks,)](
-            x_gpu, output_gpu, global_max, global_sum, n_elements, BLOCK_SIZE=BLOCK_SIZE
-        )
+        softmax_pass1_kernel[(n_blocks,)](x_gpu, partial_max, partial_sum, n_elements, BLOCK_SIZE=BLOCK_SIZE)
+        softmax_reduce_kernel[(1,)](partial_max, partial_sum, global_max, global_sum, n_blocks, BLOCK_SIZE=REDUCE_BLOCK)
+        softmax_pass2_kernel[(n_blocks,)](x_gpu, output_gpu, global_max, global_sum, n_elements, BLOCK_SIZE=BLOCK_SIZE)
 
     # Warmup (triggers JIT compilation)
     for _ in range(warmup):

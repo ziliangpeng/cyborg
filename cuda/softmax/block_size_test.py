@@ -22,7 +22,9 @@ def softmax_pass1_kernel(input_ptr, partial_max_ptr, partial_sum_ptr, n_elements
 
 
 @triton.jit
-def softmax_reduce_kernel(partial_max_ptr, partial_sum_ptr, global_max_ptr, global_sum_ptr, n_blocks, BLOCK_SIZE: tl.constexpr):
+def softmax_reduce_kernel(
+    partial_max_ptr, partial_sum_ptr, global_max_ptr, global_sum_ptr, n_blocks, BLOCK_SIZE: tl.constexpr
+):
     running_max = -float("inf")
     running_sum = 0.0
     for i in range(0, n_blocks, BLOCK_SIZE):
