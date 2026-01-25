@@ -78,13 +78,15 @@ __global__ void batch_softmax_naive_kernel(
     __syncthreads();
 
     // ========================================================================
-    // PHASE 2: Compute sum of exp(x - max)
+    // PHASE 2: Compute exp(x - max), store in output, and sum
     // ========================================================================
 
-    // Each thread computes local sum over its portion
+    // Each thread computes exp(x - max) once, stores it, and accumulates sum
     float thread_sum = 0.0f;
     for (int i = tid; i < dim; i += blockSize) {
-        thread_sum += expf(row_input[i] - row_max);
+        float val = expf(row_input[i] - row_max);
+        row_output[i] = val;  // Store intermediate result
+        thread_sum += val;
     }
 
     // Store in shared memory for reduction
@@ -104,12 +106,12 @@ __global__ void batch_softmax_naive_kernel(
     __syncthreads();
 
     // ========================================================================
-    // PHASE 3: Normalize output
+    // PHASE 3: Normalize output (reuse stored exp values)
     // ========================================================================
 
     float inv_sum = 1.0f / row_sum;  // Multiply is faster than divide
     for (int i = tid; i < dim; i += blockSize) {
-        row_output[i] = expf(row_input[i] - row_max) * inv_sum;
+        row_output[i] *= inv_sum;  // Normalize the stored exp values
     }
 }
 

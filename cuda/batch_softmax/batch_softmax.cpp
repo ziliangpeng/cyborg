@@ -311,10 +311,16 @@ void batch_softmax_op(int batch_size, int dim, int threadsPerBlock, const char *
 
     // Allocate host output for verification
     float *h_output = (float*)malloc(total * sizeof(float));
-    float *h_output_cpu = (float*)malloc(total * sizeof(float));
-    if (!h_output || !h_output_cpu) {
-        fprintf(stderr, "Failed to allocate host memory\n");
+    if (!h_output) {
+        fprintf(stderr, "Failed to allocate host memory for output\n");
         freeHostVector(h_input);
+        return;
+    }
+    float *h_output_cpu = (float*)malloc(total * sizeof(float));
+    if (!h_output_cpu) {
+        fprintf(stderr, "Failed to allocate host memory for CPU output\n");
+        freeHostVector(h_input);
+        free(h_output);
         return;
     }
 
@@ -453,12 +459,21 @@ int main(int argc, char *argv[]) {
                 break;
             case 'm':
                 method = optarg;
-                if (strcmp(method, "naive") != 0 && strcmp(method, "warp") != 0 &&
-                    strcmp(method, "online_warp") != 0 && strcmp(method, "multi_warp") != 0 &&
-                    strcmp(method, "cub") != 0 && strcmp(method, "cudnn") != 0 &&
-                    strcmp(method, "hybrid") != 0 && strcmp(method, "all") != 0) {
-                    fprintf(stderr, "Error: unknown method '%s'. Use --help for available methods.\n", method);
-                    return 1;
+                {
+                    // Validate method against BENCHMARK_METHODS array
+                    bool is_valid = (strcmp(method, "all") == 0);
+                    if (!is_valid) {
+                        for (int i = 0; i < NUM_METHODS; ++i) {
+                            if (strcmp(method, BENCHMARK_METHODS[i]) == 0) {
+                                is_valid = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!is_valid) {
+                        fprintf(stderr, "Error: unknown method '%s'. Use --help for available methods.\n", method);
+                        return 1;
+                    }
                 }
                 break;
             case 'h':

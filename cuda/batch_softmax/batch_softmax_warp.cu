@@ -74,12 +74,14 @@ __global__ void batch_softmax_warp_kernel(
     float row_max = __shfl_sync(FULL_MASK, thread_max, 0);
 
     // ========================================================================
-    // PHASE 2: Compute sum of exp(x - max) using warp shuffle reduction
+    // PHASE 2: Compute exp(x - max), store in output, and sum
     // ========================================================================
 
     float thread_sum = 0.0f;
     for (int i = tid; i < dim; i += 32) {
-        thread_sum += expf(row_input[i] - row_max);
+        float val = expf(row_input[i] - row_max);
+        row_output[i] = val;  // Store intermediate result
+        thread_sum += val;
     }
 
     // Warp shuffle reduction for sum
@@ -92,12 +94,12 @@ __global__ void batch_softmax_warp_kernel(
     float row_sum = __shfl_sync(FULL_MASK, thread_sum, 0);
 
     // ========================================================================
-    // PHASE 3: Normalize output
+    // PHASE 3: Normalize output (reuse stored exp values)
     // ========================================================================
 
     float inv_sum = 1.0f / row_sum;  // Multiply is faster than divide
     for (int i = tid; i < dim; i += 32) {
-        row_output[i] = expf(row_input[i] - row_max) * inv_sum;
+        row_output[i] *= inv_sum;  // Normalize the stored exp values
     }
 }
 

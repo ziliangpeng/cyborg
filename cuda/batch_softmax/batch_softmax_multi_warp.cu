@@ -106,12 +106,14 @@ __global__ void batch_softmax_multi_warp_scalar_kernel(
     float row_max = row_max_shared;
 
     // ========================================================================
-    // PHASE 2: Compute sum of exp(x - max) using hybrid reduction
+    // PHASE 2: Compute exp(x - max), store in output, and sum
     // ========================================================================
 
     float thread_sum = 0.0f;
     for (int i = tid; i < dim; i += BLOCK_SIZE) {
-        thread_sum += expf(row_input[i] - row_max);
+        float val = expf(row_input[i] - row_max);
+        row_output[i] = val;  // Store intermediate result
+        thread_sum += val;
     }
 
     // Warp-level reduction
@@ -142,12 +144,12 @@ __global__ void batch_softmax_multi_warp_scalar_kernel(
     float row_sum = row_sum_shared;
 
     // ========================================================================
-    // PHASE 3: Normalize output
+    // PHASE 3: Normalize output (reuse stored exp values)
     // ========================================================================
 
     float inv_sum = 1.0f / row_sum;  // Multiply is faster than divide
     for (int i = tid; i < dim; i += BLOCK_SIZE) {
-        row_output[i] = expf(row_input[i] - row_max) * inv_sum;
+        row_output[i] *= inv_sum;  // Normalize the stored exp values
     }
 }
 
@@ -218,16 +220,19 @@ __global__ void batch_softmax_multi_warp_vec4_kernel(
     float row_max = row_max_shared;
 
     // ========================================================================
-    // PHASE 2: Compute sum of exp(x - max) using vectorized loads
+    // PHASE 2: Compute exp(x - max), store in output, and sum (vectorized)
     // ========================================================================
 
     float thread_sum = 0.0f;
     for (int i = tid; i < dim4; i += BLOCK_SIZE) {
         float4 vals = row_input4[i];
-        thread_sum += expf(vals.x - row_max);
-        thread_sum += expf(vals.y - row_max);
-        thread_sum += expf(vals.z - row_max);
-        thread_sum += expf(vals.w - row_max);
+        float4 out;
+        out.x = expf(vals.x - row_max);
+        out.y = expf(vals.y - row_max);
+        out.z = expf(vals.z - row_max);
+        out.w = expf(vals.w - row_max);
+        row_output4[i] = out;  // Store intermediate result
+        thread_sum += out.x + out.y + out.z + out.w;
     }
 
     // Warp-level reduction
@@ -257,17 +262,16 @@ __global__ void batch_softmax_multi_warp_vec4_kernel(
     float row_sum = row_sum_shared;
 
     // ========================================================================
-    // PHASE 3: Normalize output with vectorized stores
+    // PHASE 3: Normalize output (reuse stored exp values, vectorized)
     // ========================================================================
 
     float inv_sum = 1.0f / row_sum;  // Multiply is faster than divide
     for (int i = tid; i < dim4; i += BLOCK_SIZE) {
-        float4 vals = row_input4[i];
-        float4 out;
-        out.x = expf(vals.x - row_max) * inv_sum;
-        out.y = expf(vals.y - row_max) * inv_sum;
-        out.z = expf(vals.z - row_max) * inv_sum;
-        out.w = expf(vals.w - row_max) * inv_sum;
+        float4 out = row_output4[i];  // Load stored exp values
+        out.x *= inv_sum;
+        out.y *= inv_sum;
+        out.z *= inv_sum;
+        out.w *= inv_sum;
         row_output4[i] = out;
     }
 }
