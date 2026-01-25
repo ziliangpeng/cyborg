@@ -23,6 +23,35 @@
 // BENCHMARK MODE: Data Structures and Constants
 // ============================================================================
 
+// Performance Summary (tested on NVIDIA GPU):
+// ============================================================================
+// | Size      | Fastest Kernel      | Time (ms) | Notes                      |
+// |-----------|---------------------|-----------|----------------------------|
+// | 64x64     | tie (all ~0.006)    | 0.006     | All kernels similar        |
+// | 64x256    | cudnn               | 0.005     | cuDNN optimal for small    |
+// | 64x1K     | multi_warp/hybrid   | 0.006     | Vectorization helps        |
+// | 256x256   | tie (most ~0.006)   | 0.006     | All kernels similar        |
+// | 256x1K    | multi_warp/hybrid   | 0.006     | Vectorization helps        |
+// | 1Kx256    | cudnn               | 0.006     | cuDNN optimal              |
+// | 1Kx1K     | multi_warp/hybrid   | 0.008     | Vectorization helps        |
+// | 4Kx256    | cudnn               | 0.006     | cuDNN optimal for batches  |
+// | 4Kx1K     | multi_warp/hybrid   | 0.014     | 256 threads + float4       |
+// | 8Kx512    | cudnn               | 0.011     | cuDNN optimal              |
+// | 256x4K    | multi_warp/hybrid   | 0.008     | Vectorization shines       |
+// | 256x8K    | multi_warp/hybrid   | 0.010     | Vectorization shines       |
+// | 1Kx4K     | multi_warp/hybrid   | 0.013     | Vectorization shines       |
+// | 512x16K   | multi_warp/hybrid   | 0.040     | 7x faster than warp        |
+// | 128x32K   | multi_warp/hybrid   | 0.015     | 6x faster than warp        |
+// ============================================================================
+//
+// Key Findings:
+// 1. multi_warp/hybrid: Best for large dims (4K+) due to float4 vectorization
+// 2. cudnn: Best for high batch counts with small-medium dims
+// 3. warp/online_warp: Struggle with large dims (only 32 threads per row)
+// 4. hybrid delegates to multi_warp for dim > 64, making it a good default
+//
+// Recommendation: Use "hybrid" as default - it adapts to input size automatically
+
 // Benchmark configuration
 const char* BENCHMARK_METHODS[] = {
     "naive",
