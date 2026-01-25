@@ -28,5 +28,8 @@ jobs:
       with:
         toolchain: stable
 
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@nextest
+
     - name: Run tests
-      run: cargo test -p project-euler --verbose -- --nocapture
+      run: cargo nextest run -p project-euler
