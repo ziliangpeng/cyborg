@@ -32,3 +32,8 @@
 - Solutions go in `src/solutions/pe<N>.rs` with a `pub fn solve() -> String`
 - Add module declaration to `src/solutions/mod.rs`
 - Add match arm in `src/lib.rs` `run_problem()` and add ID to `PROBLEMS` array
+
+## Git Workflow
+
+- Reuse existing branch/PR for multiple problems - no need for a new branch per problem
+- Only create a new branch when the previous PR is merged
