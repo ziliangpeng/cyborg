@@ -1,0 +1,53 @@
+load("@rules_cuda//cuda:defs.bzl", "cuda_library", "cuda_binary")
+
+# ============================================================================
+# Batch Softmax Implementation Libraries
+# ============================================================================
+
+# Naive implementation (one block per row)
+cuda_library(
+    name = "batch_softmax_naive",
+    srcs = ["batch_softmax_naive.cu"],
+    hdrs = [
+        "batch_softmax_naive.h",
+        "batch_softmax_kernel.h",  # Base interface
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Warp-level implementation (one warp per row, optimal for small dims)
+cuda_library(
+    name = "batch_softmax_warp",
+    srcs = ["batch_softmax_warp.cu"],
+    hdrs = [
+        "batch_softmax_warp.h",
+        "batch_softmax_kernel.h",  # Base interface
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# ============================================================================
+# Batch Softmax Main Binary (Performance Benchmark)
+# ============================================================================
+
+cuda_binary(
+    name = "batch_softmax",
+    srcs = ["batch_softmax.cpp"],
+    deps = [
+        ":batch_softmax_naive",
+        ":batch_softmax_warp",
+        "//cuda:cuda_utils",
+        "//cuda:vector_init",
+        "//cuda/common:benchmark_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    visibility = ["//cuda:__pkg__"],
+)
