@@ -54,6 +54,8 @@ mod tests {
 
     #[test]
     fn test_solve() {
-        assert_eq!(solve(false), "837799");
+        let answer = solve(false);
+        println!("PE14 answer: {}", answer);
+        assert_eq!(answer, "837799");
     }
 }

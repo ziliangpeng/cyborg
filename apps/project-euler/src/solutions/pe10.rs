@@ -13,6 +13,8 @@ mod tests {
 
     #[test]
     fn test_solve() {
-        assert_eq!(solve(false), "142913828922");
+        let answer = solve(false);
+        println!("PE10 answer: {}", answer);
+        assert_eq!(answer, "142913828922");
     }
 }

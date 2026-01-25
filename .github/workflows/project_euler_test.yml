@@ -29,4 +29,4 @@ jobs:
         toolchain: stable
 
     - name: Run tests
-      run: cargo test -p project-euler --verbose
+      run: cargo test -p project-euler --verbose -- --nocapture
