@@ -22,13 +22,12 @@ from collections import deque
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 import httpx
+import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
-from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
-import uvicorn
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 # ============================================================================
 # Metrics Configuration
@@ -76,22 +75,22 @@ class RequestMetrics:
     """Tracks metrics for a single request."""
 
     start_time: float = field(default_factory=time.time)
-    first_token_time: Optional[float] = None
-    last_token_time: Optional[float] = None
+    first_token_time: float | None = None
+    last_token_time: float | None = None
     output_tokens: int = 0
     input_tokens: int = 0
     cache_read_tokens: int = 0
     cache_creation_tokens: int = 0
 
     @property
-    def ttft(self) -> Optional[float]:
+    def ttft(self) -> float | None:
         """Time to first token in seconds."""
         if self.first_token_time:
             return self.first_token_time - self.start_time
         return None
 
     @property
-    def tpot(self) -> Optional[float]:
+    def tpot(self) -> float | None:
         """Average time per output token in milliseconds.
 
         Calculated as: (last_token_time - first_token_time) / (output_tokens - 1)
@@ -123,7 +122,7 @@ recent_requests: deque = deque(maxlen=100)
 # ============================================================================
 
 # Global HTTP client - reuse connections
-http_client: Optional[httpx.AsyncClient] = None
+http_client: httpx.AsyncClient | None = None
 
 
 @asynccontextmanager
