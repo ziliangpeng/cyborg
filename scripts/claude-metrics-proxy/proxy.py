@@ -9,7 +9,7 @@ Captures streaming performance metrics:
 - Request duration
 
 Usage:
-    python proxy.py [--port 8080] [--metrics-port 9090]
+    python proxy.py [--port 8080]
 
 Then set:
     export ANTHROPIC_BASE_URL=http://localhost:8080
@@ -306,6 +306,8 @@ async def proxy_request(request: Request, path: str):
         )
 
         # Extract metrics from response
+        # Note: TTFT/TPOT are not applicable for non-streaming requests
+        metrics.last_token_time = time.time()
         try:
             resp_json = response.json()
             usage = resp_json.get("usage", {})
@@ -313,9 +315,7 @@ async def proxy_request(request: Request, path: str):
             metrics.output_tokens = usage.get("output_tokens", 0)
             metrics.cache_read_tokens = usage.get("cache_read_input_tokens", 0)
             metrics.cache_creation_tokens = usage.get("cache_creation_input_tokens", 0)
-            metrics.first_token_time = time.time()
-            metrics.last_token_time = time.time()
-        except Exception:
+        except json.JSONDecodeError:
             pass
 
         record_metrics(metrics)
@@ -355,8 +355,8 @@ async def stats():
             "avg_tpot_ms": round(sum(tpots) / len(tpots), 2) if tpots else None,
             "p50_ttft_ms": round(sorted(ttfts)[len(ttfts)//2], 2) if ttfts else None,
             "p50_tpot_ms": round(sorted(tpots)[len(tpots)//2], 2) if tpots else None,
-            "p99_ttft_ms": round(sorted(ttfts)[int(len(ttfts)*0.99)], 2) if len(ttfts) > 1 else None,
-            "p99_tpot_ms": round(sorted(tpots)[int(len(tpots)*0.99)], 2) if len(tpots) > 1 else None,
+            "p99_ttft_ms": round(sorted(ttfts)[int((len(ttfts) - 1) * 0.99)], 2) if len(ttfts) > 1 else None,
+            "p99_tpot_ms": round(sorted(tpots)[int((len(tpots) - 1) * 0.99)], 2) if len(tpots) > 1 else None,
             "total_input_tokens": sum(r["input_tokens"] for r in requests_list),
             "total_output_tokens": sum(r["output_tokens"] for r in requests_list),
         },
