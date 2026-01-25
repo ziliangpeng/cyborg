@@ -11,6 +11,11 @@
 #include "cuda_utils.h"
 #include "batch_softmax_naive.h"
 #include "batch_softmax_warp.h"
+#include "batch_softmax_online_warp.h"
+#include "batch_softmax_multi_warp.h"
+#include "batch_softmax_cub.h"
+#include "batch_softmax_cudnn.h"
+#include "batch_softmax_hybrid.h"
 #include "vector_init.h"
 #include "common/benchmark/benchmark_utils.h"
 
@@ -21,9 +26,14 @@
 // Benchmark configuration
 const char* BENCHMARK_METHODS[] = {
     "naive",
-    "warp"
+    "warp",
+    "online_warp",
+    "multi_warp",
+    "cub",
+    "cudnn",
+    "hybrid"
 };
-const int NUM_METHODS = 2;
+const int NUM_METHODS = 7;
 
 // Benchmark sizes: (batch_size, dim) pairs
 struct BenchmarkSize {
@@ -33,6 +43,7 @@ struct BenchmarkSize {
 };
 
 const BenchmarkSize BENCHMARK_SIZES[] = {
+    // Standard sizes
     {64, 64, "64x64"},
     {64, 256, "64x256"},
     {64, 1024, "64x1K"},
@@ -43,6 +54,12 @@ const BenchmarkSize BENCHMARK_SIZES[] = {
     {4096, 256, "4Kx256"},
     {4096, 1024, "4Kx1K"},
     {8192, 512, "8Kx512"},
+    // Large dims - test vectorization benefits
+    {256, 4096, "256x4K"},
+    {256, 8192, "256x8K"},
+    {1024, 4096, "1Kx4K"},
+    {512, 16384, "512x16K"},
+    {128, 32768, "128x32K"},
 };
 const int NUM_SIZES = sizeof(BENCHMARK_SIZES) / sizeof(BENCHMARK_SIZES[0]);
 
@@ -52,19 +69,21 @@ void print_usage(const char *program_name) {
     printf("  -b, --batch N             Set batch size (default: 64)\n");
     printf("  -d, --dim N               Set dimension per row (default: 1024)\n");
     printf("  -t, --threads N           Set threads per block (default: 256)\n");
-    printf("  -m, --method METHOD       Method: 'naive', 'warp', or 'all' (default: warp)\n");
+    printf("  -m, --method METHOD       Method name or 'all' (default: hybrid)\n");
     printf("  -h, --help                Show this help message\n");
     printf("\nMethods:\n");
-    printf("  naive:  One block per row, shared memory reductions (works for any dim)\n");
-    printf("  warp:   One warp per row, warp shuffle reductions (optimal for small dims)\n");
+    printf("  naive:       One block per row, shared memory reductions\n");
+    printf("  warp:        One warp per row, warp shuffle reductions\n");
+    printf("  online_warp: Single-pass online algorithm with warp shuffles\n");
+    printf("  multi_warp:  Multiple warps per row with vectorized loads (float4)\n");
+    printf("  cub:         NVIDIA CUB BlockReduce-based implementation\n");
+    printf("  cudnn:       cuDNN library implementation (industry standard)\n");
+    printf("  hybrid:      Adaptive kernel selection based on dimension size\n");
     printf("\nSpecial method:\n");
-    printf("  all:    Run comprehensive benchmark across all methods and sizes\n");
-    printf("          Tests various (batch, dim) combinations\n");
-    printf("          Iterations: 100 per test\n");
-    printf("          Output: Formatted performance table\n");
+    printf("  all:         Run comprehensive benchmark across all methods and sizes\n");
     printf("\nExample usage:\n");
-    printf("  %s --method all                     # Performance benchmark\n", program_name);
-    printf("  %s --batch 256 --dim 512 --method naive  # Single test\n", program_name);
+    printf("  %s --method all                         # Performance benchmark\n", program_name);
+    printf("  %s --batch 256 --dim 4096 --method multi_warp  # Single test\n", program_name);
 }
 
 // ============================================================================
@@ -195,6 +214,16 @@ void benchmark_all_methods(int threadsPerBlock) {
                     kernel = new NaiveBatchSoftmax(batch_size, dim, threadsPerBlock);
                 } else if (strcmp(method, "warp") == 0) {
                     kernel = new WarpBatchSoftmax(batch_size, dim, threadsPerBlock);
+                } else if (strcmp(method, "online_warp") == 0) {
+                    kernel = new OnlineWarpBatchSoftmax(batch_size, dim, threadsPerBlock);
+                } else if (strcmp(method, "multi_warp") == 0) {
+                    kernel = new MultiWarpBatchSoftmax(batch_size, dim, threadsPerBlock);
+                } else if (strcmp(method, "cub") == 0) {
+                    kernel = new CubBatchSoftmax(batch_size, dim, threadsPerBlock);
+                } else if (strcmp(method, "cudnn") == 0) {
+                    kernel = new CudnnBatchSoftmax(batch_size, dim, threadsPerBlock);
+                } else if (strcmp(method, "hybrid") == 0) {
+                    kernel = new HybridBatchSoftmax(batch_size, dim, threadsPerBlock);
                 }
 
                 if (!kernel) {
@@ -294,6 +323,16 @@ void batch_softmax_op(int batch_size, int dim, int threadsPerBlock, const char *
         kernel = new NaiveBatchSoftmax(batch_size, dim, threadsPerBlock);
     } else if (strcmp(method, "warp") == 0) {
         kernel = new WarpBatchSoftmax(batch_size, dim, threadsPerBlock);
+    } else if (strcmp(method, "online_warp") == 0) {
+        kernel = new OnlineWarpBatchSoftmax(batch_size, dim, threadsPerBlock);
+    } else if (strcmp(method, "multi_warp") == 0) {
+        kernel = new MultiWarpBatchSoftmax(batch_size, dim, threadsPerBlock);
+    } else if (strcmp(method, "cub") == 0) {
+        kernel = new CubBatchSoftmax(batch_size, dim, threadsPerBlock);
+    } else if (strcmp(method, "cudnn") == 0) {
+        kernel = new CudnnBatchSoftmax(batch_size, dim, threadsPerBlock);
+    } else if (strcmp(method, "hybrid") == 0) {
+        kernel = new HybridBatchSoftmax(batch_size, dim, threadsPerBlock);
     }
 
     if (kernel) {
@@ -345,7 +384,7 @@ void batch_softmax_op(int batch_size, int dim, int threadsPerBlock, const char *
 
 int main(int argc, char *argv[]) {
     // Parse command line arguments
-    const char *method = "warp";  // Default method
+    const char *method = "hybrid";  // Default method (adaptive selection)
     int batch_size = 64;
     int dim = 1024;
     int threadsPerBlock = 256;
@@ -386,8 +425,10 @@ int main(int argc, char *argv[]) {
             case 'm':
                 method = optarg;
                 if (strcmp(method, "naive") != 0 && strcmp(method, "warp") != 0 &&
-                    strcmp(method, "all") != 0) {
-                    fprintf(stderr, "Error: method must be 'naive', 'warp', or 'all'\n");
+                    strcmp(method, "online_warp") != 0 && strcmp(method, "multi_warp") != 0 &&
+                    strcmp(method, "cub") != 0 && strcmp(method, "cudnn") != 0 &&
+                    strcmp(method, "hybrid") != 0 && strcmp(method, "all") != 0) {
+                    fprintf(stderr, "Error: unknown method '%s'. Use --help for available methods.\n", method);
                     return 1;
                 }
                 break;

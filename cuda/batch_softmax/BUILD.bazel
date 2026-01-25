@@ -34,6 +34,85 @@ cuda_library(
     includes = [".."],
 )
 
+# Online warp-level implementation (single-pass statistics)
+cuda_library(
+    name = "batch_softmax_online_warp",
+    srcs = ["batch_softmax_online_warp.cu"],
+    hdrs = [
+        "batch_softmax_online_warp.h",
+        "batch_softmax_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Multi-warp implementation with vectorized loads (optimal for large dims)
+cuda_library(
+    name = "batch_softmax_multi_warp",
+    srcs = ["batch_softmax_multi_warp.cu"],
+    hdrs = [
+        "batch_softmax_multi_warp.h",
+        "batch_softmax_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# CUB-based implementation (using NVIDIA CUB BlockReduce)
+cuda_library(
+    name = "batch_softmax_cub",
+    srcs = ["batch_softmax_cub.cu"],
+    hdrs = [
+        "batch_softmax_cub.h",
+        "batch_softmax_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# cuDNN-based implementation (industry-standard deep learning library)
+cuda_library(
+    name = "batch_softmax_cudnn",
+    srcs = ["batch_softmax_cudnn.cu"],
+    hdrs = [
+        "batch_softmax_cudnn.h",
+        "batch_softmax_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Hybrid implementation (adaptive kernel selection based on dim)
+cuda_library(
+    name = "batch_softmax_hybrid",
+    srcs = ["batch_softmax_hybrid.cu"],
+    hdrs = [
+        "batch_softmax_hybrid.h",
+        "batch_softmax_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
 # ============================================================================
 # Batch Softmax Main Binary (Performance Benchmark)
 # ============================================================================
@@ -44,9 +123,18 @@ cuda_binary(
     deps = [
         ":batch_softmax_naive",
         ":batch_softmax_warp",
+        ":batch_softmax_online_warp",
+        ":batch_softmax_multi_warp",
+        ":batch_softmax_cub",
+        ":batch_softmax_cudnn",
+        ":batch_softmax_hybrid",
         "//cuda:cuda_utils",
         "//cuda:vector_init",
         "//cuda/common:benchmark_utils",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lcudnn",
     ],
     target_compatible_with = ["//constraints:cuda"],
     visibility = ["//cuda:__pkg__"],
