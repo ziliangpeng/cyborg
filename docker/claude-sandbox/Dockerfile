@@ -19,6 +19,11 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
 
+# Configure git to use gh CLI for credentials system-wide
+# (user-level config is mounted from host, so we use /etc/gitconfig)
+# Must run as root before switching to node user
+RUN git config --system credential.helper '!gh auth git-credential'
+
 # Use the existing node user (UID/GID 1000)
 # This matches most macOS users' default UID
 USER node
