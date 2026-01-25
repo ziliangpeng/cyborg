@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 /// Find the length of a chain produced by repeatedly applying a transform function.
@@ -46,6 +46,77 @@ where
     seen.len()
 }
 
+/// Find the length of a chain with caching to avoid redundant computation.
+///
+/// Like `find_chain_length`, but uses a cache to remember previously computed
+/// chain lengths. When the same number appears in multiple chains, its length
+/// is computed only once.
+///
+/// # Example
+///
+/// ```
+/// use math::sequence::find_chain_length_cached;
+/// use std::collections::HashMap;
+///
+/// let mut cache = HashMap::new();
+/// let length = find_chain_length_cached(69u64, |n| {
+///     let mut sum = 0;
+///     let mut x = *n;
+///     while x > 0 {
+///         let d = x % 10;
+///         sum += (1..=d).product::<u64>();
+///         x /= 10;
+///     }
+///     sum
+/// }, &mut cache);
+/// assert_eq!(length, 5);
+/// // The cache now contains lengths for all visited values
+/// assert!(cache.contains_key(&69));
+/// ```
+pub fn find_chain_length_cached<T, F>(
+    start: T,
+    transform: F,
+    cache: &mut HashMap<T, usize>,
+) -> usize
+where
+    T: Eq + Hash + Clone,
+    F: Fn(&T) -> T,
+{
+    let mut path: Vec<T> = Vec::new();
+    let mut current = start;
+
+    loop {
+        // Check if already cached
+        if let Some(&len) = cache.get(&current) {
+            // Cache all elements in path
+            for (i, elem) in path.iter().enumerate() {
+                let path_len = path.len() - i + len;
+                cache.insert(elem.clone(), path_len);
+            }
+            return path.len() + len;
+        }
+
+        // Check if current is in path (cycle detected)
+        if let Some(cycle_start) = path.iter().position(|x| x == &current) {
+            let cycle_len = path.len() - cycle_start;
+            // Cache cycle elements (they all have the same length)
+            for elem in path[cycle_start..].iter() {
+                cache.insert(elem.clone(), cycle_len);
+            }
+            // Cache pre-cycle elements
+            for (i, elem) in path[..cycle_start].iter().enumerate() {
+                let path_len = path.len() - i;
+                cache.insert(elem.clone(), path_len);
+            }
+            return path.len();
+        }
+
+        // Add current to path and continue
+        path.push(current.clone());
+        current = transform(&current);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -67,5 +138,61 @@ mod tests {
         // 0 → 1 → 2 → 3 → 2 (cycle between 2 and 3, but 0 and 1 are not in cycle)
         // Chain: 0, 1, 2, 3 = 4 unique values
         assert_eq!(find_chain_length(0, |n| if n < 3 { n + 1 } else { 2 }), 4);
+    }
+
+    #[test]
+    fn test_find_chain_length_cached_simple_cycle() {
+        let mut cache = HashMap::new();
+        // 1 → 1 (immediate cycle)
+        assert_eq!(find_chain_length_cached(1, |_| 1, &mut cache), 1);
+        assert_eq!(cache.get(&1), Some(&1));
+    }
+
+    #[test]
+    fn test_find_chain_length_cached_longer_chain() {
+        let mut cache = HashMap::new();
+        // 5 → 4 → 3 → 2 → 1 → 1 (cycle at 1)
+        assert_eq!(
+            find_chain_length_cached(5, |n| if *n > 1 { n - 1 } else { 1 }, &mut cache),
+            5
+        );
+        // All values should be cached
+        assert_eq!(cache.get(&5), Some(&5));
+        assert_eq!(cache.get(&4), Some(&4));
+        assert_eq!(cache.get(&3), Some(&3));
+        assert_eq!(cache.get(&2), Some(&2));
+        assert_eq!(cache.get(&1), Some(&1));
+    }
+
+    #[test]
+    fn test_find_chain_length_cached_reuses_cache() {
+        let mut cache = HashMap::new();
+        // First call: 3 → 2 → 1 → 1
+        assert_eq!(
+            find_chain_length_cached(3, |n| if *n > 1 { n - 1 } else { 1 }, &mut cache),
+            3
+        );
+        // Second call starting at 5: should use cached value for 3
+        // 5 → 4 → 3 (cached: length 3) = 2 + 3 = 5
+        assert_eq!(
+            find_chain_length_cached(5, |n| if *n > 1 { n - 1 } else { 1 }, &mut cache),
+            5
+        );
+    }
+
+    #[test]
+    fn test_find_chain_length_cached_cycle_not_at_start() {
+        let mut cache = HashMap::new();
+        // 0 → 1 → 2 → 3 → 2 (cycle between 2 and 3, but 0 and 1 are not in cycle)
+        // Chain: 0, 1, 2, 3 = 4 unique values
+        assert_eq!(
+            find_chain_length_cached(0, |n| if *n < 3 { n + 1 } else { 2 }, &mut cache),
+            4
+        );
+        // Verify cache: cycle elements (2, 3) have length 2, pre-cycle have longer
+        assert_eq!(cache.get(&2), Some(&2));
+        assert_eq!(cache.get(&3), Some(&2));
+        assert_eq!(cache.get(&1), Some(&3));
+        assert_eq!(cache.get(&0), Some(&4));
     }
 }
