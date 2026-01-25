@@ -1,12 +1,17 @@
 pub mod pe1;
 pub mod pe10;
+pub mod pe11;
+pub mod pe12;
 pub mod pe13;
 pub mod pe14;
 pub mod pe16;
 pub mod pe2;
 pub mod pe26;
 pub mod pe3;
+pub mod pe30;
+pub mod pe34;
 pub mod pe4;
+pub mod pe42;
 pub mod pe5;
 pub mod pe50;
 pub mod pe6;

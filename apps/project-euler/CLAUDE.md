@@ -12,7 +12,9 @@
 
 - If the user's described solution is ambiguous or unclear, ask follow-up questions to ensure you understand exactly what to implement
 - Do not assume or fill in gaps - get clarification
-- Be critical: if user forgets to mention boundary checks, edge cases, or implementation details, question them instead of silently implementing it
+- Be extremely critical: if anything is not crystal clear, push back and ask for every detail
+- If user forgets to mention boundary checks, edge cases, or implementation details, question them instead of silently implementing it
+- Do not help with anything about the solution except writing code to execute it
 
 ## Wrong Solutions
 
