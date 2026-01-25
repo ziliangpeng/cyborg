@@ -1,7 +1,7 @@
 pub mod solutions;
 
 /// Available problem IDs
-pub const PROBLEMS: &[u32] = &[1, 10, 13, 14, 16, 26, 50, 67, 74];
+pub const PROBLEMS: &[u32] = &[1, 10, 13, 14, 16, 26, 50, 67, 74, 81];
 
 /// Run a specific problem and return the answer
 /// If verbose is true, the solution may print debug information
@@ -16,6 +16,7 @@ pub fn run_problem(id: u32, verbose: bool) -> Option<String> {
         50 => Some(solutions::pe50::solve(verbose)),
         67 => Some(solutions::pe67::solve(verbose)),
         74 => Some(solutions::pe74::solve(verbose)),
+        81 => Some(solutions::pe81::solve(verbose)),
         _ => None,
     }
 }
