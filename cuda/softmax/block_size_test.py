@@ -106,7 +106,7 @@ def main():
             try:
                 t = bench_block_size(n, bs)
                 results.append(f"{t:>7.3f}ms")
-            except Exception as e:
+            except Exception:
                 results.append(f"{'ERR':>9}")
         print(f"{n:>12,} |", " | ".join(results))
 
