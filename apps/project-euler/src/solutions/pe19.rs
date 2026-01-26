@@ -3,9 +3,7 @@ fn days_in_month(year: u32, month: u32) -> u32 {
         0 => 31, // January
         1 => {
             // February - check leap year
-            if year % 4 != 0 {
-                28
-            } else if year % 100 == 0 && year % 400 != 0 {
+            if !year.is_multiple_of(4) || (year.is_multiple_of(100) && !year.is_multiple_of(400)) {
                 28
             } else {
                 29

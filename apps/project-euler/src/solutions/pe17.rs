@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 fn letter_count(n: u32, ones: &HashMap<u32, &str>, tens: &HashMap<u32, &str>) -> usize {
-    if n >= 1 && n <= 19 {
+    if (1..=19).contains(&n) {
         return ones.get(&n).unwrap().len();
     }
 
-    if n >= 20 && n <= 99 {
+    if (20..=99).contains(&n) {
         let tens_digit = n / 10;
         let ones_digit = n % 10;
         let mut count = tens.get(&tens_digit).unwrap().len();
@@ -15,7 +15,7 @@ fn letter_count(n: u32, ones: &HashMap<u32, &str>, tens: &HashMap<u32, &str>) ->
         return count;
     }
 
-    if n >= 100 && n <= 999 {
+    if (100..=999).contains(&n) {
         let hundreds_digit = n / 100;
         let remainder = n % 100;
         let mut count = ones.get(&hundreds_digit).unwrap().len() + "hundred".len();
