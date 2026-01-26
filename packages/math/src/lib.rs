@@ -7,7 +7,7 @@ pub mod sequence;
 
 pub use bigint::BigInt;
 pub use digits::digit_factorial_sum;
-pub use factorial::factorial;
+pub use factorial::{big_factorial, factorial};
 pub use fibonacci::{BigFibonacci, Fibonacci, fibonacci, nth_fibonacci};
 pub use prime::{
     Primes, count_divisors, is_prime, largest_prime_factor, nth_prime, primes, primes_below,
