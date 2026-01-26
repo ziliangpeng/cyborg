@@ -179,6 +179,101 @@ pub fn count_divisors(mut n: u64, primes: &[u64]) -> u32 {
     count
 }
 
+/// Returns the prime factorization of n with multiplicity.
+///
+/// For example, `factorize(12)` returns `[2, 2, 3]` since 12 = 2² × 3.
+///
+/// Returns an empty vector if n < 2.
+///
+/// # Example
+///
+/// ```
+/// use math::prime::factorize;
+///
+/// assert_eq!(factorize(12), vec![2, 2, 3]);
+/// assert_eq!(factorize(14), vec![2, 7]);
+/// assert_eq!(factorize(1), vec![]);
+/// ```
+pub fn factorize(mut n: u64) -> Vec<u64> {
+    if n < 2 {
+        return vec![];
+    }
+
+    let mut factors = Vec::new();
+    let mut primes = Primes::new();
+
+    while n > 1 {
+        let p = primes.next().unwrap();
+        if p * p > n {
+            factors.push(n);
+            break;
+        }
+        while n.is_multiple_of(p) {
+            factors.push(p);
+            n /= p;
+        }
+    }
+
+    factors
+}
+
+/// Returns all proper divisors of n (all divisors except n itself), sorted.
+///
+/// For example, `proper_divisors(12)` returns `[1, 2, 3, 4, 6]`.
+///
+/// Returns an empty vector if n < 2.
+///
+/// # Example
+///
+/// ```
+/// use math::prime::proper_divisors;
+///
+/// assert_eq!(proper_divisors(12), vec![1, 2, 3, 4, 6]);
+/// assert_eq!(proper_divisors(28), vec![1, 2, 4, 7, 14]);
+/// assert_eq!(proper_divisors(1), vec![]);
+/// ```
+pub fn proper_divisors(n: u64) -> Vec<u64> {
+    if n < 2 {
+        return vec![];
+    }
+
+    let factors = factorize(n);
+    if factors.is_empty() {
+        return vec![];
+    }
+
+    // Build frequency map: prime -> count
+    let mut freq: Vec<(u64, u32)> = Vec::new();
+    for p in factors {
+        if let Some(last) = freq.last_mut()
+            && last.0 == p
+        {
+            last.1 += 1;
+            continue;
+        }
+        freq.push((p, 1));
+    }
+
+    // Enumerate all combinations
+    let mut divisors = vec![1u64];
+    for (prime, count) in freq {
+        let mut new_divisors = Vec::new();
+        for &d in &divisors {
+            let mut power = 1u64;
+            for _ in 0..=count {
+                new_divisors.push(d * power);
+                power *= prime;
+            }
+        }
+        divisors = new_divisors;
+    }
+
+    // Remove n itself and sort
+    divisors.retain(|&d| d != n);
+    divisors.sort();
+    divisors
+}
+
 /// Check if a number is prime.
 pub fn is_prime(n: u64) -> bool {
     if n < 2 {
@@ -410,5 +505,31 @@ mod tests {
     fn test_count_divisors_insufficient_primes() {
         let primes = vec![2, 3]; // sqrt(100) = 10, but max prime is 3
         count_divisors(100, &primes);
+    }
+
+    #[test]
+    fn test_factorize() {
+        assert_eq!(factorize(0), vec![]);
+        assert_eq!(factorize(1), vec![]);
+        assert_eq!(factorize(2), vec![2]);
+        assert_eq!(factorize(12), vec![2, 2, 3]);
+        assert_eq!(factorize(14), vec![2, 7]);
+        assert_eq!(factorize(100), vec![2, 2, 5, 5]);
+        assert_eq!(factorize(84), vec![2, 2, 3, 7]);
+        assert_eq!(factorize(97), vec![97]); // prime
+    }
+
+    #[test]
+    fn test_proper_divisors() {
+        assert_eq!(proper_divisors(0), vec![]);
+        assert_eq!(proper_divisors(1), vec![]);
+        assert_eq!(proper_divisors(2), vec![1]);
+        assert_eq!(proper_divisors(12), vec![1, 2, 3, 4, 6]);
+        assert_eq!(proper_divisors(28), vec![1, 2, 4, 7, 14]);
+        assert_eq!(
+            proper_divisors(220),
+            vec![1, 2, 4, 5, 10, 11, 20, 22, 44, 55, 110]
+        );
+        assert_eq!(proper_divisors(284), vec![1, 2, 4, 71, 142]);
     }
 }
