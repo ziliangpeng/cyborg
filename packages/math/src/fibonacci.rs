@@ -1,3 +1,5 @@
+use crate::BigInt;
+
 /// Iterator that generates Fibonacci numbers.
 ///
 /// # Example
@@ -74,6 +76,48 @@ pub fn nth_fibonacci(n: usize) -> Option<u64> {
         return None;
     }
     Fibonacci::new().nth(n - 1)
+}
+
+/// Iterator that generates Fibonacci numbers as BigInt (arbitrary precision).
+///
+/// # Example
+///
+/// ```
+/// use math::fibonacci::BigFibonacci;
+///
+/// let fibs: Vec<String> = BigFibonacci::new().take(10).map(|b| b.to_string()).collect();
+/// assert_eq!(fibs, vec!["1", "1", "2", "3", "5", "8", "13", "21", "34", "55"]);
+/// ```
+pub struct BigFibonacci {
+    curr: BigInt,
+    next: BigInt,
+}
+
+impl BigFibonacci {
+    pub fn new() -> Self {
+        BigFibonacci {
+            curr: BigInt::from_u32(1),
+            next: BigInt::from_u32(1),
+        }
+    }
+}
+
+impl Default for BigFibonacci {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Iterator for BigFibonacci {
+    type Item = BigInt;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let curr = self.curr.clone();
+        let new_next = &self.curr + &self.next;
+        self.curr = self.next.clone();
+        self.next = new_next;
+        Some(curr)
+    }
 }
 
 #[cfg(test)]
