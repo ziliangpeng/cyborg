@@ -196,6 +196,336 @@ cuda_library(
     includes = [".."],
 )
 
+# Optimized WMMA Tensor Core kernel with double buffering
+cuda_library(
+    name = "matmul_wmma_optimized",
+    srcs = ["matmul_wmma_optimized.cu"],
+    hdrs = [
+        "matmul_wmma_optimized.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# WMMA Tensor Core kernel V2 - aggressive optimizations
+cuda_library(
+    name = "matmul_wmma_v2",
+    srcs = ["matmul_wmma_v2.cu"],
+    hdrs = [
+        "matmul_wmma_v2.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# WMMA Tensor Core kernel V3 - balanced optimization
+cuda_library(
+    name = "matmul_wmma_v3",
+    srcs = ["matmul_wmma_v3.cu"],
+    hdrs = [
+        "matmul_wmma_v3.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel
+cuda_library(
+    name = "matmul_wmma_opt_bf16",
+    srcs = ["matmul_wmma_opt_bf16.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel V2 - larger tiles
+cuda_library(
+    name = "matmul_wmma_opt_bf16_v2",
+    srcs = ["matmul_wmma_opt_bf16_v2.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16_v2.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel V3 - smaller BK for occupancy
+cuda_library(
+    name = "matmul_wmma_opt_bf16_v3",
+    srcs = ["matmul_wmma_opt_bf16_v3.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16_v3.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel V4 - multi-stage pipelining
+cuda_library(
+    name = "matmul_wmma_opt_bf16_v4",
+    srcs = ["matmul_wmma_opt_bf16_v4.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16_v4.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel V5 - high arithmetic intensity
+cuda_library(
+    name = "matmul_wmma_opt_bf16_v5",
+    srcs = ["matmul_wmma_opt_bf16_v5.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16_v5.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel V6 - small tiles, high occupancy
+cuda_library(
+    name = "matmul_wmma_opt_bf16_v6",
+    srcs = ["matmul_wmma_opt_bf16_v6.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16_v6.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel V7 - large warp tiles
+cuda_library(
+    name = "matmul_wmma_opt_bf16_v7",
+    srcs = ["matmul_wmma_opt_bf16_v7.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16_v7.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel V8 - vectorized loads
+cuda_library(
+    name = "matmul_wmma_opt_bf16_v8",
+    srcs = ["matmul_wmma_opt_bf16_v8.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16_v8.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Optimized WMMA BF16 kernel V10 - instruction scheduling
+cuda_library(
+    name = "matmul_wmma_opt_bf16_v10",
+    srcs = ["matmul_wmma_opt_bf16_v10.cu"],
+    hdrs = [
+        "matmul_wmma_opt_bf16_v10.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# MMA PTX BF16 kernel - direct PTX instructions
+cuda_library(
+    name = "matmul_mma_bf16",
+    srcs = ["matmul_mma_bf16.cu"],
+    hdrs = [
+        "matmul_mma_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Async BF16 kernel - cp.async with 3-stage pipeline
+cuda_library(
+    name = "matmul_async_bf16",
+    srcs = ["matmul_async_bf16.cu"],
+    hdrs = [
+        "matmul_async_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Swizzle BF16 kernel - swizzled shared memory
+cuda_library(
+    name = "matmul_swizzle_bf16",
+    srcs = ["matmul_swizzle_bf16.cu"],
+    hdrs = [
+        "matmul_swizzle_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Large tile BF16 kernel - 256x128 tiles with register reuse
+cuda_library(
+    name = "matmul_large_tile_bf16",
+    srcs = ["matmul_large_tile_bf16.cu"],
+    hdrs = [
+        "matmul_large_tile_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# 3-stage pipelined BF16 kernel
+cuda_library(
+    name = "matmul_stage3_bf16",
+    srcs = ["matmul_stage3_bf16.cu"],
+    hdrs = [
+        "matmul_stage3_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Tuned BF16 kernel - 128x256 tiles with RLRL pattern
+cuda_library(
+    name = "matmul_tuned_bf16",
+    srcs = ["matmul_tuned_bf16.cu"],
+    hdrs = [
+        "matmul_tuned_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Compact BF16 kernel - 64x64 tiles for high occupancy
+cuda_library(
+    name = "matmul_compact_bf16",
+    srcs = ["matmul_compact_bf16.cu"],
+    hdrs = [
+        "matmul_compact_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Unrolled BF16 kernel - 4x K unrolling
+cuda_library(
+    name = "matmul_unroll_bf16",
+    srcs = ["matmul_unroll_bf16.cu"],
+    hdrs = [
+        "matmul_unroll_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Hybrid BF16 kernel - 3-stage pipeline + 2x K unroll
+cuda_library(
+    name = "matmul_hybrid_bf16",
+    srcs = ["matmul_hybrid_bf16.cu"],
+    hdrs = [
+        "matmul_hybrid_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
+# Best BF16 kernel - 64x64 warp tiles + 4x K unroll
+cuda_library(
+    name = "matmul_best_bf16",
+    srcs = ["matmul_best_bf16.cu"],
+    hdrs = [
+        "matmul_best_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
 # ============================================================================
 # Matrix Multiplication Main Binary
 # ============================================================================
@@ -215,6 +545,28 @@ cuda_binary(
         ":matmul_wmma",
         ":matmul_wmma_bf16",
         ":matmul_cublas_bf16",
+        ":matmul_wmma_optimized",
+        ":matmul_wmma_v2",
+        ":matmul_wmma_v3",
+        ":matmul_wmma_opt_bf16",
+        ":matmul_wmma_opt_bf16_v2",
+        ":matmul_wmma_opt_bf16_v3",
+        ":matmul_wmma_opt_bf16_v4",
+        ":matmul_wmma_opt_bf16_v5",
+        ":matmul_wmma_opt_bf16_v6",
+        ":matmul_wmma_opt_bf16_v7",
+        ":matmul_wmma_opt_bf16_v8",
+        ":matmul_wmma_opt_bf16_v10",
+        ":matmul_mma_bf16",
+        ":matmul_async_bf16",
+        ":matmul_swizzle_bf16",
+        ":matmul_large_tile_bf16",
+        ":matmul_stage3_bf16",
+        ":matmul_tuned_bf16",
+        ":matmul_compact_bf16",
+        ":matmul_unroll_bf16",
+        ":matmul_hybrid_bf16",
+        ":matmul_best_bf16",
         ":matmul_kernel_h",
         ":matrix_init",
         "//cuda:cuda_utils",
