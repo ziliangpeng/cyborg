@@ -44,8 +44,9 @@ test:macos --skip_incompatible_explicit_targets
 # No special flags needed - all targets should be compatible
 
 # CUDA architecture - H100 (Hopper) only
-# SM90 supports all features: BF16, FP8, wgmma, TMA
-build --@rules_cuda//cuda:archs=sm_90
+# SM90a (architecture-accelerated) supports all features: BF16, FP8, WGMMA, TMA
+# The 'a' suffix enables architecture-specific instructions like wgmma
+build --@rules_cuda//cuda:archs=sm_90a
 
 # ============================================================================
 # User-Local Configuration (optional, git-ignored)

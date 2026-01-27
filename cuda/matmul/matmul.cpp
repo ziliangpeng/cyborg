@@ -19,6 +19,29 @@
 #include "matmul_wmma.h"
 #include "matmul_wmma_bf16.h"
 #include "matmul_cublas_bf16.h"
+#include "matmul_wmma_optimized.h"
+#include "matmul_wmma_v2.h"
+#include "matmul_wmma_v3.h"
+#include "matmul_wmma_opt_bf16.h"
+#include "matmul_wmma_opt_bf16_v2.h"
+#include "matmul_wmma_opt_bf16_v3.h"
+#include "matmul_wmma_opt_bf16_v4.h"
+#include "matmul_wmma_opt_bf16_v5.h"
+#include "matmul_wmma_opt_bf16_v6.h"
+#include "matmul_wmma_opt_bf16_v7.h"
+#include "matmul_wmma_opt_bf16_v8.h"
+#include "matmul_wmma_opt_bf16_v10.h"
+#include "matmul_mma_bf16.h"
+#include "matmul_async_bf16.h"
+#include "matmul_swizzle_bf16.h"
+#include "matmul_large_tile_bf16.h"
+#include "matmul_stage3_bf16.h"
+#include "matmul_tuned_bf16.h"
+#include "matmul_compact_bf16.h"
+#include "matmul_unroll_bf16.h"
+#include "matmul_hybrid_bf16.h"
+#include "matmul_best_bf16.h"
+#include "matmul_wgmma_bf16.h"
 #include "matrix_init.h"
 
 // ============================================================================
@@ -37,9 +60,32 @@ const char* BENCHMARK_METHODS[] = {
     "cublas",
     "wmma",
     "wmma_bf16",
-    "cublas_bf16"
+    "cublas_bf16",
+    "wmma_opt",
+    "wmma_v2",
+    "wmma_v3",
+    "wmma_opt_bf16",
+    "wmma_opt_bf16_v2",
+    "wmma_opt_bf16_v3",
+    "wmma_opt_bf16_v4",
+    "wmma_opt_bf16_v5",
+    "wmma_opt_bf16_v6",
+    "wmma_opt_bf16_v7",
+    "wmma_opt_bf16_v8",
+    "wmma_opt_bf16_v10",
+    "mma_bf16",
+    "async_bf16",
+    "swizzle_bf16",
+    "large_tile_bf16",
+    "stage3_bf16",
+    "tuned_bf16",
+    "compact_bf16",
+    "unroll_bf16",
+    "hybrid_bf16",
+    "best_bf16",
+    "wgmma_bf16"
 };
-const int NUM_METHODS = 11;
+const int NUM_METHODS = 34;
 
 const int BENCHMARK_SIZES[] = {64, 128, 256, 512, 1024, 2048};
 const int NUM_SIZES = sizeof(BENCHMARK_SIZES) / sizeof(BENCHMARK_SIZES[0]);
@@ -546,6 +592,52 @@ void benchmark_all_methods(int blockDim, bool verify) {
                     kernel = new MatmulWmmaBf16(N, blockDim);
                 } else if (strcmp(method, "cublas_bf16") == 0) {
                     kernel = new MatmulCublasBf16(N, blockDim);
+                } else if (strcmp(method, "wmma_opt") == 0) {
+                    kernel = new MatmulWmmaOptimized(N, blockDim);
+                } else if (strcmp(method, "wmma_v2") == 0) {
+                    kernel = new MatmulWmmaV2(N, blockDim);
+                } else if (strcmp(method, "wmma_v3") == 0) {
+                    kernel = new MatmulWmmaV3(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16") == 0) {
+                    kernel = new MatmulWmmaOptBf16(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16_v2") == 0) {
+                    kernel = new MatmulWmmaOptBf16V2(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16_v3") == 0) {
+                    kernel = new MatmulWmmaOptBf16V3(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16_v4") == 0) {
+                    kernel = new MatmulWmmaOptBf16V4(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16_v5") == 0) {
+                    kernel = new MatmulWmmaOptBf16V5(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16_v6") == 0) {
+                    kernel = new MatmulWmmaOptBf16V6(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16_v7") == 0) {
+                    kernel = new MatmulWmmaOptBf16V7(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16_v8") == 0) {
+                    kernel = new MatmulWmmaOptBf16V8(N, blockDim);
+                } else if (strcmp(method, "wmma_opt_bf16_v10") == 0) {
+                    kernel = new MatmulWmmaOptBf16V10(N, blockDim);
+                } else if (strcmp(method, "mma_bf16") == 0) {
+                    kernel = new MatmulMmaBf16(N, blockDim);
+                } else if (strcmp(method, "async_bf16") == 0) {
+                    kernel = new MatmulAsyncBf16(N, blockDim);
+                } else if (strcmp(method, "swizzle_bf16") == 0) {
+                    kernel = new MatmulSwizzleBf16(N, blockDim);
+                } else if (strcmp(method, "large_tile_bf16") == 0) {
+                    kernel = new MatmulLargeTileBf16(N, blockDim);
+                } else if (strcmp(method, "stage3_bf16") == 0) {
+                    kernel = new MatmulStage3Bf16(N, blockDim);
+                } else if (strcmp(method, "tuned_bf16") == 0) {
+                    kernel = new MatmulTunedBf16(N, blockDim);
+                } else if (strcmp(method, "compact_bf16") == 0) {
+                    kernel = new MatmulCompactBf16(N, blockDim);
+                } else if (strcmp(method, "unroll_bf16") == 0) {
+                    kernel = new MatmulUnrollBf16(N, blockDim);
+                } else if (strcmp(method, "hybrid_bf16") == 0) {
+                    kernel = new MatmulHybridBf16(N, blockDim);
+                } else if (strcmp(method, "best_bf16") == 0) {
+                    kernel = new MatmulBestBf16(N, blockDim);
+                } else if (strcmp(method, "wgmma_bf16") == 0) {
+                    kernel = new MatmulWgmmaBf16(N, blockDim);
                 }
 
                 if (!kernel) {
@@ -690,6 +782,52 @@ void matmul_op(int N, int blockDim, bool verify, const char *method) {
         kernel = new MatmulWmmaBf16(N, blockDim);
     } else if (strcmp(method, "cublas_bf16") == 0) {
         kernel = new MatmulCublasBf16(N, blockDim);
+    } else if (strcmp(method, "wmma_opt") == 0) {
+        kernel = new MatmulWmmaOptimized(N, blockDim);
+    } else if (strcmp(method, "wmma_v2") == 0) {
+        kernel = new MatmulWmmaV2(N, blockDim);
+    } else if (strcmp(method, "wmma_v3") == 0) {
+        kernel = new MatmulWmmaV3(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16") == 0) {
+        kernel = new MatmulWmmaOptBf16(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16_v2") == 0) {
+        kernel = new MatmulWmmaOptBf16V2(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16_v3") == 0) {
+        kernel = new MatmulWmmaOptBf16V3(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16_v4") == 0) {
+        kernel = new MatmulWmmaOptBf16V4(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16_v5") == 0) {
+        kernel = new MatmulWmmaOptBf16V5(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16_v6") == 0) {
+        kernel = new MatmulWmmaOptBf16V6(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16_v7") == 0) {
+        kernel = new MatmulWmmaOptBf16V7(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16_v8") == 0) {
+        kernel = new MatmulWmmaOptBf16V8(N, blockDim);
+    } else if (strcmp(method, "wmma_opt_bf16_v10") == 0) {
+        kernel = new MatmulWmmaOptBf16V10(N, blockDim);
+    } else if (strcmp(method, "mma_bf16") == 0) {
+        kernel = new MatmulMmaBf16(N, blockDim);
+    } else if (strcmp(method, "async_bf16") == 0) {
+        kernel = new MatmulAsyncBf16(N, blockDim);
+    } else if (strcmp(method, "swizzle_bf16") == 0) {
+        kernel = new MatmulSwizzleBf16(N, blockDim);
+    } else if (strcmp(method, "large_tile_bf16") == 0) {
+        kernel = new MatmulLargeTileBf16(N, blockDim);
+    } else if (strcmp(method, "stage3_bf16") == 0) {
+        kernel = new MatmulStage3Bf16(N, blockDim);
+    } else if (strcmp(method, "tuned_bf16") == 0) {
+        kernel = new MatmulTunedBf16(N, blockDim);
+    } else if (strcmp(method, "compact_bf16") == 0) {
+        kernel = new MatmulCompactBf16(N, blockDim);
+    } else if (strcmp(method, "unroll_bf16") == 0) {
+        kernel = new MatmulUnrollBf16(N, blockDim);
+    } else if (strcmp(method, "hybrid_bf16") == 0) {
+        kernel = new MatmulHybridBf16(N, blockDim);
+    } else if (strcmp(method, "best_bf16") == 0) {
+        kernel = new MatmulBestBf16(N, blockDim);
+    } else if (strcmp(method, "wgmma_bf16") == 0) {
+        kernel = new MatmulWgmmaBf16(N, blockDim);
     }
 
     if (kernel) {
