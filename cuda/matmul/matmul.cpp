@@ -41,6 +41,7 @@
 #include "matmul_unroll_bf16.h"
 #include "matmul_hybrid_bf16.h"
 #include "matmul_best_bf16.h"
+#include "matmul_wgmma_bf16.h"
 #include "matrix_init.h"
 
 // ============================================================================
@@ -81,9 +82,10 @@ const char* BENCHMARK_METHODS[] = {
     "compact_bf16",
     "unroll_bf16",
     "hybrid_bf16",
-    "best_bf16"
+    "best_bf16",
+    "wgmma_bf16"
 };
-const int NUM_METHODS = 33;
+const int NUM_METHODS = 34;
 
 const int BENCHMARK_SIZES[] = {64, 128, 256, 512, 1024, 2048};
 const int NUM_SIZES = sizeof(BENCHMARK_SIZES) / sizeof(BENCHMARK_SIZES[0]);
@@ -634,6 +636,8 @@ void benchmark_all_methods(int blockDim, bool verify) {
                     kernel = new MatmulHybridBf16(N, blockDim);
                 } else if (strcmp(method, "best_bf16") == 0) {
                     kernel = new MatmulBestBf16(N, blockDim);
+                } else if (strcmp(method, "wgmma_bf16") == 0) {
+                    kernel = new MatmulWgmmaBf16(N, blockDim);
                 }
 
                 if (!kernel) {
@@ -822,6 +826,8 @@ void matmul_op(int N, int blockDim, bool verify, const char *method) {
         kernel = new MatmulHybridBf16(N, blockDim);
     } else if (strcmp(method, "best_bf16") == 0) {
         kernel = new MatmulBestBf16(N, blockDim);
+    } else if (strcmp(method, "wgmma_bf16") == 0) {
+        kernel = new MatmulWgmmaBf16(N, blockDim);
     }
 
     if (kernel) {

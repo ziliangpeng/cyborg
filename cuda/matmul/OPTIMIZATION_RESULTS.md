@@ -211,3 +211,36 @@ Through systematic optimization across two phases, we improved the BF16 WMMA ten
 The main optimization was **4x K-loop unrolling** which reduces synchronization overhead and increases arithmetic intensity. Combined with the RLRL register reuse pattern, this provides significantly better instruction-level parallelism.
 
 While cuBLAS still outperforms our kernel by ~4.7x at 4096x4096, this is expected as cuBLAS uses H100-specific hardware features (TMA, WGMMA, warp specialization) that aren't accessible through the WMMA API. Achieving closer performance would require using CUTLASS or direct PTX with these advanced features.
+
+## Phase 3: WGMMA Investigation (Experimental)
+
+We investigated using H100-specific WGMMA (Warpgroup MMA) instructions directly via inline PTX, bypassing CUTLASS.
+
+### Key Findings
+
+1. **WGMMA requires sm_90a** - The `wgmma.mma_async` instruction requires the `sm_90a` architecture flag (with 'a' suffix for accelerated features), not just `sm_90`.
+
+2. **Complex memory layouts** - WGMMA expects specific swizzled memory layouts (128B, 64B, or 32B swizzle patterns), not simple row-major layouts.
+
+3. **64-bit matrix descriptors** - WGMMA uses matrix descriptors encoding:
+   - Bits 0-13: Base address in shared memory (>> 4)
+   - Bits 16-29: Leading dimension byte offset (>> 4)
+   - Bits 32-45: Stride dimension byte offset (>> 4)
+   - Bits 62-63: Swizzle mode (0=128B, 1=64B, 2=32B, 3=none)
+
+4. **Instruction compiled but incorrect results** - The WGMMA kernel compiles and executes without crashing, but produces incorrect results due to memory layout mismatch.
+
+### Files Created
+
+- `matmul_wgmma_bf16.h/.cu` - EXPERIMENTAL WGMMA kernel using direct PTX (produces incorrect results)
+
+### Why WGMMA is Hard Without CUTLASS
+
+1. **Swizzled memory layouts** - CUTLASS provides `Layout_MN_SW128_Atom` and similar layout atoms that handle the complex swizzling patterns.
+2. **Descriptor construction** - CUTLASS's `GMMA::DescriptorIterator` handles the complex descriptor math.
+3. **Accumulator mapping** - The output register layout doesn't map directly to row/column indices.
+4. **Documentation gap** - NVIDIA's PTX documentation describes the bit formats but not the semantic meaning of layouts.
+
+### Recommendation
+
+For production WGMMA kernels, use CUTLASS 3.0+ which properly handles all these complexities. Direct PTX WGMMA is feasible but requires deep understanding of the swizzled memory layouts and careful implementation.

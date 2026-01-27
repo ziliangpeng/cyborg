@@ -526,6 +526,21 @@ cuda_library(
     includes = [".."],
 )
 
+# WGMMA BF16 kernel - uses Hopper wgmma.mma_async instructions
+cuda_library(
+    name = "matmul_wgmma_bf16",
+    srcs = ["matmul_wgmma_bf16.cu"],
+    hdrs = [
+        "matmul_wgmma_bf16.h",
+        "matmul_kernel.h",
+    ],
+    deps = [
+        "//cuda:cuda_utils",
+    ],
+    target_compatible_with = ["//constraints:cuda"],
+    includes = [".."],
+)
+
 # ============================================================================
 # Matrix Multiplication Main Binary
 # ============================================================================
@@ -567,6 +582,7 @@ cuda_binary(
         ":matmul_unroll_bf16",
         ":matmul_hybrid_bf16",
         ":matmul_best_bf16",
+        ":matmul_wgmma_bf16",
         ":matmul_kernel_h",
         ":matrix_init",
         "//cuda:cuda_utils",
