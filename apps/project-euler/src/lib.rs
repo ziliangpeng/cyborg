@@ -2,8 +2,8 @@ pub mod solutions;
 
 /// Available problem IDs
 pub const PROBLEMS: &[u32] = &[
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 25, 26, 30, 34, 42,
-    50, 67, 74, 81,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 30,
+    34, 42, 50, 67, 74, 81,
 ];
 
 /// Run a specific problem and return the answer
@@ -31,6 +31,8 @@ pub fn run_problem(id: u32, verbose: bool) -> Option<String> {
         19 => Some(solutions::pe19::solve(verbose)),
         20 => Some(solutions::pe20::solve(verbose)),
         21 => Some(solutions::pe21::solve(verbose)),
+        22 => Some(solutions::pe22::solve(verbose)),
+        24 => Some(solutions::pe24::solve(verbose)),
         25 => Some(solutions::pe25::solve(verbose)),
         26 => Some(solutions::pe26::solve(verbose)),
         30 => Some(solutions::pe30::solve(verbose)),
