@@ -70,9 +70,7 @@ def generate_summary(prompt, model_name, temperature=0.7):
         summary = result.stdout.strip()
         elapsed = time.time() - start_time
 
-        print(
-            f"[INFO] Summary generated in {elapsed:.2f}s ({len(summary.split())} words)"
-        )
+        print(f"[INFO] Summary generated in {elapsed:.2f}s ({len(summary.split())} words)")
 
         return summary, elapsed
 
@@ -111,18 +109,14 @@ Available models (install via Ollama):
 """,
     )
 
-    parser.add_argument(
-        "json_files", nargs="+", type=str, help="Caption JSON file(s) to process"
-    )
+    parser.add_argument("json_files", nargs="+", type=str, help="Caption JSON file(s) to process")
     parser.add_argument(
         "--model",
         type=str,
         default="llama3.2",
         help="LLM model to use for summary generation (default: llama3.2)",
     )
-    parser.add_argument(
-        "--overwrite", action="store_true", help="Overwrite existing summary if present"
-    )
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing summary if present")
 
     args = parser.parse_args()
 

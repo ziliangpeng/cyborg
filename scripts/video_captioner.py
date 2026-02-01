@@ -10,13 +10,9 @@ from datetime import datetime
 def extract_frames(video_path: str, interval: float, tmpdir: str):
     fps = 1.0 / interval
     out_pattern = os.path.join(tmpdir, "frame_%04d.jpg")
-    print(
-        f"[INFO] extracting frames from {os.path.basename(video_path)} every {interval}s..."
-    )
+    print(f"[INFO] extracting frames from {os.path.basename(video_path)} every {interval}s...")
     cmd = ["ffmpeg", "-i", video_path, "-vf", f"fps={fps}", "-q:v", "2", out_pattern]
-    subprocess.run(
-        cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
-    )
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
 
 def caption_images(
@@ -40,9 +36,7 @@ def caption_images(
 
         # Move inputs to device with appropriate dtype
         if use_fp16:
-            inputs = processor(images=image, return_tensors="pt").to(
-                device, torch.float16
-            )
+            inputs = processor(images=image, return_tensors="pt").to(device, torch.float16)
         else:
             inputs = processor(images=image, return_tensors="pt").to(device)
 
@@ -134,11 +128,7 @@ Examples:
     process_timestamp = datetime.now().isoformat()
 
     print(f"[INFO] initializing model on device...")
-    device = (
-        torch.device("mps")
-        if torch.backends.mps.is_available()
-        else torch.device("cpu")
-    )
+    device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
     print(f"[INFO] using device: {device}")
 
     model_name = "Salesforce/blip-image-captioning-base"
@@ -147,18 +137,10 @@ Examples:
     # Load model with optional FP16
     if args.fp16:
         print(f"[INFO] loading model in FP16 (half precision)")
-        model = (
-            BlipForConditionalGeneration.from_pretrained(
-                model_name, torch_dtype=torch.float16
-            )
-            .to(device)
-            .eval()
-        )
+        model = BlipForConditionalGeneration.from_pretrained(model_name, torch_dtype=torch.float16).to(device).eval()
     else:
         print(f"[INFO] loading model in FP32 (full precision)")
-        model = (
-            BlipForConditionalGeneration.from_pretrained(model_name).to(device).eval()
-        )
+        model = BlipForConditionalGeneration.from_pretrained(model_name).to(device).eval()
 
     print(f"[INFO] Processing video: {video_file.name}")
     print(
@@ -167,9 +149,7 @@ Examples:
 
     with tempfile.TemporaryDirectory() as tmp:
         extract_frames(str(video_file), args.interval, tmp)
-        frame_paths = sorted(
-            [os.path.join(tmp, p) for p in os.listdir(tmp) if p.startswith("frame_")]
-        )
+        frame_paths = sorted([os.path.join(tmp, p) for p in os.listdir(tmp) if p.startswith("frame_")])
         caps = caption_images(
             frame_paths,
             processor,
