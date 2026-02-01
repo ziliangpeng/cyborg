@@ -2,21 +2,9 @@ use std::fs;
 use std::path::PathBuf;
 
 pub fn solve(verbose: bool) -> String {
-    let data_dir: PathBuf = [env!("CARGO_MANIFEST_DIR"), "data"].iter().collect();
     let data_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "data", "names.txt"]
         .iter()
         .collect();
-
-    if !data_path.exists() {
-        fs::create_dir_all(&data_dir).expect("Failed to create data directory");
-        let response = ureq::get("https://projecteuler.net/resources/documents/0022_names.txt")
-            .call()
-            .expect("Failed to download names.txt");
-        let content = response
-            .into_string()
-            .expect("Failed to read names.txt response");
-        fs::write(&data_path, content).expect("Failed to write names.txt");
-    }
 
     let content = fs::read_to_string(&data_path).expect("Failed to read names.txt");
 

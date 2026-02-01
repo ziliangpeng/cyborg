@@ -11,6 +11,8 @@ __pycache__/
 
 # Downloaded data
 data/
+!apps/project-euler/data/
+!apps/project-euler/data/names.txt
 
 # Experimental crypto artifacts
 experimental/crypto/eth_uniswap_wbtc_usdc_blocks/

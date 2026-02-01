@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 math = { path = "../../packages/math" }
-ureq = "2"
 
 [[bin]]
 name = "project-euler"
