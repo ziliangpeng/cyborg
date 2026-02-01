@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
-import os, sys, subprocess, json, tempfile, time, argparse
-from pathlib import Path
-from PIL import Image
-import torch
-from transformers import BlipForConditionalGeneration, BlipProcessor
+import argparse
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import time
 from datetime import datetime
+from pathlib import Path
+
+import torch
+from PIL import Image
+from transformers import BlipForConditionalGeneration, BlipProcessor
 
 
 def extract_frames(video_path: str, interval: float, tmpdir: str):
@@ -127,7 +134,7 @@ Examples:
     start_time = time.time()
     process_timestamp = datetime.now().isoformat()
 
-    print(f"[INFO] initializing model on device...")
+    print("[INFO] initializing model on device...")
     device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
     print(f"[INFO] using device: {device}")
 
@@ -136,10 +143,10 @@ Examples:
 
     # Load model with optional FP16
     if args.fp16:
-        print(f"[INFO] loading model in FP16 (half precision)")
+        print("[INFO] loading model in FP16 (half precision)")
         model = BlipForConditionalGeneration.from_pretrained(model_name, torch_dtype=torch.float16).to(device).eval()
     else:
-        print(f"[INFO] loading model in FP32 (full precision)")
+        print("[INFO] loading model in FP32 (full precision)")
         model = BlipForConditionalGeneration.from_pretrained(model_name).to(device).eval()
 
     print(f"[INFO] Processing video: {video_file.name}")

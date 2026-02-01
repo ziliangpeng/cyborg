@@ -4,9 +4,11 @@ Add AI-generated video summaries to caption JSON files.
 Reads frame captions and generates a concise summary using a local LLM.
 """
 
-import json, sys, time, argparse
-from pathlib import Path
+import argparse
+import json
 import subprocess
+import time
+from pathlib import Path
 
 
 def format_time(seconds):
@@ -78,7 +80,7 @@ def generate_summary(prompt, model_name, temperature=0.7):
         print(f"[ERROR] Model {model_name} timed out after 5 minutes")
         return None, 0
     except FileNotFoundError:
-        print(f"[ERROR] Ollama not found. Please install Ollama first.")
+        print("[ERROR] Ollama not found. Please install Ollama first.")
         return None, 0
     except Exception as e:
         print(f"[ERROR] Failed to generate summary: {e}")
@@ -140,7 +142,7 @@ Available models (install via Ollama):
 
         # Load caption JSON
         try:
-            with open(json_path, "r") as f:
+            with open(json_path) as f:
                 data = json.load(f)
         except Exception as e:
             print(f"[ERROR] Failed to read JSON: {e}")
@@ -149,7 +151,7 @@ Available models (install via Ollama):
 
         # Check if summary already exists
         if "summary" in data and not args.overwrite:
-            print(f"[SKIP] Summary already exists (use --overwrite to regenerate)")
+            print("[SKIP] Summary already exists (use --overwrite to regenerate)")
             skip_count += 1
             continue
 
