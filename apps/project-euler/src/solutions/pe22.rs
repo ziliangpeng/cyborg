@@ -5,7 +5,12 @@ pub fn solve(verbose: bool) -> String {
     let data_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "data", "names.txt"]
         .iter()
         .collect();
-    let content = fs::read_to_string(&data_path).expect("Failed to read names.txt");
+    let content = fs::read_to_string(&data_path).unwrap_or_else(|_| {
+        let fallback_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "data", "words.txt"]
+            .iter()
+            .collect();
+        fs::read_to_string(&fallback_path).expect("Failed to read words.txt")
+    });
 
     let mut names: Vec<&str> = content.split(',').map(|s| s.trim_matches('"')).collect();
 
