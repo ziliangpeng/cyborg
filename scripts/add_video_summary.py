@@ -49,7 +49,7 @@ Frame descriptions:
     return prompt
 
 
-def generate_summary(prompt, model_name, temperature=0.7):
+def generate_summary(prompt, model_name):
     """Generate summary using Ollama"""
     print(f"[INFO] Generating summary with {model_name}...")
 
