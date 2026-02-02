@@ -8,7 +8,10 @@ pub fn solve(verbose: bool) -> String {
 
     let content = fs::read_to_string(&data_path).expect("Failed to read names.txt");
 
-    let mut names: Vec<&str> = content.split(',').map(|s| s.trim_matches('"')).collect();
+    let mut names: Vec<&str> = content
+        .split(',')
+        .map(|s| s.trim().trim_matches('"'))
+        .collect();
 
     names.sort();
 
