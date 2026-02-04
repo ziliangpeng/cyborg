@@ -1,0 +1,21 @@
+services:
+  codex:
+    build:
+      context: .
+    volumes:
+      # Mount repos
+      - ../../:/workspace
+      - ~/code/ziliang:/home/node/code/ziliang
+      - ~/code/world:/home/node/code/world
+      # Mount container home directory (for .config, credentials, etc)
+      - ~/.codex/sandboxed-home:/home/node
+      # Mount Codex config (selective - only what sandbox needs)
+      - ~/.codex/config.toml:/home/node/.codex/config.toml:rw
+      - ~/.codex/instructions.md:/home/node/.codex/instructions.md:rw
+      - ~/.codex/rules:/home/node/.codex/rules:rw
+      - ~/.codex/skills:/home/node/.codex/skills:rw
+      # Mount git config for commits
+      - ~/.gitconfig:/home/node/.gitconfig:ro
+      # Note: SSH keys are in ~/.codex/sandboxed-home/.ssh (dedicated sandbox key)
+    stdin_open: true
+    tty: true
