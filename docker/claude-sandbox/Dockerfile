@@ -34,4 +34,5 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/home/node/.cargo/bin:${PATH}"
 
 # Entry point runs claude with dangerous skip permissions
-ENTRYPOINT ["claude", "--dangerously-skip-permissions"]
+# --no-auto-update: updates are handled by rebuilding the container
+ENTRYPOINT ["claude", "--dangerously-skip-permissions", "--no-auto-update"]
