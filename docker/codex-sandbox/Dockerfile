@@ -1,0 +1,34 @@
+FROM node:22-slim
+
+# Install Codex CLI globally
+RUN npm install -g @openai/codex
+
+# Install common dev tools, Python, and gh CLI
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    jq \
+    python3 \
+    python3-pip \
+    python3-venv \
+    build-essential \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update \
+    && apt-get install -y gh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configure git to use gh CLI for credentials system-wide
+RUN git config --system credential.helper '!gh auth git-credential'
+
+# Use the existing node user (UID/GID 1000)
+USER node
+WORKDIR /workspace
+
+# Install Rust for the node user
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/home/node/.cargo/bin:${PATH}"
+
+# Entry point runs codex with dangerous bypass (no approvals, no sandbox)
+ENTRYPOINT ["codex", "--dangerously-bypass-approvals-and-sandbox"]
