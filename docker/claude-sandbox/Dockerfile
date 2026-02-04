@@ -33,6 +33,8 @@ WORKDIR /workspace
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/home/node/.cargo/bin:${PATH}"
 
+# Disable auto-update: updates are handled by rebuilding the container
+ENV DISABLE_AUTOUPDATER=1
+
 # Entry point runs claude with dangerous skip permissions
-# --no-auto-update: updates are handled by rebuilding the container
-ENTRYPOINT ["claude", "--dangerously-skip-permissions", "--no-auto-update"]
+ENTRYPOINT ["claude", "--dangerously-skip-permissions"]
