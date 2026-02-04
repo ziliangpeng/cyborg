@@ -7,10 +7,12 @@ services:
       - ../../:/workspace
       # Mount container home directory (for .config, etc)
       - ~/.claude/sandboxed-home:/home/node
-      # Mount Claude config (memory, settings, history, skills)
-      - ~/.claude:/home/node/.claude
+      # Mount Claude config (selective - only what sandbox needs)
+      - ~/.claude/CLAUDE.md:/home/node/.claude/CLAUDE.md:rw
+      - ~/.claude/memory:/home/node/.claude/memory:rw
+      - ~/.claude/skills:/home/node/.claude/skills:rw
       # Mount git config for commits
       - ~/.gitconfig:/home/node/.gitconfig:ro
-      - ~/.ssh:/home/node/.ssh:ro
+      # Note: SSH keys are in ~/.claude/sandboxed-home/.ssh (dedicated sandbox key)
     stdin_open: true
     tty: true
