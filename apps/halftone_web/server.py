@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from bazel_tools.tools.python.runfiles import runfiles
+
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from visual.halftone import (
@@ -31,7 +33,19 @@ from visual.halftone import (
     process,
 )
 
-WEBROOT = Path(__file__).parent / "webroot"
+
+def _get_webroot() -> Path:
+    runner = runfiles.Create()
+    if runner:
+        webroot_path = runner.Rlocation("cyborg/apps/halftone_web/webroot")
+        if webroot_path:
+            return Path(webroot_path)
+    import pathlib
+
+    return pathlib.Path(__file__).parent / "webroot"
+
+
+WEBROOT = _get_webroot()
 STATIC_ROOT = WEBROOT / "static"
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20MB
