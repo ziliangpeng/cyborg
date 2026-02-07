@@ -4,9 +4,10 @@ services:
       context: .
     volumes:
       # Mount repos
-      - ../../:/workspace
+      - ../../:/home/node/code/cyborg
       - ~/code/ziliang:/home/node/code/ziliang
       - ~/code/world:/home/node/code/world
+      - ~/dotfiles:/home/node/code/dotfiles
       # Mount container home directory (for .config, etc)
       - ~/.claude/sandboxed-home:/home/node
       # Mount Claude config (selective - only what sandbox needs)
