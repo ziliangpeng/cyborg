@@ -78,8 +78,8 @@ def run_prompt(
 @click.command()
 @click.option("--model", default="gpt2", help="Model name to use")
 @click.option("--max-tokens", default=50, help="Maximum tokens to generate")
-@click.option("--temperature", default=1.0, help="Sampling temperature")
-@click.option("--top-k", default=None, type=int, help="Top-k sampling")
+@click.option("--temperature", default=0.7, help="Sampling temperature")
+@click.option("--top-k", default=40, type=int, help="Top-k sampling")
 @click.option("--sample/--greedy", default=True, help="Use sampling or greedy decoding")
 @click.option("--prompt", default=None, help="Prompt to run (non-interactive mode)")
 def main(model: str, max_tokens: int, temperature: float, top_k: int | None, sample: bool, prompt: str | None):
