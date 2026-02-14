@@ -31,7 +31,7 @@ RUN echo 'alias csp="claude --dangerously-skip-permissions"' >> /etc/bash.bashrc
 # Use the existing node user (UID/GID 1000)
 # This matches most macOS users' default UID
 USER node
-WORKDIR /home/node/code/cyborg
+WORKDIR /workspace
 
 # Install Rust for the node user
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

@@ -18,6 +18,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DOCKER_DIR="$REPO_ROOT/docker/claude-sandbox"
 
 # Build and run
+export HOST_CWD="$(pwd)"
 cd "$DOCKER_DIR"
 docker compose build
 docker compose run --rm claude "$@"
