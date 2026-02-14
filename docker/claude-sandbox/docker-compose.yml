@@ -6,18 +6,18 @@ services:
       # Mount current working directory as /workspace
       - ${HOST_CWD:-.}:/workspace
       # Mount repos
-      - ~/code/cyborg:/home/node/code/cyborg
-      - ~/code/ziliang:/home/node/code/ziliang
-      - ~/code/world:/home/node/code/world
-      - ~/dotfiles:/home/node/code/dotfiles
+      - ${HOME}/code/cyborg:/home/node/code/cyborg
+      - ${HOME}/code/ziliang:/home/node/code/ziliang
+      - ${HOME}/code/world:/home/node/code/world
+      - ${HOME}/dotfiles:/home/node/code/dotfiles
       # Mount container home directory (for .config, etc)
-      - ~/.claude/sandboxed-home:/home/node
+      - ${HOME}/.claude/sandboxed-home:/home/node
       # Mount Claude config (selective - only what sandbox needs)
-      - ~/.claude/CLAUDE.md:/home/node/.claude/CLAUDE.md:rw
-      - ~/.claude/memory:/home/node/.claude/memory:rw
-      - ~/.claude/skills:/home/node/.claude/skills:rw
+      - ${HOME}/.claude/CLAUDE.md:/home/node/.claude/CLAUDE.md:rw
+      - ${HOME}/.claude/memory:/home/node/.claude/memory:rw
+      - ${HOME}/.claude/skills:/home/node/.claude/skills:rw
       # Mount git config for commits
-      - ~/.gitconfig:/home/node/.gitconfig:ro
-      # Note: SSH keys are in ~/.claude/sandboxed-home/.ssh (dedicated sandbox key)
+      - ${HOME}/.gitconfig:/home/node/.gitconfig:ro
+      # Note: SSH keys are in ${HOME}/.claude/sandboxed-home/.ssh (dedicated sandbox key)
     stdin_open: true
     tty: true
