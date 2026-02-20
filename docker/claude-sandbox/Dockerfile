@@ -1,6 +1,7 @@
 FROM node:22-slim
 
-# Install Claude Code globally
+# Cache-bust when a new Claude Code version is published
+ARG CLAUDE_CODE_VERSION=latest
 RUN npm install -g @anthropic-ai/claude-code
 
 # Install common dev tools, Python, and gh CLI
