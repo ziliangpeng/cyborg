@@ -5,11 +5,10 @@ services:
     volumes:
       # Mount current working directory as /workspace
       - ${HOST_CWD:-.}:/workspace
-      # Mount repos
-      - ${HOME}/code/cyborg:/home/node/code/cyborg
-      - ${HOME}/code/ziliang:/home/node/code/ziliang
-      - ${HOME}/code/world:/home/node/code/world
-      - ${HOME}/dotfiles:/home/node/code/dotfiles
+      # Mount code directory
+      - ${HOME}/code:/home/node/code
+      - ${HOME}/dotfiles:/home/node/dotfiles
+      - ${HOME}/claudews:/home/node/claudews
       # Mount container home directory (for .config, etc)
       - ${HOME}/.claude/sandboxed-home:/home/node
       # Mount Claude config (selective - only what sandbox needs)
