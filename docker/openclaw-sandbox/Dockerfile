@@ -39,4 +39,5 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/home/node/.cargo/bin:${PATH}"
 
 # Entry point starts the gateway daemon in foreground
-ENTRYPOINT ["openclaw", "gateway", "--port", "18789", "--verbose"]
+# --bind lan so it listens on 0.0.0.0 (reachable via Docker port mapping)
+ENTRYPOINT ["openclaw", "gateway", "--port", "18789", "--bind", "lan", "--verbose"]
