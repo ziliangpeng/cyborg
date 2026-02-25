@@ -48,6 +48,11 @@ def run_prompt(
     # Generate
     ttft: float | None = None
     gen_start = time.perf_counter()
+    gen_args = {
+        "temperature": temperature,
+        "top_k": top_k,
+        "do_sample": sample,
+    }
 
     if show_perf and max_tokens > 0:
         # Single-pass measurement path:
@@ -57,9 +62,7 @@ def run_prompt(
             llm,
             input_ids,
             max_new_tokens=1,
-            temperature=temperature,
-            top_k=top_k,
-            do_sample=sample,
+            **gen_args,
         )
         ttft = time.perf_counter() - ttft_start
 
@@ -69,18 +72,14 @@ def run_prompt(
                 llm,
                 output_ids,
                 max_new_tokens=max_tokens - 1,
-                temperature=temperature,
-                top_k=top_k,
-                do_sample=sample,
+                **gen_args,
             )
     else:
         output_ids = generate(
             llm,
             input_ids,
             max_new_tokens=max_tokens,
-            temperature=temperature,
-            top_k=top_k,
-            do_sample=sample,
+            **gen_args,
         )
 
     gen_time = time.perf_counter() - gen_start
