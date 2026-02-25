@@ -37,6 +37,7 @@ def run_prompt(
     temperature: float,
     top_k: int | None,
     sample: bool,
+    show_perf: bool = False,
 ) -> None:
     """Run a single prompt through the model and print results."""
     # Encode prompt
@@ -74,6 +75,26 @@ def run_prompt(
     click.echo(f"  Generation:    {gen_time:.3f}s")
     click.echo(f"  Tokens/sec:    {tokens_per_sec:.1f}")
 
+    if show_perf:
+        # TTFT proxy: time to generate exactly one new token for the same prompt.
+        ttft_start = time.perf_counter()
+        _ = generate(
+            llm,
+            Tensor([input_tokens]),
+            max_new_tokens=1,
+            temperature=temperature,
+            top_k=top_k,
+            do_sample=sample,
+        )
+        ttft = time.perf_counter() - ttft_start
+
+        # TPOT approximation: remaining generation time divided by remaining tokens.
+        tpot = (gen_time - ttft) / (num_output_tokens - 1) if num_output_tokens > 1 else 0.0
+
+        click.echo("Perf:")
+        click.echo(f"  TTFT:          {ttft * 1000:.1f}ms")
+        click.echo(f"  TPOT:          {tpot * 1000:.1f}ms/token")
+
 
 @click.command()
 @click.option("--model", default="gpt2", help="Model name to use")
@@ -93,7 +114,7 @@ def main(model: str, max_tokens: int, temperature: float, top_k: int | None, sam
 
     # Non-interactive mode: run single prompt and exit
     if prompt is not None:
-        run_prompt(llm, tokenizer, prompt, max_tokens, temperature, top_k, sample)
+        run_prompt(llm, tokenizer, prompt, max_tokens, temperature, top_k, sample, show_perf=True)
         return
 
     # Interactive mode
@@ -110,7 +131,7 @@ def main(model: str, max_tokens: int, temperature: float, top_k: int | None, sam
             if not user_prompt.strip():
                 continue
 
-            run_prompt(llm, tokenizer, user_prompt, max_tokens, temperature, top_k, sample)
+            run_prompt(llm, tokenizer, user_prompt, max_tokens, temperature, top_k, sample, show_perf=False)
             click.echo()
 
     except KeyboardInterrupt:
