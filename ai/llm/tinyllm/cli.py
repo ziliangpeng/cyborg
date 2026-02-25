@@ -46,15 +46,43 @@ def run_prompt(
     num_input_tokens = len(input_tokens)
 
     # Generate
+    ttft: float | None = None
     gen_start = time.perf_counter()
-    output_ids = generate(
-        llm,
-        input_ids,
-        max_new_tokens=max_tokens,
-        temperature=temperature,
-        top_k=top_k,
-        do_sample=sample,
-    )
+
+    if show_perf and max_tokens > 0:
+        # Single-pass measurement path:
+        # 1) generate first token and measure TTFT
+        ttft_start = time.perf_counter()
+        output_ids = generate(
+            llm,
+            input_ids,
+            max_new_tokens=1,
+            temperature=temperature,
+            top_k=top_k,
+            do_sample=sample,
+        )
+        ttft = time.perf_counter() - ttft_start
+
+        # 2) continue generating remaining tokens from current sequence
+        if max_tokens > 1:
+            output_ids = generate(
+                llm,
+                output_ids,
+                max_new_tokens=max_tokens - 1,
+                temperature=temperature,
+                top_k=top_k,
+                do_sample=sample,
+            )
+    else:
+        output_ids = generate(
+            llm,
+            input_ids,
+            max_new_tokens=max_tokens,
+            temperature=temperature,
+            top_k=top_k,
+            do_sample=sample,
+        )
+
     gen_time = time.perf_counter() - gen_start
 
     # Decode output
@@ -76,23 +104,12 @@ def run_prompt(
     click.echo(f"  Tokens/sec:    {tokens_per_sec:.1f}")
 
     if show_perf:
-        # TTFT proxy: time to generate exactly one new token for the same prompt.
-        ttft_start = time.perf_counter()
-        _ = generate(
-            llm,
-            Tensor([input_tokens]),
-            max_new_tokens=1,
-            temperature=temperature,
-            top_k=top_k,
-            do_sample=sample,
-        )
-        ttft = time.perf_counter() - ttft_start
-
+        measured_ttft = ttft if ttft is not None else 0.0
         # TPOT approximation: remaining generation time divided by remaining tokens.
-        tpot = (gen_time - ttft) / (num_output_tokens - 1) if num_output_tokens > 1 else 0.0
+        tpot = (gen_time - measured_ttft) / (num_output_tokens - 1) if num_output_tokens > 1 else 0.0
 
         click.echo("Perf:")
-        click.echo(f"  TTFT:          {ttft * 1000:.1f}ms")
+        click.echo(f"  TTFT:          {measured_ttft * 1000:.1f}ms")
         click.echo(f"  TPOT:          {tpot * 1000:.1f}ms/token")
 
 
