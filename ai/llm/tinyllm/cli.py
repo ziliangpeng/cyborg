@@ -47,6 +47,7 @@ def run_prompt(
 
     # Generate
     ttft: float | None = None
+    rest_gen_time: float = 0.0
     gen_start = time.perf_counter()
     gen_args = {
         "temperature": temperature,
@@ -68,12 +69,14 @@ def run_prompt(
 
         # 2) continue generating remaining tokens from current sequence
         if max_tokens > 1:
+            rest_start = time.perf_counter()
             output_ids = generate(
                 llm,
                 output_ids,
                 max_new_tokens=max_tokens - 1,
                 **gen_args,
             )
+            rest_gen_time = time.perf_counter() - rest_start
     else:
         output_ids = generate(
             llm,
@@ -104,8 +107,8 @@ def run_prompt(
 
     if show_perf:
         measured_ttft = ttft if ttft is not None else 0.0
-        # TPOT approximation: remaining generation time divided by remaining tokens.
-        tpot = (gen_time - measured_ttft) / (num_output_tokens - 1) if num_output_tokens > 1 else 0.0
+        # TPOT: time-per-output-token for tokens after the first one.
+        tpot = rest_gen_time / (num_output_tokens - 1) if num_output_tokens > 1 else 0.0
 
         click.echo("Perf:")
         click.echo(f"  TTFT:          {measured_ttft * 1000:.1f}ms")
