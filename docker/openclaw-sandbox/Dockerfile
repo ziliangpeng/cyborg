@@ -24,6 +24,11 @@ RUN apt-get update && apt-get install -y \
 ARG OPENCLAW_VERSION=latest
 RUN npm install -g openclaw
 
+# Install gog (Google Workspace CLI) for the gog skill
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -sL "https://github.com/steipete/gogcli/releases/latest/download/gogcli_0.11.0_linux_${ARCH}.tar.gz" \
+    | tar xz -C /usr/local/bin gog
+
 # Configure git to use gh CLI for credentials system-wide
 RUN git config --system credential.helper '!gh auth git-credential'
 
