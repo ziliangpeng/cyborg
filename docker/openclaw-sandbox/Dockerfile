@@ -1,10 +1,7 @@
 FROM node:22-slim
 
-# Cache-bust when a new Claude Code version is published
-ARG CLAUDE_CODE_VERSION=latest
-RUN npm install -g @anthropic-ai/claude-code @openai/codex
-
-# Install common dev tools, Python, and gh CLI
+# Install common dev tools, Python, and gh CLI (must come before npm install -
+# openclaw needs git at install time)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -23,17 +20,22 @@ RUN apt-get update && apt-get install -y \
     && rm kubectl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install openclaw (after git is available)
+ARG OPENCLAW_VERSION=latest
+RUN npm install -g openclaw
+
+# Install gog (Google Workspace CLI) for the gog skill
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -sL "https://github.com/steipete/gogcli/releases/latest/download/gogcli_0.11.0_linux_${ARCH}.tar.gz" \
+    | tar xz -C /usr/local/bin gog
+
 # Configure git to use gh CLI for credentials system-wide
-# (user-level config is mounted from host, so we use /etc/gitconfig)
-# Must run as root before switching to node user
 RUN git config --system credential.helper '!gh auth git-credential'
 
 # Shell aliases (in system bashrc so they survive home dir volume mount)
-RUN echo 'alias csp="claude --dangerously-skip-permissions"' >> /etc/bash.bashrc \
-    && echo 'alias x="exit"' >> /etc/bash.bashrc
+RUN echo 'alias x="exit"' >> /etc/bash.bashrc
 
 # Use the existing node user (UID/GID 1000)
-# This matches most macOS users' default UID
 USER node
 WORKDIR /workspace
 
@@ -41,11 +43,6 @@ WORKDIR /workspace
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/home/node/.cargo/bin:${PATH}"
 
-# Disable auto-update: updates are handled by rebuilding the container
-ENV DISABLE_AUTOUPDATER=1
-
-# Always stream Python output in real-time (no buffering)
-ENV PYTHONUNBUFFERED=1
-
-# Entry point runs claude, then drops into a shell
-ENTRYPOINT ["bash", "-c", "claude --dangerously-skip-permissions \"$@\"; exec bash -li", "--"]
+# Entry point starts the gateway daemon in foreground
+# --bind lan so it listens on 0.0.0.0 (reachable via Docker port mapping)
+ENTRYPOINT ["openclaw", "gateway", "--port", "18789", "--bind", "lan", "--verbose"]

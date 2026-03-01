@@ -1,0 +1,17 @@
+services:
+  openclaw:
+    build:
+      context: .
+    volumes:
+      # Mount code directory
+      - ${HOME}/code:/home/node/code
+      # Mount container home directory (includes .openclaw/ config inside)
+      # Use real Dropbox path since Docker doesn't follow symlinks
+      - ${HOME}/Dropbox/config/openclaw/sandboxed-home:/home/node
+      # Mount git config for commits
+      - ${HOME}/.gitconfig:/home/node/.gitconfig:ro
+      # Mount Obsidian knowledge base
+      - "${HOME}/Library/Mobile Documents/iCloud~md~obsidian/Documents/kb:/kb"
+    ports:
+      - "18789:18789"
+    restart: unless-stopped
