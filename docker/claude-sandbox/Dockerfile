@@ -2,7 +2,7 @@ FROM node:22-slim
 
 # Cache-bust when a new Claude Code version is published
 ARG CLAUDE_CODE_VERSION=latest
-RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @anthropic-ai/claude-code @openai/codex
 
 # Install common dev tools, Python, and gh CLI
 RUN apt-get update && apt-get install -y \
@@ -43,6 +43,9 @@ ENV PATH="/home/node/.cargo/bin:${PATH}"
 
 # Disable auto-update: updates are handled by rebuilding the container
 ENV DISABLE_AUTOUPDATER=1
+
+# Always stream Python output in real-time (no buffering)
+ENV PYTHONUNBUFFERED=1
 
 # Entry point runs claude, then drops into a shell
 ENTRYPOINT ["bash", "-c", "claude --dangerously-skip-permissions \"$@\"; exec bash -li", "--"]
