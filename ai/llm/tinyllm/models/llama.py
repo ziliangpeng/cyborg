@@ -40,6 +40,16 @@ class LlamaConfig:
         """Open LLaMA 13B (openlm-research/open_llama_13b)."""
         return cls(n_embd=5120, n_layer=40, n_head=40, n_inner=13824)
 
+    @classmethod
+    def llama2_7b(cls) -> "LlamaConfig":
+        """Meta LLaMA 2 7B (meta-llama/Llama-2-7b-hf)."""
+        return cls(n_positions=4096)
+
+    @classmethod
+    def llama2_13b(cls) -> "LlamaConfig":
+        """Meta LLaMA 2 13B (meta-llama/Llama-2-13b-hf)."""
+        return cls(n_embd=5120, n_layer=40, n_head=40, n_inner=13824, n_positions=4096)
+
 
 class _RopeCallable:
     """Wraps precomputed RoPE tables as a callable for CausalAttention."""
@@ -98,6 +108,8 @@ class LLaMA(BaseModel):
             "openlm-research/open_llama_3b": LlamaConfig.llama_3b,
             "openlm-research/open_llama_7b": LlamaConfig.llama_7b,
             "openlm-research/open_llama_13b": LlamaConfig.llama_13b,
+            "meta-llama/Llama-2-7b-hf": LlamaConfig.llama2_7b,
+            "meta-llama/Llama-2-13b-hf": LlamaConfig.llama2_13b,
         }
         config = config_map.get(model_name, LlamaConfig.llama_3b)()
         model = cls(config)

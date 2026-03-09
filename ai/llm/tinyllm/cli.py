@@ -14,7 +14,7 @@ def load_model(model_name: str) -> BaseModel:
     """Load model by name."""
     if model_name.startswith("facebook/opt-"):
         return OPT.from_pretrained(model_name)
-    elif model_name.startswith("openlm-research/") or "llama" in model_name.lower():
+    elif model_name.startswith("openlm-research/") or model_name.startswith("meta-llama/") or "llama" in model_name.lower():
         return LLaMA.from_pretrained(model_name)
     else:
         return GPT2.from_pretrained(model_name)
