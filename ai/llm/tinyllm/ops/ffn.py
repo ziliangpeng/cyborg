@@ -1,6 +1,6 @@
 """Feed-forward network for TinyLLM."""
 
-from typing import Callable
+from collections.abc import Callable
 
 from tinygrad import Tensor
 from tinygrad.nn import Linear
