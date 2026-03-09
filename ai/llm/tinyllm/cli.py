@@ -5,7 +5,7 @@ import time
 import click
 from tinygrad import Tensor
 
-from ai.llm.tinyllm import GPT2, OPT, generate
+from ai.llm.tinyllm import GPT2, LLaMA, OPT, generate
 from ai.llm.tinyllm.models import BaseModel
 from ai.llm.tinyllm.utils import Tokenizer
 
@@ -14,6 +14,8 @@ def load_model(model_name: str) -> BaseModel:
     """Load model by name."""
     if model_name.startswith("facebook/opt-"):
         return OPT.from_pretrained(model_name)
+    elif model_name.startswith("openlm-research/") or "llama" in model_name.lower():
+        return LLaMA.from_pretrained(model_name)
     else:
         return GPT2.from_pretrained(model_name)
 
@@ -120,7 +122,7 @@ def run_prompt(
 @click.option("--max-tokens", default=50, help="Maximum tokens to generate")
 @click.option("--temperature", default=0.7, help="Sampling temperature")
 @click.option("--top-k", default=40, type=int, help="Top-k sampling")
-@click.option("--sample/--greedy", default=True, help="Use sampling or greedy decoding")
+@click.option("--sample/--greedy", default=False, help="Use sampling or greedy decoding")
 @click.option("--prompt", default=None, help="Prompt to run (non-interactive mode)")
 def main(model: str, max_tokens: int, temperature: float, top_k: int | None, sample: bool, prompt: str | None):
     """Interactive CLI for TinyLLM inference."""

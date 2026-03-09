@@ -31,6 +31,8 @@ packaging==25.0
     #   transformers
 pillow==12.1.0
     # via -r requirements.txt
+protobuf==7.34.0
+    # via -r requirements.txt
 pyyaml==6.0.3
     # via
     #   huggingface-hub
@@ -48,6 +50,8 @@ safetensors==0.7.0
     # via
     #   -r requirements.txt
     #   transformers
+sentencepiece==0.2.1
+    # via -r requirements.txt
 tiktoken==0.12.0
     # via -r requirements.txt
 tinygrad==0.11.0

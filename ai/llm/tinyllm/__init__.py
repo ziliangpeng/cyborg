@@ -4,9 +4,9 @@ A minimal, educational LLM library using TinyGrad with zero PyTorch dependencies
 Provides clean implementations of LLM building blocks for multiple model families.
 """
 
-from .models import GPT2, OPT, BaseModel, GPT2Config, OPTConfig, generate
+from .models import GPT2, OPT, BaseModel, GPT2Config, LLaMA, LlamaConfig, OPTConfig, generate
 from .utils import load_weights
 
-__all__ = ["BaseModel", "load_weights", "GPT2", "GPT2Config", "OPT", "OPTConfig", "generate"]
+__all__ = ["BaseModel", "load_weights", "GPT2", "GPT2Config", "OPT", "OPTConfig", "LLaMA", "LlamaConfig", "generate"]
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

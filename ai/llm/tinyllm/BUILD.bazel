@@ -8,10 +8,12 @@ py_library(
         "//ai/llm/tokenizer",
         "@pip//huggingface_hub",
         "@pip//numpy",
+        "@pip//protobuf",
         "@pip//safetensors",
+        "@pip//sentencepiece",
         "@pip//tiktoken",
         "@pip//tinygrad",
-        "@pip//transformers",  # For OPT tokenizer
+        "@pip//transformers",  # For OPT and LLaMA tokenizers
     ],
     visibility = ["//ai/llm/tinyllm:__subpackages__"],
 )
@@ -72,6 +74,15 @@ py_test(
 py_test(
     name = "test_opt",
     srcs = ["test_opt.py"],
+    deps = [":tinyllm"],
+    size = "large",  # May download weights
+    timeout = "long",  # Allow time for download
+)
+
+# LLaMA model test
+py_test(
+    name = "test_llama",
+    srcs = ["test_llama.py"],
     deps = [":tinyllm"],
     size = "large",  # May download weights
     timeout = "long",  # Allow time for download

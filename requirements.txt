@@ -12,3 +12,5 @@ huggingface_hub
 safetensors
 tiktoken
 transformers>=4.40.0  # For OPT tokenizer (need newer version for pre-built wheels)
+protobuf  # For LLaMA SentencePiece tokenizer
+sentencepiece  # For LLaMA tokenizer
