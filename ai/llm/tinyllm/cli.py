@@ -5,7 +5,7 @@ import time
 import click
 from tinygrad import Tensor
 
-from ai.llm.tinyllm import GPT2, LLaMA, OPT, generate
+from ai.llm.tinyllm import GPT2, OPT, LLaMA, generate
 from ai.llm.tinyllm.models import BaseModel
 from ai.llm.tinyllm.utils import Tokenizer
 

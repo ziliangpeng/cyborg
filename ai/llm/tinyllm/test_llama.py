@@ -2,7 +2,6 @@
 
 import time
 
-import numpy as np
 from tinygrad import Tensor
 
 from ai.llm.tinyllm import LLaMA, LlamaConfig, generate
