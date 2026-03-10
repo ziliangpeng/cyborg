@@ -34,3 +34,20 @@ def relu(x: Tensor) -> Tensor:
         Activated tensor
     """
     return x.relu()
+
+
+def silu(x: Tensor) -> Tensor:
+    """
+    Sigmoid Linear Unit activation.
+
+    SiLU(x) = x * sigmoid(x)
+
+    Used in LLaMA's SwiGLU feed-forward network.
+
+    Args:
+        x: Input tensor
+
+    Returns:
+        Activated tensor
+    """
+    return x * x.sigmoid()

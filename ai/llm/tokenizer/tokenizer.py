@@ -69,5 +69,13 @@ class Tokenizer:
         if model_name.startswith("facebook/opt-"):
             return cls(model_name, "huggingface")
 
+        # LLaMA models use HuggingFace tokenizer (SentencePiece via transformers)
+        if (
+            model_name.startswith("openlm-research/")
+            or model_name.startswith("meta-llama/")
+            or "llama" in model_name.lower()
+        ):
+            return cls(model_name, "huggingface")
+
         # Default to tiktoken gpt2
         return cls("gpt2", "tiktoken")
