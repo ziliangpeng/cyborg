@@ -80,12 +80,15 @@ py_test(
 )
 
 # LLaMA model test
+# tagged "manual" because it downloads large weights (~6GB) and exceeds CI time limits
+# run locally with: bazel test //ai/llm/tinyllm:test_llama
 py_test(
     name = "test_llama",
     srcs = ["test_llama.py"],
     deps = [":tinyllm"],
-    size = "large",  # May download weights
-    timeout = "long",  # Allow time for download
+    size = "large",
+    timeout = "long",
+    tags = ["manual"],
 )
 
 # Interactive CLI
