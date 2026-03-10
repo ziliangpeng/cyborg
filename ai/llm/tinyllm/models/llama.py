@@ -26,17 +26,17 @@ class LlamaConfig:
     rope_theta: float = 10000.0
 
     @classmethod
-    def llama_3b(cls) -> "LlamaConfig":
+    def open_llama_3b(cls) -> "LlamaConfig":
         """Open LLaMA 3B (openlm-research/open_llama_3b)."""
         return cls(n_embd=3200, n_layer=26, n_head=32, n_inner=8640)
 
     @classmethod
-    def llama_7b(cls) -> "LlamaConfig":
+    def open_llama_7b(cls) -> "LlamaConfig":
         """Open LLaMA 7B (openlm-research/open_llama_7b)."""
         return cls()
 
     @classmethod
-    def llama_13b(cls) -> "LlamaConfig":
+    def open_llama_13b(cls) -> "LlamaConfig":
         """Open LLaMA 13B (openlm-research/open_llama_13b)."""
         return cls(n_embd=5120, n_layer=40, n_head=40, n_inner=13824)
 
@@ -105,13 +105,16 @@ class LLaMA(BaseModel):
         from ..utils import load_weights
 
         config_map = {
-            "openlm-research/open_llama_3b": LlamaConfig.llama_3b,
-            "openlm-research/open_llama_7b": LlamaConfig.llama_7b,
-            "openlm-research/open_llama_13b": LlamaConfig.llama_13b,
+            "openlm-research/open_llama_3b": LlamaConfig.open_llama_3b,
+            "openlm-research/open_llama_7b": LlamaConfig.open_llama_7b,
+            "openlm-research/open_llama_13b": LlamaConfig.open_llama_13b,
             "meta-llama/Llama-2-7b-hf": LlamaConfig.llama2_7b,
             "meta-llama/Llama-2-13b-hf": LlamaConfig.llama2_13b,
         }
-        config = config_map.get(model_name, LlamaConfig.llama_3b)()
+        config_fn = config_map.get(model_name)
+        if config_fn is None:
+            raise ValueError(f"Unsupported LLaMA model: {model_name}. Supported: {list(config_map.keys())}")
+        config = config_fn()
         model = cls(config)
         _load_llama_weights(model, load_weights(model_name))
         return model

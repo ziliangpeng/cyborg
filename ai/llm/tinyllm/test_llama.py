@@ -10,7 +10,7 @@ from ai.llm.tinyllm import LLaMA, LlamaConfig, generate
 
 def test_config():
     """Test LlamaConfig fields."""
-    config = LlamaConfig.llama_3b()
+    config = LlamaConfig.open_llama_3b()
     assert config.n_layer == 26
     assert config.n_head == 32
     assert config.n_embd == 3200
@@ -21,14 +21,14 @@ def test_config():
     assert config.rope_theta == 10000.0
     print("Config 3B test passed")
 
-    config_7b = LlamaConfig.llama_7b()
+    config_7b = LlamaConfig.open_llama_7b()
     assert config_7b.n_layer == 32
     assert config_7b.n_head == 32
     assert config_7b.n_embd == 4096
     assert config_7b.n_inner == 11008
     print("Config 7B test passed")
 
-    config_13b = LlamaConfig.llama_13b()
+    config_13b = LlamaConfig.open_llama_13b()
     assert config_13b.n_layer == 40
     assert config_13b.n_head == 40
     assert config_13b.n_embd == 5120
@@ -38,7 +38,7 @@ def test_config():
 
 def test_forward_pass():
     """Test model forward pass with random weights."""
-    config = LlamaConfig.llama_3b()
+    config = LlamaConfig.open_llama_3b()
     model = LLaMA(config)
 
     batch_size, seq_len = 2, 10
