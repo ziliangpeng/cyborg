@@ -3,10 +3,9 @@
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 from huggingface_hub import snapshot_download
 from safetensors import safe_open
-from tinygrad import Tensor
+from tinygrad import Device, Tensor
 from tinygrad.nn.state import torch_load
 
 
@@ -33,8 +32,16 @@ def load_weights(model_name: str) -> dict[str, Tensor]:
     # Try safetensors first, fall back to PyTorch bin
     weights = _load_weights_from_dir(cache_dir)
 
-    # Convert to TinyGrad tensors
-    return {name: Tensor(arr) for name, arr in weights.items()}
+    # Convert to TinyGrad tensors on the default device
+    result = {}
+    for name, val in weights.items():
+        if isinstance(val, Tensor):
+            # DISK-backed tensor from torch_load (.bin) — copy to default device
+            result[name] = val.to(Device.DEFAULT)
+        else:
+            # Numpy array from safetensors — create tensor on default device
+            result[name] = Tensor(val)
+    return result
 
 
 def _download_from_hf(model_name: str) -> Path:
@@ -125,19 +132,11 @@ def _load_pickle_bin(cache_dir: Path) -> dict[str, Any]:
     # Find all .bin files
     bin_files = sorted(cache_dir.glob("*.bin"))
 
-    # Load each file with tinygrad's torch_load (no torch dependency)
-    # We need to pass a Tensor created from bytes to avoid disk device permission issues
+    # Load each file with tinygrad's torch_load using DISK device (no CPU compilation needed)
     for file in bin_files:
-        # Read file into memory first to avoid permission issues with disk tensors
-        with open(file, "rb") as f:
-            file_bytes = f.read()
-        # Create in-memory tensor from bytes and pass to torch_load
-        # Use bytearray to create a writable buffer (np.frombuffer is read-only)
-        # Keep on CPU to avoid GPU OOM for large models
-        file_array = np.array(bytearray(file_bytes), dtype=np.uint8)
-        file_tensor = Tensor(file_array, device="CPU")
-        state_dict = torch_load(file_tensor)
+        # Pass path directly — torch_load uses DISK device, avoiding CPU/clang compilation
+        state_dict = torch_load(str(file))
         for key, tensor in state_dict.items():
-            weights[key] = tensor.numpy()
+            weights[key] = tensor  # DISK-backed tensor, moved to target device later
 
     return weights

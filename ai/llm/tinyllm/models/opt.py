@@ -111,17 +111,20 @@ def _load_opt_weights(model: OPT, weights: dict[str, Tensor]) -> None:
     Load HuggingFace OPT weights into model.
 
     OPT uses standard Linear format (out_features, in_features) — no transposition needed.
+    Different checkpoints use either "model.decoder.*" or bare "decoder.*" key prefixes.
     """
-    model.embeddings.embed_tokens.weight = weights["model.decoder.embed_tokens.weight"]
-    model.embeddings.embed_positions.weight = weights["model.decoder.embed_positions.weight"]
+    # Detect key prefix: some checkpoints use "model.decoder.*", others bare "decoder.*"
+    pfx = "model.decoder" if "model.decoder.embed_tokens.weight" in weights else "decoder"
+    model.embeddings.embed_tokens.weight = weights[f"{pfx}.embed_tokens.weight"]
+    model.embeddings.embed_positions.weight = weights[f"{pfx}.embed_positions.weight"]
 
     if model.embeddings.project_in is not None:
-        model.embeddings.project_in.weight = weights["model.decoder.project_in.weight"]
+        model.embeddings.project_in.weight = weights[f"{pfx}.project_in.weight"]
     if model.embeddings.project_out is not None:
-        model.embeddings.project_out.weight = weights["model.decoder.project_out.weight"]
+        model.embeddings.project_out.weight = weights[f"{pfx}.project_out.weight"]
 
     for i, block in enumerate(model.blocks):
-        prefix = f"model.decoder.layers.{i}."
+        prefix = f"{pfx}.layers.{i}."
 
         block.self_attn_layer_norm.weight = weights[f"{prefix}self_attn_layer_norm.weight"]
         block.self_attn_layer_norm.bias = weights[f"{prefix}self_attn_layer_norm.bias"]
@@ -143,8 +146,8 @@ def _load_opt_weights(model: OPT, weights: dict[str, Tensor]) -> None:
         block.mlp.fc2.weight = weights[f"{prefix}fc2.weight"]
         block.mlp.fc2.bias = weights[f"{prefix}fc2.bias"]
 
-    model.final_layer_norm.weight = weights["model.decoder.final_layer_norm.weight"]
-    model.final_layer_norm.bias = weights["model.decoder.final_layer_norm.bias"]
+    model.final_layer_norm.weight = weights[f"{pfx}.final_layer_norm.weight"]
+    model.final_layer_norm.bias = weights[f"{pfx}.final_layer_norm.bias"]
 
     model.lm_head.weight = weights["lm_head.weight"]
     if "lm_head.bias" in weights:
