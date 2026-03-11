@@ -5,7 +5,7 @@ from typing import Any
 
 from huggingface_hub import snapshot_download
 from safetensors import safe_open
-from tinygrad import Tensor
+from tinygrad import Device, Tensor
 from tinygrad.nn.state import torch_load
 
 
