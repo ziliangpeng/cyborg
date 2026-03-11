@@ -128,7 +128,8 @@ def run_prompt(
 @click.option("--top-k", default=40, type=int, help="Top-k sampling")
 @click.option("--sample/--greedy", default=False, help="Use sampling or greedy decoding")
 @click.option("--prompt", default=None, help="Prompt to run (non-interactive mode)")
-def main(model: str, max_tokens: int, temperature: float, top_k: int | None, sample: bool, prompt: str | None):
+@click.option("--warmup", default=0, type=int, help="Number of warmup runs before timing (warms up JIT)")
+def main(model: str, max_tokens: int, temperature: float, top_k: int | None, sample: bool, prompt: str | None, warmup: int):
     """Interactive CLI for TinyLLM inference."""
     click.echo(f"Loading model: {model}")
     load_start = time.perf_counter()
@@ -139,6 +140,11 @@ def main(model: str, max_tokens: int, temperature: float, top_k: int | None, sam
 
     # Non-interactive mode: run single prompt and exit
     if prompt is not None:
+        if warmup > 0:
+            click.echo(f"Warming up JIT ({warmup} run(s))...")
+            for _ in range(warmup):
+                run_prompt(llm, tokenizer, prompt, max_tokens, temperature, top_k, sample, show_perf=False)
+            click.echo("Warmup done.")
         run_prompt(llm, tokenizer, prompt, max_tokens, temperature, top_k, sample, show_perf=True)
         return
 
