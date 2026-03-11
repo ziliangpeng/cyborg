@@ -149,3 +149,16 @@ py_test(
     timeout = "long",
     tags = ["manual"],
 )
+
+# Inference benchmark binary
+py_binary(
+    name = "benchmark",
+    srcs = ["benchmark.py"],
+    main = "benchmark.py",
+    deps = [
+        ":tinyllm",
+        ":cli",
+        "@pip//click",
+        "@pip//tinygrad",
+    ],
+)
