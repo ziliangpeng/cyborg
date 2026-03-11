@@ -34,14 +34,13 @@ def load_weights(model_name: str) -> dict[str, Tensor]:
     weights = _load_weights_from_dir(cache_dir)
 
     # Convert to TinyGrad tensors on the default device
-    import os
     result = {}
     for name, val in weights.items():
         if isinstance(val, Tensor):
-            # CPU tensor from torch_load (.bin format) — copy to default device
-            target_device = "CUDA:0" if os.environ.get("CUDA") else "CPU"
-            result[name] = val.to(target_device)
+            # DISK-backed tensor from torch_load (.bin) — copy to default device
+            result[name] = val.to(Device.DEFAULT)
         else:
+            # Numpy array from safetensors — create tensor on default device
             result[name] = Tensor(val)
     return result
 
