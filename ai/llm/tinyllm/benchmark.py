@@ -19,7 +19,7 @@ import time
 import click
 from tinygrad import Tensor
 
-from ai.llm.tinyllm import generate
+from ai.llm.tinyllm import generate, SimpleKVCache
 from ai.llm.tinyllm.utils import Tokenizer
 from ai.llm.tinyllm.cli import load_model, format_param_count
 
@@ -35,13 +35,15 @@ def _make_prompt(tokenizer, target_len: int) -> Tensor:
     return Tensor([tokens])
 
 
-def _run_once(model, input_ids: Tensor, output_len: int, temperature: float, top_k) -> dict:
+def _run_once(model, input_ids: Tensor, output_len: int, temperature: float, top_k, use_kv_cache: bool = False) -> dict:
     if input_ids.shape[1] > model.config.n_positions:
         input_ids = input_ids[:, -model.config.n_positions:]
 
+    kv_cache = SimpleKVCache() if use_kv_cache else None
+
     t0 = time.perf_counter()
     first_out = generate(model, input_ids, max_new_tokens=1,
-                         temperature=temperature, top_k=top_k)
+                         temperature=temperature, top_k=top_k, kv_cache=kv_cache)
     ttft = time.perf_counter() - t0
 
     if output_len <= 1:
@@ -49,7 +51,7 @@ def _run_once(model, input_ids: Tensor, output_len: int, temperature: float, top
 
     t1 = time.perf_counter()
     generate(model, first_out, max_new_tokens=output_len - 1,
-             temperature=temperature, top_k=top_k)
+             temperature=temperature, top_k=top_k, kv_cache=kv_cache)
     rest = time.perf_counter() - t1
 
     return {
@@ -91,7 +93,8 @@ def _fmt(label, values, unit):
 @click.option("--output-lens", default="32,128", help="Comma-separated output lengths")
 @click.option("--temperature", default=1.0, help="Sampling temperature")
 @click.option("--top-k", default=None, type=int, help="Top-k (None = greedy)")
-def main(model, warmup, runs, input_lens, output_lens, temperature, top_k):
+@click.option("--kv-cache/--no-kv-cache", default=False, help="Use SimpleKVCache")
+def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_cache):
     """TinyLLM inference benchmark with JIT warmup and distribution stats."""
     in_lens  = [int(x) for x in input_lens.split(",")]
     out_lens = [int(x) for x in output_lens.split(",")]
@@ -102,7 +105,7 @@ def main(model, warmup, runs, input_lens, output_lens, temperature, top_k):
     tokenizer = Tokenizer.for_model(model)
     click.echo(f"Model loaded in {time.perf_counter()-t0:.2f}s "
                f"({format_param_count(llm.param_count())} params)")
-    click.echo(f"warmup={warmup}  runs={runs}  "
+    click.echo(f"warmup={warmup}  runs={runs}  kv_cache={kv_cache}  "
                f"input_lens={in_lens}  output_lens={out_lens}")
     click.echo()
 
@@ -115,7 +118,8 @@ def main(model, warmup, runs, input_lens, output_lens, temperature, top_k):
             for in_len, out_len in configs:
                 ids = _make_prompt(tokenizer, in_len)
                 generate(llm, ids, max_new_tokens=out_len,
-                         temperature=temperature, top_k=top_k)
+                         temperature=temperature, top_k=top_k,
+                         kv_cache=SimpleKVCache() if kv_cache else None)
         click.echo("Warmup complete.\n")
 
     click.echo(f"  {'input':>6}  {'output':>6}  metric    "
@@ -126,7 +130,7 @@ def main(model, warmup, runs, input_lens, output_lens, temperature, top_k):
         ids = _make_prompt(tokenizer, in_len)
         actual_in = ids.shape[1]
 
-        results = [_run_once(llm, ids, out_len, temperature, top_k)
+        results = [_run_once(llm, ids, out_len, temperature, top_k, use_kv_cache=kv_cache)
                    for _ in range(runs)]
 
         ttfts  = [r["ttft"] * 1000 for r in results]
