@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 from huggingface_hub import snapshot_download
 from safetensors import safe_open
 from tinygrad import Tensor
