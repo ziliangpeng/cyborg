@@ -140,3 +140,12 @@ py_test(
     timeout = "long",
     tags = ["manual"],
 )
+
+py_test(
+    name = "test_prealloc_kvcache",
+    srcs = ["test_prealloc_kvcache.py"],
+    deps = [":tinyllm"],
+    size = "large",
+    timeout = "long",
+    tags = ["manual"],
+)

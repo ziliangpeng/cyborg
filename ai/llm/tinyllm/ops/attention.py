@@ -47,8 +47,10 @@ class CausalAttention:
             q, k = self.rope(q, k)
 
         # Update KV cache and get full K, V (cached history + new)
+        attn_bias: Tensor | None = None
         if kv_cache is not None and layer_idx is not None:
             k, v = kv_cache.update(layer_idx, k, v)
+            attn_bias = kv_cache.attention_bias()
 
         total_seq_len = k.shape[2]
 
@@ -58,10 +60,14 @@ class CausalAttention:
 
         # Apply causal mask only during prefill (seq_len > 1).
         # During decode (seq_len == 1) the single query is the last token
-        # and should attend to all cached positions — no masking needed.
+        # and should attend to all cached positions — no causal masking needed.
         if seq_len > 1:
             causal_mask = Tensor.ones(seq_len, total_seq_len).triu(1) * -1e9
             attn_weights = attn_weights + causal_mask
+
+        # Apply KV cache validity mask (PreallocKVCache: masks unwritten positions)
+        if attn_bias is not None:
+            attn_weights = attn_weights + attn_bias.reshape(1, 1, 1, -1)
 
         attn_weights = attn_weights.softmax(axis=-1)
         attn_output = attn_weights @ v
