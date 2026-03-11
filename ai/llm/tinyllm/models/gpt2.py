@@ -8,6 +8,7 @@ from ..ops.attention import CausalAttention
 from ..ops.embeddings import TokenPositionEmbedding
 from ..ops.ffn import FeedForward
 from .base import BaseModel
+from ..kv_cache import KVCache
 from .config import GPT2Config
 
 
@@ -20,8 +21,8 @@ class TransformerBlock:
         self.ln_2 = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
         self.mlp = FeedForward(config.n_embd, config.n_inner, activation=gelu)
 
-    def __call__(self, x: Tensor) -> Tensor:
-        x = x + self.attn(self.ln_1(x))
+    def __call__(self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None) -> Tensor:
+        x = x + self.attn(self.ln_1(x), layer_idx=layer_idx, kv_cache=kv_cache)
         x = x + self.mlp(self.ln_2(x))
         return x
 
@@ -35,10 +36,11 @@ class GPT2(BaseModel):
         self.blocks = [TransformerBlock(config) for _ in range(config.n_layer)]
         self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
 
-    def __call__(self, input_ids: Tensor) -> Tensor:
-        x = self.embeddings(input_ids)
-        for block in self.blocks:
-            x = block(x)
+    def __call__(self, input_ids: Tensor, kv_cache: KVCache | None = None) -> Tensor:
+        start_pos = kv_cache.seq_len() if kv_cache is not None else 0
+        x = self.embeddings(input_ids, start_pos=start_pos)
+        for i, block in enumerate(self.blocks):
+            x = block(x, layer_idx=i, kv_cache=kv_cache)
         x = self.ln_f(x)
         # LM head with tied weights
         return x @ self.embeddings.wte.weight.T

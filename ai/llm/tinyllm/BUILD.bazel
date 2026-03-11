@@ -44,10 +44,11 @@ py_library(
 # Main tinyllm library (public API)
 py_library(
     name = "tinyllm",
-    srcs = ["__init__.py"],
+    srcs = ["__init__.py", "kv_cache.py"],
     deps = [
         ":models",
         ":utils",
+        "@pip//tinygrad",
     ],
     visibility = ["//visibility:public"],
 )
@@ -101,4 +102,41 @@ py_binary(
         "@pip//click",
         "@pip//tinygrad",
     ],
+)
+
+# KV cache test
+py_test(
+    name = "test_kvcache_gpt2",
+    srcs = ["test_kvcache_gpt2.py"],
+    deps = [":tinyllm"],
+    size = "large",
+    timeout = "long",
+    tags = ["manual"],
+)
+
+py_test(
+    name = "test_kv_cache2",
+    srcs = ["test_kv_cache2.py"],
+    deps = [":tinyllm"],
+    size = "large",
+    timeout = "long",
+    tags = ["manual"],
+)
+
+py_test(
+    name = "test_kv_cache3",
+    srcs = ["test_kv_cache3.py"],
+    deps = [":tinyllm"],
+    size = "large",
+    timeout = "long",
+    tags = ["manual"],
+)
+
+py_test(
+    name = "test_kv_cache_prefix",
+    srcs = ["test_kv_cache_prefix.py"],
+    deps = [":tinyllm"],
+    size = "large",
+    timeout = "long",
+    tags = ["manual"],
 )

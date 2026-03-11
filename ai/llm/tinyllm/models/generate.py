@@ -6,6 +6,7 @@ from tinygrad import Tensor
 
 if TYPE_CHECKING:
     from .base import BaseModel
+    from ..kv_cache import KVCache
 
 
 def generate(
@@ -15,6 +16,7 @@ def generate(
     temperature: float = 1.0,
     top_k: int | None = None,
     do_sample: bool = False,
+    kv_cache: "KVCache | None" = None,
 ) -> Tensor:
     """
     Generate text tokens autoregressively.
@@ -26,10 +28,16 @@ def generate(
         temperature: Sampling temperature (1.0 = neutral, <1.0 = sharper, >1.0 = flatter)
         top_k: If set, only sample from top-k most likely tokens
         do_sample: If True, sample from distribution; if False, greedy decoding
+        kv_cache: Optional KV cache for faster decoding. When provided, the prompt
+                  is processed once (prefill) and each decode step only processes
+                  the single new token instead of the full sequence.
 
     Returns:
         (batch_size, seq_len + max_new_tokens) generated token IDs
     """
+    if kv_cache is not None:
+        return _generate_with_cache(model, input_ids, max_new_tokens, temperature, top_k, do_sample, kv_cache)
+
     for _ in range(max_new_tokens):
         # Truncate to max sequence length if needed
         seq_len = input_ids.shape[1]
@@ -61,6 +69,40 @@ def generate(
         input_ids = Tensor.cat(input_ids, next_token, dim=1)
 
     return input_ids
+
+
+def _generate_with_cache(
+    model: "BaseModel",
+    input_ids: Tensor,
+    max_new_tokens: int,
+    temperature: float,
+    top_k: int | None,
+    do_sample: bool,
+    kv_cache: "KVCache",
+) -> Tensor:
+    """
+    Generate with KV cache: prefill prompt once, then decode one token at a time.
+    """
+    def _sample(logits: Tensor) -> Tensor:
+        if temperature != 1.0:
+            logits = logits / temperature
+        if do_sample:
+            if top_k is not None:
+                logits = _top_k_filtering(logits, top_k)
+            return _multinomial_sample(logits.softmax(axis=-1))
+        return logits.argmax(axis=-1, keepdim=True)
+
+    # Prefill: process the full prompt, populate the cache
+    logits = model(input_ids, kv_cache=kv_cache)
+    next_token = _sample(logits[:, -1, :])
+    output = Tensor.cat(input_ids, next_token, dim=1)
+
+    # Decode: one new token at a time, reusing cached K, V
+    for _ in range(max_new_tokens - 1):
+        logits = model(next_token, kv_cache=kv_cache)
+        next_token = _sample(logits[:, -1, :])
+        output = Tensor.cat(output, next_token, dim=1)
+    return output
 
 
 def _top_k_filtering(logits: Tensor, k: int) -> Tensor:
