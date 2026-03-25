@@ -93,7 +93,9 @@ def _generate_variable_jit(model, input_ids, max_new_tokens, _sample, kv_cache):
     if model._jit.cnt < 2:
         model._jit.reset()
 
+    kv_cache._eager = False  # lazy mode: skip per-layer realize() during prefill
     logits = model(input_ids, kv_cache=kv_cache, start_pos=0)
+    kv_cache.flush()           # one GPU sync to realize all accumulated assigns
     next_token = _sample(logits[:, -1, :])
     output = Tensor.cat(input_ids, next_token, dim=1)
     start_pos = input_ids.shape[1]

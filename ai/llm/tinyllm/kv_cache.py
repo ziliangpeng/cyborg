@@ -44,6 +44,10 @@ class KVCache(ABC):
         """
         return None
 
+    def flush(self) -> None:
+        """Realize all pending assigns. Default no-op; override in VariableKVCache."""
+        pass
+
 
 class SimpleKVCache(KVCache):
     """
@@ -206,6 +210,7 @@ class VariableKVCache(KVCache):
         # Single pre-allocated buffer for all layers: (2, n_layers, batch, heads, max_seq_len, head_dim)
         # Index 0 = keys, index 1 = values
         self.cache = Tensor.zeros(2, n_layers, batch, num_heads, max_seq_len, head_dim).contiguous().realize()
+        self._eager = True  # True during decode, False during prefill (lazy mode)
 
 
     def update(self, layer_idx: int, k: Tensor, v: Tensor, start_pos=None) -> tuple[Tensor, Tensor]:
@@ -243,9 +248,11 @@ class VariableKVCache(KVCache):
 
         # Write new K/V into the pre-allocated buffer at [sp : sp + T]
         # assign() is an in-place operation; realize() flushes the lazy graph immediately
-        self.cache[:, layer_idx, :, :, sp:sp + T, :].assign(
+        assigned = self.cache[:, layer_idx, :, :, sp:sp + T, :].assign(
             Tensor.stack(k[:, :, :T, :], v[:, :, :T, :])  # shape: (2, batch, heads, T, head_dim)
-        ).realize()
+        )
+        if self._eager:
+            assigned.realize()
 
         # Advance internal write position only when sp is a concrete int.
         # When sp is a bound UOp (JIT decode), the caller (generate.py) manages position tracking.
@@ -262,6 +269,11 @@ class VariableKVCache(KVCache):
         full_k = self.cache[0, layer_idx, :, :, 0:end_pos, :]
         full_v = self.cache[1, layer_idx, :, :, 0:end_pos, :]
         return full_k, full_v
+
+    def flush(self) -> None:
+        """Realize all pending lazy assigns. Call once after prefill to flush in one GPU sync."""
+        self.cache.realize()
+        self._eager = True  # restore eager mode for subsequent decode steps
 
     def attention_bias(self) -> Tensor | None:
         """No mask needed — update() only returns valid positions [0:end_pos]."""
