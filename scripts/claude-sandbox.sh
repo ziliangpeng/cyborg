@@ -17,12 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DOCKER_DIR="$REPO_ROOT/docker/claude-sandbox"
 
-# Fetch latest Claude Code version to bust Docker cache when it changes
-CLAUDE_CODE_VERSION=$(npm view @anthropic-ai/claude-code version 2>/dev/null || echo "latest")
-export CLAUDE_CODE_VERSION
-
-# Build and run
+# Run (assumes image is already built via claude-sandbox-build.sh / cccbuild)
 export HOST_CWD="$(pwd)"
 cd "$DOCKER_DIR"
-docker compose build --build-arg CLAUDE_CODE_VERSION="$CLAUDE_CODE_VERSION"
 docker compose run --rm claude "$@"

@@ -54,11 +54,12 @@ def _make_kv_cache(model, mode: str):
     raise ValueError(f"Unknown kv_cache mode: {mode}")
 
 
-def _run_once(model, input_ids: Tensor, output_len: int, temperature: float, top_k, use_kv_cache: str = "none") -> dict:
+def _run_once(model, input_ids: Tensor, output_len: int, temperature: float, top_k, use_kv_cache: str = "none", chunk_size: int = 0) -> dict:
     if input_ids.shape[1] > model.config.n_positions:
         input_ids = input_ids[:, -model.config.n_positions:]
 
     # Run 1: measure TTFT only (1 token, fresh cache)
+    model._chunk_size = chunk_size  # 0 = disabled, >0 = chunked prefill
     kv_cache = _make_kv_cache(model, use_kv_cache)
     t0 = time.perf_counter()
     generate(model, input_ids, max_new_tokens=1,
@@ -111,7 +112,8 @@ def _fmt(label, values, unit):
 @click.option("--temperature", default=1.0, help="Sampling temperature")
 @click.option("--top-k", default=None, type=int, help="Top-k (None = greedy)")
 @click.option("--kv-cache", type=click.Choice(["none", "simple", "variable"]), default="none", help="KV cache implementation: none, simple, variable")
-def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_cache):
+@click.option("--chunk-size", default=0, help="Chunked prefill size (0=disabled, e.g. 128)")
+def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_cache, chunk_size):
     """TinyLLM inference benchmark with JIT warmup and distribution stats."""
     in_lens  = [int(x) for x in input_lens.split(",")]
     out_lens = [int(x) for x in output_lens.split(",")]
@@ -122,7 +124,7 @@ def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_ca
     tokenizer = Tokenizer.for_model(model)
     click.echo(f"Model loaded in {time.perf_counter()-t0:.2f}s "
                f"({format_param_count(llm.param_count())} params)")
-    click.echo(f"warmup={warmup}  runs={runs}  kv_cache={kv_cache}  "
+    click.echo(f"warmup={warmup}  runs={runs}  kv_cache={kv_cache}  chunk_size={chunk_size}  "
                f"input_lens={in_lens}  output_lens={out_lens}")
     click.echo()
 
@@ -141,6 +143,7 @@ def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_ca
         click.echo(f"Warming up ({effective_warmup} pass(es) x {len(configs)} configs){jit_note}...")
         # For JIT warmup, only need a few decode steps to compile the kernel.
         # Using full out_len would waste time; 5 tokens is enough to prime JIT.
+        llm._chunk_size = chunk_size  # set before warmup for JIT priming
         for _ in range(effective_warmup):
             for in_len, out_len in configs:
                 warmup_tokens = 5 if kv_cache == "variable" else out_len
@@ -157,7 +160,7 @@ def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_ca
         ids = _make_prompt(tokenizer, in_len)
         actual_in = ids.shape[1]
 
-        results = [_run_once(llm, ids, out_len, temperature, top_k, use_kv_cache=kv_cache)
+        results = [_run_once(llm, ids, out_len, temperature, top_k, use_kv_cache=kv_cache, chunk_size=chunk_size)
                    for _ in range(runs)]
 
         ttfts  = [r["ttft"] * 1000 for r in results]
