@@ -31,6 +31,7 @@ class CausalAttention:
         x: Tensor,
         layer_idx: int | None = None,
         kv_cache: KVCache | None = None,
+        start_pos=None,
     ) -> Tensor:
         batch_size, seq_len, _ = x.shape
 
@@ -44,12 +45,12 @@ class CausalAttention:
         v = v.reshape(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
 
         if self.rope is not None:
-            q, k = self.rope(q, k)
+            q, k = self.rope(q, k, start_pos=start_pos)
 
         # Update KV cache and get full K, V (cached history + new)
         attn_bias: Tensor | None = None
         if kv_cache is not None and layer_idx is not None:
-            k, v = kv_cache.update(layer_idx, k, v)
+            k, v = kv_cache.update(layer_idx, k, v, start_pos=start_pos)
             attn_bias = kv_cache.attention_bias()
 
         total_seq_len = k.shape[2]

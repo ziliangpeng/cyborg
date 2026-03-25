@@ -75,7 +75,7 @@ class OPTEmbedding:
         self.project_in = Linear(actual_embed_dim, embed_dim) if word_embed_proj_dim else None
         self.project_out = Linear(embed_dim, actual_embed_dim) if word_embed_proj_dim else None
 
-    def __call__(self, input_ids: Tensor) -> Tensor:
+    def __call__(self, input_ids: Tensor, start_pos: int = 0) -> Tensor:
         """
         Compute combined token and positional embeddings.
 
@@ -88,7 +88,7 @@ class OPTEmbedding:
         seq_len = input_ids.shape[1]
 
         # Position IDs with offset
-        position_ids = Tensor.arange(seq_len).reshape(1, -1) + self.position_offset
+        position_ids = Tensor.arange(start_pos, start_pos + seq_len).reshape(1, -1) + self.position_offset
 
         # Token embeddings
         token_embeds = self.embed_tokens(input_ids)

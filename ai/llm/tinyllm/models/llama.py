@@ -10,6 +10,7 @@ from ..ops.ffn import GatedFeedForward
 from ..ops.rmsnorm import RMSNorm
 from ..ops.rope import apply_rotary_emb, precompute_rope_freqs
 from .base import BaseModel
+from ..kv_cache import KVCache
 
 
 @dataclass
@@ -58,8 +59,11 @@ class _RopeCallable:
         self.cos = cos
         self.sin = sin
 
-    def __call__(self, q: Tensor, k: Tensor):
-        return apply_rotary_emb(q, k, self.cos, self.sin)
+    def __call__(self, q: Tensor, k: Tensor, start_pos: int = 0):
+        seq_len = q.shape[2]
+        cos = self.cos[start_pos:start_pos + seq_len]
+        sin = self.sin[start_pos:start_pos + seq_len]
+        return apply_rotary_emb(q, k, cos, sin)
 
 
 class LlamaTransformerBlock:
@@ -71,8 +75,8 @@ class LlamaTransformerBlock:
         self.ln_2 = RMSNorm(config.n_embd, eps=config.rms_norm_eps)
         self.mlp = GatedFeedForward(config.n_embd, config.n_inner)
 
-    def __call__(self, x: Tensor) -> Tensor:
-        x = x + self.attn(self.ln_1(x))
+    def __call__(self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None, start_pos: int = 0) -> Tensor:
+        x = x + self.attn(self.ln_1(x), layer_idx=layer_idx, kv_cache=kv_cache, start_pos=start_pos)
         x = x + self.mlp(self.ln_2(x))
         return x
 
@@ -92,10 +96,11 @@ class LLaMA(BaseModel):
         self.ln_f = RMSNorm(config.n_embd, eps=config.rms_norm_eps)
         self.lm_head = Linear(config.n_embd, config.vocab_size, bias=False)
 
-    def __call__(self, input_ids: Tensor) -> Tensor:
+    def __call__(self, input_ids: Tensor, kv_cache: KVCache | None = None) -> Tensor:
+        start_pos = kv_cache.seq_len() if kv_cache is not None else 0
         x = self.embed_tokens(input_ids)
-        for block in self.blocks:
-            x = block(x)
+        for i, block in enumerate(self.blocks):
+            x = block(x, layer_idx=i, kv_cache=kv_cache, start_pos=start_pos)
         x = self.ln_f(x)
         return self.lm_head(x)
 

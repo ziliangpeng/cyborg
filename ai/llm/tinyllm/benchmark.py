@@ -139,10 +139,13 @@ def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_ca
     if effective_warmup > 0:
         jit_note = " (priming TinyJit)" if kv_cache == "variable" else ""
         click.echo(f"Warming up ({effective_warmup} pass(es) x {len(configs)} configs){jit_note}...")
+        # For JIT warmup, only need a few decode steps to compile the kernel.
+        # Using full out_len would waste time; 5 tokens is enough to prime JIT.
         for _ in range(effective_warmup):
             for in_len, out_len in configs:
+                warmup_tokens = 5 if kv_cache == "variable" else out_len
                 ids = _make_prompt(tokenizer, in_len)
-                generate(llm, ids, max_new_tokens=1,
+                generate(llm, ids, max_new_tokens=warmup_tokens,
                          temperature=temperature, top_k=top_k,
                          kv_cache=_make_kv_cache(llm, kv_cache))
         click.echo("Warmup complete.\n")

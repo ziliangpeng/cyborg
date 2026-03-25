@@ -206,19 +206,22 @@ class VariableKVCache(KVCache):
         # Single pre-allocated buffer for all layers: (2, n_layers, batch, heads, max_seq_len, head_dim)
         # Index 0 = keys, index 1 = values
         self.cache = Tensor.zeros(2, n_layers, batch, num_heads, max_seq_len, head_dim).contiguous().realize()
-        # Track current valid end position (may be int or bound UOp during JIT decode)
-        self._current_valid_end = 0
-        # Track whether the current forward pass is decode (T==1) or prefill (T>1)
-        self._is_decode = False
+
 
     def update(self, layer_idx: int, k: Tensor, v: Tensor, start_pos=None) -> tuple[Tensor, Tensor]:
         """
-        Update cache at start_pos and return FULL fixed-shape K/V buffers.
+        Update cache at start_pos and return SYMBOLIC-sliced K/V [0:end_pos].
 
-        During decode with JIT, start_pos is a bound UOp. We return the full
-        pre-allocated buffer (fixed shape = max_seq_len) so TinyJit compiles
-        the attention kernel only once. Invalid positions are masked via
-        attention_bias() which returns -inf for unwritten positions.
+        Returns only valid positions so attention computes Q @ K^T over actual
+        sequence length, not the full max_seq_len buffer. Compute scales with
+        real sequence length — significant win for large models on short contexts.
+
+        During decode with JIT, start_pos is a bound UOp so end_pos = sp + T is
+        symbolic. The attention output shape (batch, heads, 1, head_dim) stays
+        fixed regardless of K/V seq dim, so JIT compiles once and replays.
+
+        During prefill, start_pos=0 (concrete int), so end_pos is concrete. No
+        symbolic shapes involved — safe to call triu() in the causal mask.
 
         Args:
             layer_idx: Transformer layer index
@@ -228,7 +231,6 @@ class VariableKVCache(KVCache):
         """
         T = k.shape[2]  # number of new tokens (1 during decode, >1 during prefill)
         is_decode = (T == 1)
-        self._is_decode = is_decode
 
         # During JIT decode, start_pos is a bound UOp; use it directly.
         # During prefill (or non-JIT eager), use internal _pos counter.
@@ -249,44 +251,21 @@ class VariableKVCache(KVCache):
         # When sp is a bound UOp (JIT decode), the caller (generate.py) manages position tracking.
         if not isinstance(sp, UOp):
             self._pos += T
-            self._current_valid_end = self._pos  # concrete int
-        else:
-            # Store the bound UOp for use in attention_bias().
-            # We wrap it as a Tensor + T so comparison works at runtime.
-            self._current_valid_end = Tensor(sp) + T  # type: ignore[assignment]
 
-        # For prefill (T > 1): return sliced K/V to avoid inflated attention cost.
-        # For decode (T == 1): return FULL fixed-shape buffer so JIT compiles once.
-        # Unwritten positions masked by attention_bias() during decode.
-        if not is_decode:
-            # Prefill: slice to valid region for efficiency
-            end = self._pos
-            return self.cache[0, layer_idx, :, :, :end, :], self.cache[1, layer_idx, :, :, :end, :]
-        full_k = self.cache[0, layer_idx, :, :, :, :]
-        full_v = self.cache[1, layer_idx, :, :, :, :]
+        # Return SYMBOLIC slice [0:end_pos] -- only valid positions.
+        # During decode: end_pos = sp+T is a symbolic UOp expression.
+        #   K/V shape = (batch, heads, symbolic_end_pos, head_dim)
+        #   Attention output = attn_weights @ V = (batch, heads, 1, head_dim) -- FIXED shape.
+        #   JIT sees fixed output shape -> compiles once, replays with different symbolic K/V lengths.
+        # During prefill: end_pos is a concrete int. No symbolic dims. Safe.
+        end_pos = sp + T
+        full_k = self.cache[0, layer_idx, :, :, 0:end_pos, :]
+        full_v = self.cache[1, layer_idx, :, :, 0:end_pos, :]
         return full_k, full_v
 
     def attention_bias(self) -> Tensor | None:
-        """
-        Additive attention bias masking unwritten (future) positions with -inf.
-
-        Returns None during prefill (K/V sliced to valid region, no masking needed).
-        Returns shape (1, 1, 1, max_seq_len) during decode to broadcast over
-        (batch, heads, query_seq_len, key_seq_len) in attention.py.
-
-        Positions in [0, valid_end) get bias 0 (attend freely).
-        Positions in [valid_end, max_seq_len) get bias -1e9 (blocked).
-
-        valid_end is an int for prefill/eager, or a Tensor wrapping a bound UOp
-        during JIT decode. Using it in a Tensor comparison makes the operation
-        symbolic so the same kernel is replayed with different values each step.
-        """
-        if not self._is_decode:
-            return None  # Prefill returns sliced K/V; no masking needed
-        positions = Tensor.arange(self.max_seq_len)
-        valid_end = self._current_valid_end
-        # valid_end is either an int (prefill) or a Tensor (JIT decode)
-        return ((positions >= valid_end).float() * -1e9).reshape(1, 1, 1, self.max_seq_len).realize()
+        """No mask needed — update() only returns valid positions [0:end_pos]."""
+        return None
 
     def seq_len(self) -> int:
         return self._pos
@@ -294,5 +273,3 @@ class VariableKVCache(KVCache):
     def clear(self) -> None:
         self.cache.assign(Tensor.zeros_like(self.cache)).realize()
         self._pos = 0
-        self._current_valid_end = 0
-        self._is_decode = False

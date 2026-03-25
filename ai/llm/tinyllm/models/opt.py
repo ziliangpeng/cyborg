@@ -10,6 +10,7 @@ from ..ops.attention import CausalAttention
 from ..ops.embeddings import OPTEmbedding
 from ..ops.ffn import FeedForward
 from .base import BaseModel
+from ..kv_cache import KVCache
 
 
 @dataclass
@@ -56,8 +57,8 @@ class OPTTransformerBlock:
         self.final_layer_norm = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
         self.mlp = FeedForward(config.n_embd, config.n_inner, activation=relu)
 
-    def __call__(self, x: Tensor) -> Tensor:
-        x = x + self.attn(self.self_attn_layer_norm(x))
+    def __call__(self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None) -> Tensor:
+        x = x + self.attn(self.self_attn_layer_norm(x), layer_idx=layer_idx, kv_cache=kv_cache)
         x = x + self.mlp(self.final_layer_norm(x))
         return x
 
@@ -79,10 +80,11 @@ class OPT(BaseModel):
         output_dim = config.word_embed_proj_dim if config.word_embed_proj_dim else config.n_embd
         self.lm_head = Linear(output_dim, config.vocab_size)
 
-    def __call__(self, input_ids: Tensor) -> Tensor:
-        x = self.embeddings(input_ids)
-        for block in self.blocks:
-            x = block(x)
+    def __call__(self, input_ids: Tensor, kv_cache: KVCache | None = None) -> Tensor:
+        start_pos = kv_cache.seq_len() if kv_cache is not None else 0
+        x = self.embeddings(input_ids, start_pos=start_pos)
+        for i, block in enumerate(self.blocks):
+            x = block(x, layer_idx=i, kv_cache=kv_cache)
         x = self.final_layer_norm(x)
         if self.embeddings.project_out is not None:
             x = self.embeddings.project_out(x)
