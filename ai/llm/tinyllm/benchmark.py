@@ -20,6 +20,7 @@ import click
 from tinygrad import Tensor
 
 from ai.llm.tinyllm import generate, SimpleKVCache
+from ai.llm.tinyllm.kv_cache import VariableKVCache
 from ai.llm.tinyllm.utils import Tokenizer
 from ai.llm.tinyllm.cli import load_model, format_param_count
 
@@ -35,31 +36,47 @@ def _make_prompt(tokenizer, target_len: int) -> Tensor:
     return Tensor([tokens])
 
 
-def _run_once(model, input_ids: Tensor, output_len: int, temperature: float, top_k, use_kv_cache: bool = False) -> dict:
+def _make_kv_cache(model, mode: str):
+    """Factory: create a KV cache instance based on mode string."""
+    if mode == "none":
+        return None
+    if mode == "simple":
+        return SimpleKVCache()
+    if mode == "variable":
+        cfg = model.config
+        head_dim = cfg.n_embd // cfg.n_head
+        return VariableKVCache(
+            max_seq_len=cfg.n_positions,
+            n_layers=cfg.n_layer,
+            num_heads=cfg.n_head,
+            head_dim=head_dim,
+        )
+    raise ValueError(f"Unknown kv_cache mode: {mode}")
+
+
+def _run_once(model, input_ids: Tensor, output_len: int, temperature: float, top_k, use_kv_cache: str = "none") -> dict:
     if input_ids.shape[1] > model.config.n_positions:
         input_ids = input_ids[:, -model.config.n_positions:]
 
-    kv_cache = SimpleKVCache() if use_kv_cache else None
-
+    # Run 1: measure TTFT only (1 token, fresh cache)
+    kv_cache = _make_kv_cache(model, use_kv_cache)
     t0 = time.perf_counter()
-    first_out = generate(model, input_ids, max_new_tokens=1,
-                         temperature=temperature, top_k=top_k, kv_cache=kv_cache)
+    generate(model, input_ids, max_new_tokens=1,
+             temperature=temperature, top_k=top_k, kv_cache=kv_cache)
     ttft = time.perf_counter() - t0
 
     if output_len <= 1:
         return {"ttft": ttft, "tpot": 0.0, "total": ttft, "output_tokens": 1}
 
+    # Run 2: measure total time for full output (fresh cache each time)
+    kv_cache2 = _make_kv_cache(model, use_kv_cache)
     t1 = time.perf_counter()
-    generate(model, first_out, max_new_tokens=output_len - 1,
-             temperature=temperature, top_k=top_k, kv_cache=kv_cache)
-    rest = time.perf_counter() - t1
+    generate(model, input_ids, max_new_tokens=output_len,
+             temperature=temperature, top_k=top_k, kv_cache=kv_cache2)
+    total = time.perf_counter() - t1
 
-    return {
-        "ttft": ttft,
-        "tpot": rest / (output_len - 1),
-        "total": ttft + rest,
-        "output_tokens": output_len,
-    }
+    tpot = (total - ttft) / (output_len - 1)
+    return {"ttft": ttft, "tpot": tpot, "total": total, "output_tokens": output_len}
 
 
 def _stats(values):
@@ -93,7 +110,7 @@ def _fmt(label, values, unit):
 @click.option("--output-lens", default="32,128", help="Comma-separated output lengths")
 @click.option("--temperature", default=1.0, help="Sampling temperature")
 @click.option("--top-k", default=None, type=int, help="Top-k (None = greedy)")
-@click.option("--kv-cache/--no-kv-cache", default=False, help="Use SimpleKVCache")
+@click.option("--kv-cache", type=click.Choice(["none", "simple", "variable"]), default="none", help="KV cache implementation: none, simple, variable")
 def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_cache):
     """TinyLLM inference benchmark with JIT warmup and distribution stats."""
     in_lens  = [int(x) for x in input_lens.split(",")]
@@ -112,16 +129,23 @@ def main(model, warmup, runs, input_lens, output_lens, temperature, top_k, kv_ca
     configs = [(i, o) for i in in_lens for o in out_lens
                if i + o <= llm.config.n_positions]
 
-    if warmup > 0:
-        click.echo(f"Warming up ({warmup} pass(es) x {len(configs)} configs)...")
-        for _ in range(warmup):
+    # VariableKVCache uses TinyJit: first call = compile, second = verify.
+    # Enforce at least 2 warmup passes so JIT is fully compiled before timing.
+    effective_warmup = warmup
+    if kv_cache == "variable" and warmup < 2:
+        effective_warmup = 2
+        click.echo(f"Note: bumping warmup from {warmup} to {effective_warmup} (VariableKVCache JIT needs >=2)")
+
+    if effective_warmup > 0:
+        jit_note = " (priming TinyJit)" if kv_cache == "variable" else ""
+        click.echo(f"Warming up ({effective_warmup} pass(es) x {len(configs)} configs){jit_note}...")
+        for _ in range(effective_warmup):
             for in_len, out_len in configs:
                 ids = _make_prompt(tokenizer, in_len)
-                generate(llm, ids, max_new_tokens=out_len,
+                generate(llm, ids, max_new_tokens=1,
                          temperature=temperature, top_k=top_k,
-                         kv_cache=SimpleKVCache() if kv_cache else None)
+                         kv_cache=_make_kv_cache(llm, kv_cache))
         click.echo("Warmup complete.\n")
-
     click.echo(f"  {'input':>6}  {'output':>6}  metric    "
                f"{'mean':>8}  {'median':>8}  {'p95':>8}  {'min':>8}  {'max':>8}  unit")
     click.echo("-" * 80)

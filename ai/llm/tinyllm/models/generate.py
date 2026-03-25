@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from tinygrad import Tensor
+from tinygrad.uop.ops import UOp
 
 if TYPE_CHECKING:
     from .base import BaseModel
@@ -10,79 +11,46 @@ if TYPE_CHECKING:
 
 
 def generate(
-    model: "BaseModel",
+    model,
     input_ids: Tensor,
     max_new_tokens: int = 50,
     temperature: float = 1.0,
-    top_k: int | None = None,
+    top_k=None,
     do_sample: bool = False,
-    kv_cache: "KVCache | None" = None,
+    kv_cache=None,
 ) -> Tensor:
-    """
-    Generate text tokens autoregressively.
-
-    Args:
-        model: Model instance
-        input_ids: (batch_size, seq_len) initial token IDs
-        max_new_tokens: Maximum number of tokens to generate
-        temperature: Sampling temperature (1.0 = neutral, <1.0 = sharper, >1.0 = flatter)
-        top_k: If set, only sample from top-k most likely tokens
-        do_sample: If True, sample from distribution; if False, greedy decoding
-        kv_cache: Optional KV cache for faster decoding. When provided, the prompt
-                  is processed once (prefill) and each decode step only processes
-                  the single new token instead of the full sequence.
-
-    Returns:
-        (batch_size, seq_len + max_new_tokens) generated token IDs
-    """
     if kv_cache is not None:
-        return _generate_with_cache(model, input_ids, max_new_tokens, temperature, top_k, do_sample, kv_cache)
+        return _generate_with_cache(
+            model, input_ids, max_new_tokens, temperature, top_k, do_sample, kv_cache
+        )
 
     for _ in range(max_new_tokens):
-        # Truncate to max sequence length if needed
         seq_len = input_ids.shape[1]
         if seq_len > model.config.n_positions:
             input_ids = input_ids[:, -model.config.n_positions :]
 
-        # Get logits for next token
         logits = model(input_ids)
-        next_token_logits = logits[:, -1, :]  # (batch, vocab_size)
+        next_token_logits = logits[:, -1, :]
 
-        # Apply temperature
         if temperature != 1.0:
             next_token_logits = next_token_logits / temperature
 
-        # Sample or greedy decode
         if do_sample:
-            # Optional top-k filtering
             if top_k is not None:
                 next_token_logits = _top_k_filtering(next_token_logits, top_k)
-
-            # Sample from softmax distribution
             probs = next_token_logits.softmax(axis=-1)
             next_token = _multinomial_sample(probs)
         else:
-            # Greedy: take argmax
             next_token = next_token_logits.argmax(axis=-1, keepdim=True)
 
-        # Append to sequence
         input_ids = Tensor.cat(input_ids, next_token, dim=1)
 
     return input_ids
 
 
-def _generate_with_cache(
-    model: "BaseModel",
-    input_ids: Tensor,
-    max_new_tokens: int,
-    temperature: float,
-    top_k: int | None,
-    do_sample: bool,
-    kv_cache: "KVCache",
-) -> Tensor:
-    """
-    Generate with KV cache: prefill prompt once, then decode one token at a time.
-    """
+def _generate_with_cache(model, input_ids, max_new_tokens, temperature, top_k, do_sample, kv_cache):
+    from ..kv_cache import VariableKVCache
+
     def _sample(logits: Tensor) -> Tensor:
         if temperature != 1.0:
             logits = logits / temperature
@@ -92,12 +60,17 @@ def _generate_with_cache(
             return _multinomial_sample(logits.softmax(axis=-1))
         return logits.argmax(axis=-1, keepdim=True)
 
-    # Prefill: process the full prompt, populate the cache
+    if isinstance(kv_cache, VariableKVCache):
+        return _generate_variable_jit(model, input_ids, max_new_tokens, _sample, kv_cache)
+    else:
+        return _generate_eager(model, input_ids, max_new_tokens, _sample, kv_cache)
+
+
+def _generate_eager(model, input_ids, max_new_tokens, _sample, kv_cache):
     logits = model(input_ids, kv_cache=kv_cache)
     next_token = _sample(logits[:, -1, :])
     output = Tensor.cat(input_ids, next_token, dim=1)
 
-    # Decode: one new token at a time, reusing cached K, V
     for _ in range(max_new_tokens - 1):
         logits = model(next_token, kv_cache=kv_cache)
         next_token = _sample(logits[:, -1, :])
@@ -105,36 +78,43 @@ def _generate_with_cache(
     return output
 
 
+def _generate_variable_jit(model, input_ids, max_new_tokens, _sample, kv_cache):
+    max_ctx = kv_cache.max_seq_len
+
+    # Persist the Variable UOp on the model so the same object is reused across calls.
+    # This allows TinyJit to replay the compiled graph without retracing.
+    if not hasattr(model, "_start_pos_var") or model._start_pos_var.arg[2] != max_ctx - 1:
+        model._start_pos_var = UOp.variable("start_pos", 1, max_ctx - 1)
+    v = model._start_pos_var
+
+    model._active_cache = kv_cache
+    # Only reset JIT if not yet compiled (cnt < 2) or if the cache changed.
+    # Resetting forces a recompile which is expensive for large models.
+    if model._jit.cnt < 2:
+        model._jit.reset()
+
+    logits = model(input_ids, kv_cache=kv_cache, start_pos=0)
+    next_token = _sample(logits[:, -1, :])
+    output = Tensor.cat(input_ids, next_token, dim=1)
+    start_pos = input_ids.shape[1]
+
+    for _ in range(max_new_tokens - 1):
+        sp = v.bind(start_pos)
+        logits = model(next_token, kv_cache=kv_cache, start_pos=sp)
+        next_token = _sample(logits[:, -1, :])
+        output = Tensor.cat(output, next_token, dim=1)
+        start_pos += 1
+
+    model._active_cache = None
+    return output
+
+
 def _top_k_filtering(logits: Tensor, k: int) -> Tensor:
-    """
-    Zero out all logits except the top-k.
-
-    Args:
-        logits: (batch_size, vocab_size) logits
-        k: Number of top tokens to keep
-
-    Returns:
-        Filtered logits with non-top-k set to large negative value
-    """
-    # Get top-k values on-device to avoid CPU sync
     top_vals, _ = logits.topk(k)
     kth_val = top_vals[:, -1:]
-
-    # Create mask: True where logits are below threshold
     mask = logits < kth_val
-
-    # Set masked values to large negative value
     return logits * (1 - mask.float()) + mask.float() * -1e9
 
 
 def _multinomial_sample(probs: Tensor) -> Tensor:
-    """
-    Sample from probability distribution.
-
-    Args:
-        probs: (batch_size, vocab_size) probability distribution
-
-    Returns:
-        (batch_size, 1) sampled token indices
-    """
     return probs.multinomial(num_samples=1)

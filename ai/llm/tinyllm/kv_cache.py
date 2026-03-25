@@ -1,15 +1,19 @@
 """KV Cache implementations for TinyLLM."""
 
+import itertools
 from abc import ABC, abstractmethod
 
 from tinygrad import Tensor
+from tinygrad.uop.ops import UOp
+
+_instance_counter = itertools.count()
 
 
 class KVCache(ABC):
     """Abstract base class for KV cache implementations."""
 
     @abstractmethod
-    def update(self, layer_idx: int, k: Tensor, v: Tensor) -> tuple[Tensor, Tensor]:
+    def update(self, layer_idx: int, k: Tensor, v: Tensor, start_pos=None) -> tuple[Tensor, Tensor]:
         """
         Update cache with new K, V tensors and return full K, V for attention.
 
@@ -17,6 +21,8 @@ class KVCache(ABC):
             layer_idx: Transformer layer index
             k: New key tensor (batch, heads, new_seq_len, head_dim)
             v: New value tensor (batch, heads, new_seq_len, head_dim)
+            start_pos: Current write position (int or bound UOp). Used by
+                       VariableKVCache; ignored by SimpleKVCache.
 
         Returns:
             Full (k, v) tensors including cached history
@@ -54,7 +60,8 @@ class SimpleKVCache(KVCache):
     def __init__(self) -> None:
         self._cache: dict[int, tuple[Tensor, Tensor]] = {}
 
-    def update(self, layer_idx: int, k: Tensor, v: Tensor) -> tuple[Tensor, Tensor]:
+    def update(self, layer_idx: int, k: Tensor, v: Tensor, start_pos=None) -> tuple[Tensor, Tensor]:
+        # start_pos is ignored for SimpleKVCache — we always cat
         if layer_idx in self._cache:
             cached_k, cached_v = self._cache[layer_idx]
             k = cached_k.cat(k, dim=2)  # concat along seq dim: (batch, heads, seq, head_dim)
@@ -120,7 +127,7 @@ class PreallocKVCache(KVCache):
             for _ in range(n_layers)
         ]
 
-    def update(self, layer_idx: int, k: Tensor, v: Tensor) -> tuple[Tensor, Tensor]:
+    def update(self, layer_idx: int, k: Tensor, v: Tensor, start_pos=None) -> tuple[Tensor, Tensor]:
         new_len = k.shape[2]
         pos = self._pos
 
@@ -165,3 +172,127 @@ class PreallocKVCache(KVCache):
             self._v[i].assign(Tensor.zeros_like(self._v[i]).realize())
         self._pos = 0
         self._valid_end = 0
+
+
+class VariableKVCache(KVCache):
+    """
+    KV cache using tinygrad's Variable API for dynamic position indexing.
+
+    Pre-allocates a single (2, n_layers, batch, heads, max_seq_len, head_dim) buffer
+    for all layers. Accepts start_pos (int or bound UOp) as an explicit argument to
+    update(), so the caller (generate.py) controls Variable lifetime and JIT replay.
+
+    During decode the caller passes a bound UOp (v.bind(concrete_pos)); the assign +
+    slice kernels compile once in TinyJit and are replayed with different bound values
+    each step — no per-step recompilation.
+
+    This is the same pattern used in tinygrad's own LLM implementation
+    (tinygrad/apps/llm.py). Requires TinyJit wrapping the forward pass when using
+    Variable start_pos.
+
+    Args:
+        max_seq_len: Maximum sequence length
+        n_layers: Number of transformer layers
+        num_heads: Number of KV attention heads
+        head_dim: Dimension per attention head
+        batch: Batch size (default 1)
+    """
+
+    def __init__(self, max_seq_len: int, n_layers: int, num_heads: int, head_dim: int, batch: int = 1) -> None:
+        self.max_seq_len = max_seq_len
+        self.n_layers = n_layers
+        self._pos = 0
+
+        # Single pre-allocated buffer for all layers: (2, n_layers, batch, heads, max_seq_len, head_dim)
+        # Index 0 = keys, index 1 = values
+        self.cache = Tensor.zeros(2, n_layers, batch, num_heads, max_seq_len, head_dim).contiguous().realize()
+        # Track current valid end position (may be int or bound UOp during JIT decode)
+        self._current_valid_end = 0
+        # Track whether the current forward pass is decode (T==1) or prefill (T>1)
+        self._is_decode = False
+
+    def update(self, layer_idx: int, k: Tensor, v: Tensor, start_pos=None) -> tuple[Tensor, Tensor]:
+        """
+        Update cache at start_pos and return FULL fixed-shape K/V buffers.
+
+        During decode with JIT, start_pos is a bound UOp. We return the full
+        pre-allocated buffer (fixed shape = max_seq_len) so TinyJit compiles
+        the attention kernel only once. Invalid positions are masked via
+        attention_bias() which returns -inf for unwritten positions.
+
+        Args:
+            layer_idx: Transformer layer index
+            k, v: New key/value tensors (batch, heads, T, head_dim)
+            start_pos: Write position — int during prefill, bound UOp during JIT decode.
+                       If None, falls back to internal _pos counter.
+        """
+        T = k.shape[2]  # number of new tokens (1 during decode, >1 during prefill)
+        is_decode = (T == 1)
+        self._is_decode = is_decode
+
+        # During JIT decode, start_pos is a bound UOp; use it directly.
+        # During prefill (or non-JIT eager), use internal _pos counter.
+        if is_decode and isinstance(start_pos, UOp):
+            sp = start_pos  # bound UOp — variable position for JIT replay
+        elif start_pos is not None:
+            sp = start_pos  # explicit int (e.g., 0 for prefill start)
+        else:
+            sp = self._pos  # fallback to internal counter
+
+        # Write new K/V into the pre-allocated buffer at [sp : sp + T]
+        # assign() is an in-place operation; realize() flushes the lazy graph immediately
+        self.cache[:, layer_idx, :, :, sp:sp + T, :].assign(
+            Tensor.stack(k[:, :, :T, :], v[:, :, :T, :])  # shape: (2, batch, heads, T, head_dim)
+        ).realize()
+
+        # Advance internal write position only when sp is a concrete int.
+        # When sp is a bound UOp (JIT decode), the caller (generate.py) manages position tracking.
+        if not isinstance(sp, UOp):
+            self._pos += T
+            self._current_valid_end = self._pos  # concrete int
+        else:
+            # Store the bound UOp for use in attention_bias().
+            # We wrap it as a Tensor + T so comparison works at runtime.
+            self._current_valid_end = Tensor(sp) + T  # type: ignore[assignment]
+
+        # For prefill (T > 1): return sliced K/V to avoid inflated attention cost.
+        # For decode (T == 1): return FULL fixed-shape buffer so JIT compiles once.
+        # Unwritten positions masked by attention_bias() during decode.
+        if not is_decode:
+            # Prefill: slice to valid region for efficiency
+            end = self._pos
+            return self.cache[0, layer_idx, :, :, :end, :], self.cache[1, layer_idx, :, :, :end, :]
+        full_k = self.cache[0, layer_idx, :, :, :, :]
+        full_v = self.cache[1, layer_idx, :, :, :, :]
+        return full_k, full_v
+
+    def attention_bias(self) -> Tensor | None:
+        """
+        Additive attention bias masking unwritten (future) positions with -inf.
+
+        Returns None during prefill (K/V sliced to valid region, no masking needed).
+        Returns shape (1, 1, 1, max_seq_len) during decode to broadcast over
+        (batch, heads, query_seq_len, key_seq_len) in attention.py.
+
+        Positions in [0, valid_end) get bias 0 (attend freely).
+        Positions in [valid_end, max_seq_len) get bias -1e9 (blocked).
+
+        valid_end is an int for prefill/eager, or a Tensor wrapping a bound UOp
+        during JIT decode. Using it in a Tensor comparison makes the operation
+        symbolic so the same kernel is replayed with different values each step.
+        """
+        if not self._is_decode:
+            return None  # Prefill returns sliced K/V; no masking needed
+        positions = Tensor.arange(self.max_seq_len)
+        valid_end = self._current_valid_end
+        # valid_end is either an int (prefill) or a Tensor (JIT decode)
+        return ((positions >= valid_end).float() * -1e9).reshape(1, 1, 1, self.max_seq_len).realize()
+
+    def seq_len(self) -> int:
+        return self._pos
+
+    def clear(self) -> None:
+        self.cache.assign(Tensor.zeros_like(self.cache)).realize()
+        self._pos = 0
+        self._current_valid_end = 0
+        self._is_decode = False
