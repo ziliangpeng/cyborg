@@ -23,7 +23,12 @@ def generate(
         return _generate_with_cache(
             model, input_ids, max_new_tokens, temperature, top_k, do_sample, kv_cache
         )
+    return _generate_without_cache(
+        model, input_ids, max_new_tokens, temperature, top_k, do_sample
+    )
 
+
+def _generate_without_cache(model, input_ids, max_new_tokens, temperature, top_k, do_sample):
     for _ in range(max_new_tokens):
         seq_len = input_ids.shape[1]
         if seq_len > model.config.n_positions:
