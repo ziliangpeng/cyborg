@@ -63,16 +63,7 @@ class CausalAttention:
         # During decode (seq_len == 1) the single query is the last token
         # and should attend to all cached positions — no causal masking needed.
         if seq_len > 1:
-            if isinstance(start_pos, int) and start_pos > 0:
-                # Chunked prefill: past tokens (0..start_pos-1) are always accessible.
-                # Only mask within-chunk future positions.
-                # mask shape: (seq_len, start_pos + seq_len)
-                past_allow = Tensor.zeros(seq_len, start_pos)
-                chunk_causal = Tensor.ones(seq_len, seq_len).triu(1) * -1e9
-                causal_mask = past_allow.cat(chunk_causal, dim=1)
-            else:
-                # Standard prefill (start_pos=0 or None): full causal mask
-                causal_mask = Tensor.ones(seq_len, total_seq_len).triu(1) * -1e9
+            causal_mask = Tensor.ones(seq_len, total_seq_len).triu(1) * -1e9
             attn_weights = attn_weights + causal_mask
 
         # Apply KV cache validity mask (PreallocKVCache: masks unwritten positions)

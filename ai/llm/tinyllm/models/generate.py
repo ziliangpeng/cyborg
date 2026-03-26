@@ -80,7 +80,6 @@ def _generate_eager(model, input_ids, max_new_tokens, _sample, kv_cache):
 
 def _generate_variable_jit(model, input_ids, max_new_tokens, _sample, kv_cache):
     max_ctx = kv_cache.max_seq_len
-    T_total = input_ids.shape[1]
 
     # Persist the Variable UOp on the model so the same object is reused across calls.
     # This allows TinyJit to replay the compiled graph without retracing.
@@ -94,37 +93,12 @@ def _generate_variable_jit(model, input_ids, max_new_tokens, _sample, kv_cache):
     if model._jit.cnt < 2:
         model._jit.reset()
 
-    # --- CHUNKED PREFILL ---
-    # If model._chunk_size > 0, split prefill into fixed-size chunks.
-    # Benefits: smaller attention matrices per chunk (chunk_size^2 vs T_total^2),
-    # and all KV assigns are batched into one GPU sync via flush().
-    # We use integer start_pos for each chunk (not symbolic) so that the causal
-    # mask stays concrete and correctness is maintained.
-    chunk_size = getattr(model, "_chunk_size", 0)
-
-    kv_cache._eager = False  # lazy mode: batch all KV assigns until flush()
-    start_pos = 0
-
-    if chunk_size > 0 and T_total > chunk_size:
-        # Process full prompt in fixed-size chunks using eager integer start_pos.
-        # Attention matrix per chunk = (chunk_size, start_pos + chunk_size)
-        # instead of (T_total, T_total) — lower peak memory and compute.
-        for chunk_start in range(0, T_total, chunk_size):
-            chunk_end = min(chunk_start + chunk_size, T_total)
-            chunk = input_ids[:, chunk_start:chunk_end]
-            chunk_len = chunk.shape[1]
-            logits = model._forward(chunk, kv_cache, start_pos=start_pos)
-            start_pos += chunk_len
-
-        kv_cache.flush()  # one GPU sync after all prefill chunks
-    else:
-        # No chunking: process full prompt in one forward pass (original behavior)
-        logits = model(input_ids, kv_cache=kv_cache, start_pos=0)
-        kv_cache.flush()           # one GPU sync to realize all accumulated assigns
-        start_pos = T_total
-
+    kv_cache._eager = False  # lazy mode: skip per-layer realize() during prefill
+    logits = model(input_ids, kv_cache=kv_cache, start_pos=0)
+    kv_cache.flush()           # one GPU sync to realize all accumulated assigns
     next_token = _sample(logits[:, -1, :])
     output = Tensor.cat(input_ids, next_token, dim=1)
+    start_pos = input_ids.shape[1]
 
     for _ in range(max_new_tokens - 1):
         sp = v.bind(start_pos)
@@ -135,6 +109,8 @@ def _generate_variable_jit(model, input_ids, max_new_tokens, _sample, kv_cache):
 
     model._active_cache = None
     return output
+
+
 def _top_k_filtering(logits: Tensor, k: int) -> Tensor:
     top_vals, _ = logits.topk(k)
     kth_val = top_vals[:, -1:]
