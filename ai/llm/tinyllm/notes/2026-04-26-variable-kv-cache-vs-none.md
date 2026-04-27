@@ -82,3 +82,89 @@ input=500, output=400
   TPOT-vs-context-length curve.
 - Consider also benchmarking "simple" mode for completeness (cat-based,
   expected to be much worse than variable due to per-step recompile).
+
+## OPT-1.3B (1.4B params) — input=500
+
+Same harness, model=facebook/opt-1.3b. Prefill is the dominant cost in
+none-mode here: each decode step re-runs the full 500+ context, so TPOT is
+flat at ~133 ms regardless of how far decode has progressed. variable cuts
+that to 16-23 ms per token.
+
+                          none             variable        speedup
+  output=100  tok/s         7.7             58.1            7.5x
+              TTFT (ms)   101.2            133.0
+              TPOT (ms)   130.7             16.5            7.9x
+
+  output=200  tok/s         7.5             50.2            6.7x
+              TTFT (ms)   101.0            134.1
+              TPOT (ms)   133.0             21.2            6.3x
+
+  output=400  tok/s         7.5             43.6            5.8x
+              TTFT (ms)   102.6            134.0
+              TPOT (ms)   133.2             23.1            5.8x
+
+## Reading (1.4B addition)
+
+- none-mode TPOT (~133 ms) is essentially flat across output lengths because
+  the K/V history (600-900 tokens) is small relative to the per-step prefill
+  workload over the 500-token input. The full forward pass dominates.
+- variable TPOT grows 16 -> 23 ms (40%) as K/V slice grows from ~600 to
+  ~900. Compare with gpt2 (124M) where the same growth was ~15% (9.7 -> 10.9).
+  Larger d_model amplifies the per-position attention cost in OPT-1.3B.
+- variable TTFT (134 ms) is ~33 ms higher than none (101 ms). Cost: writing
+  K/V into the preallocated (2, n_layers, B, H, max_seq, D) buffer plus
+  flush() to realize all assigns. Negligible amortized over decode.
+- 5.8-7.9x speedup at 1.4B is in the same band as the 6.3-7.7x observed at
+  124M, confirming the JIT-replay + symbolic-context-length design scales.
+
+## Caveats
+
+- Supported LLaMA configs in tinyllm at the time of these runs:
+  open_llama 3b/7b/13b, Llama-2 7b/13b. TinyLlama 1.1B and Llama-3.2-1B are
+  NOT yet wired through models/llama.py:from_pretrained.
+- "none" warmup is expensive: it runs the full out_len for every config
+  (variable mode trims to 5 tokens). Adds ~3 min of warmup at out_len=400
+  on opt-1.3b. Doesn't affect timing accuracy but slows iteration.
+
+## OPT-1.3B (1.4B params) — input=500
+
+Same harness, model=facebook/opt-1.3b. Prefill is the dominant cost in
+none-mode here: each decode step re-runs the full 500+ context, so TPOT is
+flat at ~133 ms regardless of how far decode has progressed. variable cuts
+that to 16-23 ms per token.
+
+                          none             variable        speedup
+  output=100  tok/s         7.7             58.1            7.5x
+              TTFT (ms)   101.2            133.0
+              TPOT (ms)   130.7             16.5            7.9x
+
+  output=200  tok/s         7.5             50.2            6.7x
+              TTFT (ms)   101.0            134.1
+              TPOT (ms)   133.0             21.2            6.3x
+
+  output=400  tok/s         7.5             43.6            5.8x
+              TTFT (ms)   102.6            134.0
+              TPOT (ms)   133.2             23.1            5.8x
+
+## Reading (1.4B addition)
+
+- none-mode TPOT (~133 ms) is essentially flat across output lengths because
+  the K/V history (600-900 tokens) is small relative to the per-step prefill
+  workload over the 500-token input. The full forward pass dominates.
+- variable TPOT grows 16 -> 23 ms (40%) as K/V slice grows from ~600 to
+  ~900. Compare with gpt2 (124M) where the same growth was ~15% (9.7 -> 10.9).
+  Larger d_model amplifies the per-position attention cost in OPT-1.3B.
+- variable TTFT (134 ms) is ~33 ms higher than none (101 ms). Cost: writing
+  K/V into the preallocated (2, n_layers, B, H, max_seq, D) buffer plus
+  flush() to realize all assigns. Negligible amortized over decode.
+- 5.8-7.9x speedup at 1.4B is in the same band as the 6.3-7.7x observed at
+  124M, confirming the JIT-replay + symbolic-context-length design scales.
+
+## Caveats
+
+- Supported LLaMA configs in tinyllm at the time of these runs:
+  open_llama 3b/7b/13b, Llama-2 7b/13b. TinyLlama 1.1B and Llama-3.2-1B are
+  NOT yet wired through models/llama.py:from_pretrained.
+- "none" warmup is expensive: it runs the full out_len for every config
+  (variable mode trims to 5 tokens). Adds ~3 min of warmup at out_len=400
+  on opt-1.3b. Doesn't affect timing accuracy but slows iteration.
