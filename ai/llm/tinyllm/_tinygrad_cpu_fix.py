@@ -1,32 +1,55 @@
-"""Monkey-patch tinygrad's CPU (clang JIT) compiler to add -fno-builtin.
+"""Monkey-patch tinygrad's CPU (clang JIT) compiler to provide fmaxf/fminf.
 
-Tinygrad 0.11.0 compiles kernels with ``-O2 -nostdlib -ffreestanding`` (see
-``tinygrad.runtime.ops_cpu.ClangJITCompiler.compile``). At -O2 clang
-recognises the ternary ``(a > b ? a : b)`` pattern emitted by tinygrad's
-C renderer and lowers it to a ``fmaxf`` (or ``fminf``) builtin call.
-Because ``-nostdlib`` does not link libm, the resulting ELF references
-an undefined ``fmaxf`` symbol and tinygrad's ELF loader raises:
+Tinygrad 0.11.0 compiles kernels with ``-O2 -nostdlib -ffreestanding``.
+clang's vectorizer pass recognises the ternary ``(a > b ? a : b)`` pattern
+emitted by tinygrad's renderer and lowers it to a ``fmaxf``/``fminf``/
+``fmax``/``fmin`` libm intrinsic. With ``-nostdlib`` libm is not linked,
+so the resulting ELF contains undefined ``fmaxf`` symbols and tinygrad's
+ELF loader raises:
 
     RuntimeError: Attempting to relocate against an undefined symbol 'fmaxf'
 
-This bites OPT (and any model whose softmax reduction emits the pattern),
-even though GPT-2 happens to compile clean.
+This bites OPT (and any model whose softmax/topk emits the pattern),
+even though GPT-2 happens not to vectorize through that path.
 
-Fix: add ``-fno-builtin`` so clang does not perform that pattern -> libm
-substitution. Importing this module patches ``ClangJITCompiler.compile``
-once, idempotently. Imported as a side effect from ``ai/llm/tinyllm/__init__.py``.
+Neither preprocessor ``#define`` nor ``-fno-builtin`` prevent this — the
+substitution is performed by clang's middle-end on the IR, after macro
+expansion and after frontend builtin recognition.
+
+Fix: append concrete ``fmaxf``/``fminf``/``fmax``/``fmin`` function
+definitions to the source we feed to clang. The vectorizer is then
+free to lower max/min to libm calls — those calls resolve to our own
+inline-friendly implementations within the same translation unit, the
+ELF is self-contained, and the loader is happy.
+
+Importing this module patches ``ClangJITCompiler.compile`` once,
+idempotently. It is imported as a side effect from
+``ai/llm/tinyllm/__init__.py``.
 """
 
 from __future__ import annotations
 
 import importlib
-import subprocess
 
 _PATCHED = "_cyborg_libm_shim_applied"
 
+# Concrete definitions for the libm symbols clang's vectorizer may emit.
+# We mark them ``static`` to avoid clashes when more than one kernel TU
+# is compiled, and use ``__attribute__((used))`` so the optimizer keeps
+# them around even when not directly referenced in the source.
+_LIBM_IMPL = """
+#ifndef CYBORG_LIBM_IMPL
+#define CYBORG_LIBM_IMPL
+static float  __attribute__((used)) fmaxf(float a, float b)   { return a > b ? a : b; }
+static float  __attribute__((used)) fminf(float a, float b)   { return a < b ? a : b; }
+static double __attribute__((used)) fmax (double a, double b) { return a > b ? a : b; }
+static double __attribute__((used)) fmin (double a, double b) { return a < b ? a : b; }
+#endif
+"""
+
 
 def apply_libm_shim() -> None:
-    """Wrap ClangJITCompiler.compile to inject -fno-builtin into the clang args."""
+    """Wrap ClangJITCompiler.compile so the libm impls are appended once."""
     try:
         ops_cpu = importlib.import_module("tinygrad.runtime.ops_cpu")
     except ImportError:
@@ -36,43 +59,17 @@ def apply_libm_shim() -> None:
     if cls is None or getattr(cls, _PATCHED, False):
         return
 
-    original_check_output = subprocess.check_output
+    original_compile = cls.compile
 
-    def _patched_compile(self, src: str) -> bytes:
-        # Re-implement the upstream compile() logic but with -fno-builtin appended.
-        # Importing locally keeps the patch self-contained and avoids depending on
-        # private state of the original method.
-        import platform
-        import sys
+    def compile_with_shim(self, src: str):
+        # Don't re-inject if something already added them.
+        if "CYBORG_LIBM_IMPL" in src:
+            return original_compile(self, src)
+        # Append at the END so any earlier extern declarations still parse,
+        # and so our static defs win when the linker resolves the call.
+        return original_compile(self, src + _LIBM_IMPL)
 
-        from tinygrad.helpers import getenv
-        from tinygrad.runtime.support.elf import jit_loader
-
-        target = "x86_64" if sys.platform == "win32" else platform.machine()
-        arch = "-march=native" if platform.machine() in ("x86_64", "AMD64") else "-mcpu=native"
-        args = [
-            arch,
-            f"--target={target}-none-unknown-elf",
-            "-O2",
-            "-fPIC",
-            "-ffreestanding",
-            "-fno-math-errno",
-            "-nostdlib",
-            "-fno-ident",
-            # Prevent clang from lowering ternary max/min into fmaxf/fminf
-            # libm calls under -O2, which would leave undefined symbols when
-            # combined with -nostdlib.
-            "-fno-builtin",
-        ]
-        arch_args = ["-ffixed-x18"] if target == "arm64" else []
-        cc = getenv("CC", "clang")
-        obj = original_check_output(
-            [cc, "-c", "-x", "c", *args, *arch_args, "-", "-o", "-"],
-            input=src.encode("utf-8"),
-        )
-        return jit_loader(obj)
-
-    cls.compile = _patched_compile
+    cls.compile = compile_with_shim
     setattr(cls, _PATCHED, True)
 
 
