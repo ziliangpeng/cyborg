@@ -47,11 +47,20 @@ _LIBM_IMPL = """
 #ifndef CYBORG_LIBM_IMPL
 #define CYBORG_LIBM_IMPL
 /* Concrete fmaxf/fminf/fmax/fmin so clang's vectorizer-emitted libm
- * calls resolve within the same translation unit. */
-static float  fmaxf(float a, float b)   { return a > b ? a : b; }
-static float  fminf(float a, float b)   { return a < b ? a : b; }
-static double fmax (double a, double b) { return a > b ? a : b; }
-static double fmin (double a, double b) { return a < b ? a : b; }
+ * calls resolve within the same translation unit.
+ *
+ * Notes:
+ * - Must NOT be static-inline-only: clang -O2 will drop them as dead
+ *   code (no source-level callers) before the vectorizer emits the
+ *   external libm references, leaving the symbols undefined.
+ * - __attribute__((used)) keeps the bodies in the object file so the
+ *   linker (and tinygrad's ELF loader) can resolve the call.
+ * - Plain extern linkage (no static) gives them a global symbol name
+ *   matching what the vectorizer emits. */
+__attribute__((used)) float  fmaxf(float a, float b)   { return a > b ? a : b; }
+__attribute__((used)) float  fminf(float a, float b)   { return a < b ? a : b; }
+__attribute__((used)) double fmax (double a, double b) { return a > b ? a : b; }
+__attribute__((used)) double fmin (double a, double b) { return a < b ? a : b; }
 #endif
 """
 
