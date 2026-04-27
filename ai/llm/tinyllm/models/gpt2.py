@@ -1,8 +1,10 @@
 """GPT-2 model implementation for TinyLLM."""
 
-from tinygrad import Tensor
+from tinygrad import Tensor, TinyJit
 from tinygrad.nn import LayerNorm
+from tinygrad.uop.ops import UOp
 
+from ..kv_cache import KVCache
 from ..ops.activations import gelu
 from ..ops.attention import CausalAttention
 from ..ops.embeddings import TokenPositionEmbedding
@@ -20,8 +22,10 @@ class TransformerBlock:
         self.ln_2 = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
         self.mlp = FeedForward(config.n_embd, config.n_inner, activation=gelu)
 
-    def __call__(self, x: Tensor) -> Tensor:
-        x = x + self.attn(self.ln_1(x))
+    def __call__(
+        self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None, start_pos=None
+    ) -> Tensor:
+        x = x + self.attn(self.ln_1(x), layer_idx=layer_idx, kv_cache=kv_cache, start_pos=start_pos)
         x = x + self.mlp(self.ln_2(x))
         return x
 
@@ -35,13 +39,39 @@ class GPT2(BaseModel):
         self.blocks = [TransformerBlock(config) for _ in range(config.n_layer)]
         self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
 
-    def __call__(self, input_ids: Tensor) -> Tensor:
-        x = self.embeddings(input_ids)
-        for block in self.blocks:
-            x = block(x)
+        # Active KV cache set by generate.py before JIT decode loop
+        self._active_cache: KVCache | None = None
+        # JIT-compiled decode step (token, start_pos) -> logits
+        self._jit = TinyJit(self._jit_forward)
+
+    def _jit_forward(self, input_ids: Tensor, start_pos: UOp) -> Tensor:
+        """JIT-compiled single-token forward pass using self._active_cache."""
+        return self._forward(input_ids, kv_cache=self._active_cache, start_pos=start_pos)
+
+    def _forward(self, input_ids: Tensor, kv_cache: KVCache | None = None, start_pos=None) -> Tensor:
+        """Core forward pass. start_pos can be int or bound UOp."""
+        # Derive embedding start position:
+        # - for VariableKVCache with bound UOp: use the UOp directly
+        # - for other caches: use seq_len() if available, else 0
+        if start_pos is None:
+            start_pos = kv_cache.seq_len() if kv_cache is not None else 0
+        x = self.embeddings(input_ids, start_pos=start_pos)
+        for i, block in enumerate(self.blocks):
+            x = block(x, layer_idx=i, kv_cache=kv_cache, start_pos=start_pos)
         x = self.ln_f(x)
         # LM head with tied weights
         return x @ self.embeddings.wte.weight.T
+
+    def __call__(self, input_ids: Tensor, kv_cache: KVCache | None = None, start_pos=None) -> Tensor:
+        # Use JIT only for single-token decode with a bound UOp start_pos
+        if (
+            kv_cache is not None
+            and input_ids.shape[1] == 1
+            and isinstance(start_pos, UOp)
+            and self._active_cache is kv_cache
+        ):
+            return self._jit(input_ids, start_pos)
+        return self._forward(input_ids, kv_cache=kv_cache, start_pos=start_pos)
 
     @classmethod
     def from_pretrained(cls, model_name: str = "gpt2") -> "GPT2":

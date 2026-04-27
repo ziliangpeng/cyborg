@@ -4,9 +4,22 @@ A minimal, educational LLM library using TinyGrad with zero PyTorch dependencies
 Provides clean implementations of LLM building blocks for multiple model families.
 """
 
+from .kv_cache import KVCache, SimpleKVCache
 from .models import GPT2, OPT, BaseModel, GPT2Config, LLaMA, LlamaConfig, OPTConfig, generate
 from .utils import load_weights
 
-__all__ = ["BaseModel", "load_weights", "GPT2", "GPT2Config", "OPT", "OPTConfig", "LLaMA", "LlamaConfig", "generate"]
+__all__ = [
+    "BaseModel",
+    "load_weights",
+    "GPT2",
+    "GPT2Config",
+    "OPT",
+    "OPTConfig",
+    "LLaMA",
+    "LlamaConfig",
+    "generate",
+    "KVCache",
+    "SimpleKVCache",
+]
 
 __version__ = "0.4.0"

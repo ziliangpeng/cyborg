@@ -19,18 +19,19 @@ class TokenPositionEmbedding:
         self.wte = Embedding(vocab_size, embed_dim)  # token embeddings
         self.wpe = Embedding(max_seq_len, embed_dim)  # positional embeddings
 
-    def __call__(self, input_ids: Tensor) -> Tensor:
+    def __call__(self, input_ids: Tensor, start_pos: int = 0) -> Tensor:
         """
         Compute combined token and positional embeddings.
 
         Args:
             input_ids: (batch_size, seq_len) token indices
+            start_pos: Starting position index (non-zero when using KV cache)
 
         Returns:
             (batch_size, seq_len, embed_dim) embeddings
         """
         seq_len = input_ids.shape[1]
-        position_ids = Tensor.arange(seq_len).reshape(1, -1)
+        position_ids = Tensor.arange(start_pos, start_pos + seq_len).reshape(1, -1)
 
         token_embeds = self.wte(input_ids)
         position_embeds = self.wpe(position_ids)
@@ -74,7 +75,7 @@ class OPTEmbedding:
         self.project_in = Linear(actual_embed_dim, embed_dim) if word_embed_proj_dim else None
         self.project_out = Linear(embed_dim, actual_embed_dim) if word_embed_proj_dim else None
 
-    def __call__(self, input_ids: Tensor) -> Tensor:
+    def __call__(self, input_ids: Tensor, start_pos: int = 0) -> Tensor:
         """
         Compute combined token and positional embeddings.
 
@@ -87,7 +88,7 @@ class OPTEmbedding:
         seq_len = input_ids.shape[1]
 
         # Position IDs with offset
-        position_ids = Tensor.arange(seq_len).reshape(1, -1) + self.position_offset
+        position_ids = Tensor.arange(start_pos, start_pos + seq_len).reshape(1, -1) + self.position_offset
 
         # Token embeddings
         token_embeds = self.embed_tokens(input_ids)

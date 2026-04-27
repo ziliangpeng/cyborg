@@ -22,7 +22,14 @@ class Tokenizer:
             # HuggingFace transformers tokenizer for OPT and other models
             from transformers import AutoTokenizer
 
-            self.enc = AutoTokenizer.from_pretrained(encoding_name)
+            # LLaMA models ship only a SentencePiece .model file (no
+            # tokenizer.json), so the fast tokenizer path fails.
+            _llama_like = (
+                "openlm-research/" in encoding_name
+                or "meta-llama/" in encoding_name
+                or "llama" in encoding_name.lower()
+            )
+            self.enc = AutoTokenizer.from_pretrained(encoding_name, use_fast=not _llama_like)
 
     def encode(self, text: str) -> list[int]:
         """Encode text to token IDs."""
