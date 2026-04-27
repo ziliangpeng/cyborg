@@ -72,19 +72,12 @@ py_test(
 )
 
 # OPT model test
-# TODO: re-enable in CI. Currently fails on tinygrad 0.11.0 CPU backend with
-# "RuntimeError: Attempting to relocate against an undefined symbol 'fmaxf'"
-# because ops_cpu.py compiles kernels with -nostdlib -ffreestanding, which
-# does not link libm. Some OPT kernel emits fmaxf and triggers the ELF loader.
-# test_gpt2 happens not to hit fmaxf and stays green. Tagged manual until we
-# either upgrade tinygrad past this issue or patch the CPU compile flags.
 py_test(
     name = "test_opt",
     srcs = ["test_opt.py"],
     deps = [":tinyllm"],
     size = "large",  # May download weights
     timeout = "long",  # Allow time for download
-    tags = ["manual"],
 )
 
 # LLaMA model test
