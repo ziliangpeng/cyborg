@@ -58,7 +58,9 @@ class OPTTransformerBlock:
         self.final_layer_norm = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
         self.mlp = FeedForward(config.n_embd, config.n_inner, activation=relu)
 
-    def __call__(self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None, start_pos=None) -> Tensor:
+    def __call__(
+        self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None, start_pos=None
+    ) -> Tensor:
         x = x + self.attn(self.self_attn_layer_norm(x), layer_idx=layer_idx, kv_cache=kv_cache, start_pos=start_pos)
         x = x + self.mlp(self.final_layer_norm(x))
         return x

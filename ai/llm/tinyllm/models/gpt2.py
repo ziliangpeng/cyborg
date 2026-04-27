@@ -22,7 +22,9 @@ class TransformerBlock:
         self.ln_2 = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
         self.mlp = FeedForward(config.n_embd, config.n_inner, activation=gelu)
 
-    def __call__(self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None, start_pos=None) -> Tensor:
+    def __call__(
+        self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None, start_pos=None
+    ) -> Tensor:
         x = x + self.attn(self.ln_1(x), layer_idx=layer_idx, kv_cache=kv_cache, start_pos=start_pos)
         x = x + self.mlp(self.ln_2(x))
         return x

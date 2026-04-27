@@ -61,8 +61,8 @@ class _RopeCallable:
 
     def __call__(self, q: Tensor, k: Tensor, start_pos: int = 0):
         seq_len = q.shape[2]
-        cos = self.cos[start_pos:start_pos + seq_len]
-        sin = self.sin[start_pos:start_pos + seq_len]
+        cos = self.cos[start_pos : start_pos + seq_len]
+        sin = self.sin[start_pos : start_pos + seq_len]
         return apply_rotary_emb(q, k, cos, sin)
 
 
@@ -75,7 +75,9 @@ class LlamaTransformerBlock:
         self.ln_2 = RMSNorm(config.n_embd, eps=config.rms_norm_eps)
         self.mlp = GatedFeedForward(config.n_embd, config.n_inner)
 
-    def __call__(self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None, start_pos: int = 0) -> Tensor:
+    def __call__(
+        self, x: Tensor, layer_idx: int | None = None, kv_cache: KVCache | None = None, start_pos: int = 0
+    ) -> Tensor:
         x = x + self.attn(self.ln_1(x), layer_idx=layer_idx, kv_cache=kv_cache, start_pos=start_pos)
         x = x + self.mlp(self.ln_2(x))
         return x

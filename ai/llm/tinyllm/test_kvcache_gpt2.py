@@ -1,8 +1,10 @@
 """Test KV cache correctness and speedup for GPT-2."""
+
 import time
 from tinygrad import Tensor
 from ai.llm.tinyllm import GPT2, SimpleKVCache, generate
 from ai.llm.tinyllm.utils import Tokenizer
+
 
 def test_kv_cache_correctness_and_speedup():
     prompt = "The meaning of life is"
@@ -39,6 +41,7 @@ def test_kv_cache_correctness_and_speedup():
     assert match, "KV cache output does not match non-cached output!"
 
     print(f"\nSpeedup: {time_no_cache / time_with_cache:.2f}x")
+
 
 if __name__ == "__main__":
     test_kv_cache_correctness_and_speedup()

@@ -75,10 +75,7 @@ class SimpleKVCache(KVCache):
 
     def realize(self) -> None:
         """Realize all cached tensors to flush lazy graph after each decode step."""
-        self._cache = {
-            idx: (k.realize(), v.realize())
-            for idx, (k, v) in self._cache.items()
-        }
+        self._cache = {idx: (k.realize(), v.realize()) for idx, (k, v) in self._cache.items()}
 
     def seq_len(self) -> int:
         if not self._cache:
@@ -88,7 +85,6 @@ class SimpleKVCache(KVCache):
 
     def clear(self) -> None:
         self._cache.clear()
-
 
 
 class VariableKVCache(KVCache):
@@ -125,7 +121,6 @@ class VariableKVCache(KVCache):
         self.cache = Tensor.zeros(2, n_layers, batch, num_heads, max_seq_len, head_dim).contiguous().realize()
         self._eager = True  # True during decode, False during prefill (lazy mode)
 
-
     def update(self, layer_idx: int, k: Tensor, v: Tensor, start_pos=None) -> tuple[Tensor, Tensor]:
         """
         Update cache at start_pos and return SYMBOLIC-sliced K/V [0:end_pos].
@@ -148,7 +143,7 @@ class VariableKVCache(KVCache):
                        If None, falls back to internal _pos counter.
         """
         T = k.shape[2]  # number of new tokens (1 during decode, >1 during prefill)
-        is_decode = (T == 1)
+        is_decode = T == 1
 
         # During JIT decode, start_pos is a bound UOp; use it directly.
         # During prefill (or non-JIT eager), use internal _pos counter.
@@ -161,7 +156,7 @@ class VariableKVCache(KVCache):
 
         # Write new K/V into the pre-allocated buffer at [sp : sp + T]
         # assign() is an in-place operation; realize() flushes the lazy graph immediately
-        assigned = self.cache[:, layer_idx, :, :, sp:sp + T, :].assign(
+        assigned = self.cache[:, layer_idx, :, :, sp : sp + T, :].assign(
             Tensor.stack(k[:, :, :T, :], v[:, :, :T, :])  # shape: (2, batch, heads, T, head_dim)
         )
         if self._eager:
