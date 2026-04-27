@@ -44,7 +44,7 @@ class KVCache(ABC):
         """
         return None
 
-    def flush(self) -> None:
+    def flush(self) -> None:  # noqa: B027  # default no-op; override in subclass
         """Realize all pending assigns. Default no-op; override in VariableKVCache."""
         pass
 

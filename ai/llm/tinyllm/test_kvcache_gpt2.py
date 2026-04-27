@@ -1,7 +1,9 @@
 """Test KV cache correctness and speedup for GPT-2."""
 
 import time
+
 from tinygrad import Tensor
+
 from ai.llm.tinyllm import GPT2, SimpleKVCache, generate
 from ai.llm.tinyllm.utils import Tokenizer
 

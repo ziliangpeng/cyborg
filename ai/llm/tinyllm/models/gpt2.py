@@ -4,12 +4,12 @@ from tinygrad import Tensor, TinyJit
 from tinygrad.nn import LayerNorm
 from tinygrad.uop.ops import UOp
 
+from ..kv_cache import KVCache
 from ..ops.activations import gelu
 from ..ops.attention import CausalAttention
 from ..ops.embeddings import TokenPositionEmbedding
 from ..ops.ffn import FeedForward
 from .base import BaseModel
-from ..kv_cache import KVCache
 from .config import GPT2Config
 
 

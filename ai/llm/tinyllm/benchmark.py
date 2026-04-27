@@ -19,10 +19,10 @@ import time
 import click
 from tinygrad import Tensor
 
-from ai.llm.tinyllm import generate, SimpleKVCache
+from ai.llm.tinyllm import SimpleKVCache, generate
+from ai.llm.tinyllm.cli import format_param_count, load_model
 from ai.llm.tinyllm.kv_cache import VariableKVCache
 from ai.llm.tinyllm.utils import Tokenizer
-from ai.llm.tinyllm.cli import load_model, format_param_count
 
 _BASE_TEXT = (
     "The quick brown fox jumps over the lazy dog. "

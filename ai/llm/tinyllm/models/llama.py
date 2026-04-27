@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from tinygrad import Tensor
 from tinygrad.nn import Embedding, Linear
 
+from ..kv_cache import KVCache
 from ..ops.attention import CausalAttention
 from ..ops.ffn import GatedFeedForward
 from ..ops.rmsnorm import RMSNorm
 from ..ops.rope import apply_rotary_emb, precompute_rope_freqs
 from .base import BaseModel
-from ..kv_cache import KVCache
 
 
 @dataclass

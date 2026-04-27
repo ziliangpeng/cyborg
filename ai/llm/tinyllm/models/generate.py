@@ -6,8 +6,7 @@ from tinygrad import Tensor
 from tinygrad.uop.ops import UOp
 
 if TYPE_CHECKING:
-    from .base import BaseModel
-    from ..kv_cache import KVCache
+    pass
 
 
 def generate(

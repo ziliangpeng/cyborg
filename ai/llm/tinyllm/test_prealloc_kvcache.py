@@ -1,8 +1,10 @@
 """Test PreallocKVCache correctness and speedup vs SimpleKVCache."""
 
 import time
+
 from tinygrad import Tensor
-from ai.llm.tinyllm import GPT2, SimpleKVCache, PreallocKVCache, generate
+
+from ai.llm.tinyllm import GPT2, PreallocKVCache, SimpleKVCache, generate
 from ai.llm.tinyllm.utils import Tokenizer
 
 model = GPT2.from_pretrained("gpt2")

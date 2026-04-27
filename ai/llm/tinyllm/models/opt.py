@@ -6,12 +6,12 @@ from tinygrad import Tensor, TinyJit
 from tinygrad.nn import LayerNorm, Linear
 from tinygrad.uop.ops import UOp
 
+from ..kv_cache import KVCache
 from ..ops.activations import relu
 from ..ops.attention import CausalAttention
 from ..ops.embeddings import OPTEmbedding
 from ..ops.ffn import FeedForward
 from .base import BaseModel
-from ..kv_cache import KVCache
 
 
 @dataclass
