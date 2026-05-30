@@ -29,9 +29,13 @@ class Tokenizer:
                 or "meta-llama/" in encoding_name
                 or "llama" in encoding_name.lower()
             )
+<<<<<<< HEAD
             self.enc = AutoTokenizer.from_pretrained(
                 encoding_name, use_fast=not _llama_like
             )
+=======
+            self.enc = AutoTokenizer.from_pretrained(encoding_name, use_fast=not _llama_like)
+>>>>>>> origin/main
 
     def encode(self, text: str) -> list[int]:
         """Encode text to token IDs."""
