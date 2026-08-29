@@ -2,3 +2,4 @@ packages:
   - 'apps/cybervision'
   - 'apps/cybervision-player'
   - 'apps/snake-game'
+  - 'apps/tower-defense'
