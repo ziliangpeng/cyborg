@@ -1,0 +1,145 @@
+:root {
+  --bg: #0e100d;
+  --board: #151812;
+  --line: rgba(235, 240, 220, 0.07);
+  --text: #e9e7dc;
+  --muted: #77796c;
+  --accent: #ff7a5c;
+  --snake: #cfe3b8;
+  --font-ui: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 32px;
+}
+
+/* ---------- HUD ---------- */
+.hud {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.title {
+  font-family: var(--font-ui);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 34px;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.scores {
+  display: flex;
+  gap: 28px;
+  font-family: var(--font-mono);
+}
+
+.score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.score-label {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.score-value {
+  font-size: 22px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* ---------- Board ---------- */
+.board-wrap {
+  position: relative;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 24px 80px -24px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  background: var(--board);
+}
+
+canvas { display: block; }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(14, 16, 13, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: opacity 320ms ease;
+}
+
+.overlay.hidden { opacity: 0; pointer-events: none; }
+
+.overlay-title {
+  font-style: italic;
+  font-size: 40px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.overlay-hint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- Help footer ---------- */
+.help {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.key {
+  color: var(--text);
+  background: rgba(235, 240, 220, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 10px;
+}
+
+.dot { opacity: 0.4; }
