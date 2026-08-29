@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <header class="hud">
+        <h1 class="title">Snake</h1>
+        <div class="scores">
+          <div class="score-block">
+            <span class="score-label">Score</span>
+            <span class="score-value" id="score">0</span>
+          </div>
+          <div class="score-block">
+            <span class="score-label">Best</span>
+            <span class="score-value" id="best">0</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="board-wrap">
+        <canvas id="board" width="630" height="630" aria-label="Snake game board"></canvas>
+        <div class="overlay" id="overlay">
+          <p class="overlay-title" id="overlay-title">Ready?</p>
+          <p class="overlay-hint" id="overlay-hint">Press an arrow key to play</p>
+        </div>
+      </div>
+
+      <footer class="help">
+        <span class="key">←↑↓→</span> move <span class="dot">·</span>
+        <span class="key">space</span> pause <span class="dot">·</span>
+        <span class="key">enter</span> restart
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
