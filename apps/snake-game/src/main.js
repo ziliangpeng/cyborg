@@ -37,6 +37,12 @@ function snapshotPrev() {
 function advance() {
   snapshotPrev();
   tick(state);
+  // When the snake grows, the new tail cell has no previous position.
+  // Pad prevSnake with the old tail so interpolation keeps running and
+  // the growth animates as a slide instead of a one-frame snap.
+  while (state.prevSnake.length < state.snake.length) {
+    state.prevSnake.push({ ...state.prevSnake[state.prevSnake.length - 1] });
+  }
   if (state.food) {
     stepMs = stepDuration();
   }
