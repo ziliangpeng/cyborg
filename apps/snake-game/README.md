@@ -21,7 +21,7 @@ npm run dev          # open http://localhost:5173
 
 ```bash
 npm run test         # vitest: 19 unit tests on pure game logic
-node tests/ui.spec.js  # Playwright + system Chrome: full integration, screenshots to ./shots
+node tests/ui.e2e.js  # Playwright + system Chrome: full integration, screenshots to ./shots
 ```
 
 Game rules live in `src/logic/game.js` (pure, DOM-free, deterministic via seeded RNG).
