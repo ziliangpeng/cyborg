@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tower Defense</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23151812'/%3E%3Crect x='8' y='14' width='16' height='10' rx='2' fill='%23cfe3b8'/%3E%3Crect x='12' y='8' width='8' height='6' rx='2' fill='%23cfe3b8'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <header class="hud">
+        <h1 class="title">Tower Defense</h1>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Funds</span>
+            <span class="stat-value money" id="money">130</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Lives</span>
+            <span class="stat-value lives" id="lives">20</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Wave</span>
+            <span class="stat-value" id="wave">0/15</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="board-wrap">
+        <canvas id="board" width="630" height="462"></canvas>
+        <div class="overlay" id="overlay">
+          <p class="overlay-title" id="overlay-title">Build your defenses</p>
+          <p class="overlay-hint" id="overlay-hint">Pick a tower, click a free cell · press enter to call the first wave</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="build-bar" id="build-bar">
+          <button class="tower-card selected" data-type="arrow">
+            <span class="tower-swatch" style="--sw: #cfe3b8"></span>
+            <span class="tower-name">Arrow</span>
+            <span class="tower-cost">50</span>
+            <span class="tower-key">1</span>
+          </button>
+          <button class="tower-card" data-type="frost">
+            <span class="tower-swatch" style="--sw: #a8c5d8"></span>
+            <span class="tower-name">Frost</span>
+            <span class="tower-cost">70</span>
+            <span class="tower-key">2</span>
+          </button>
+          <button class="tower-card" data-type="cannon">
+            <span class="tower-swatch" style="--sw: #e0b184"></span>
+            <span class="tower-name">Cannon</span>
+            <span class="tower-cost">110</span>
+            <span class="tower-key">3</span>
+          </button>
+        </div>
+
+        <button class="wave-btn" id="wave-btn">Call wave 1</button>
+      </div>
+
+      <div class="tower-panel hidden" id="tower-panel">
+        <span class="panel-name" id="panel-name"></span>
+        <span class="panel-level" id="panel-level"></span>
+        <button class="panel-btn" id="upgrade-btn"></button>
+        <button class="panel-btn ghost" id="sell-btn"></button>
+      </div>
+
+      <footer class="help">
+        <span class="key">1 2 3</span> pick tower <span class="dot">·</span>
+        <span class="key">click</span> build / select <span class="dot">·</span>
+        <span class="key">enter</span> call wave <span class="dot">·</span>
+        <span class="key">esc</span> cancel
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
